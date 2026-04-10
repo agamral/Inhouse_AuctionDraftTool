@@ -1,0 +1,85 @@
+/* ===================================================
+   Elo toggle buttons — estilos por tier
+   Importar em Inscricao.jsx
+   =================================================== */
+
+/* Toque sutil de cor mesmo quando inativo */
+.elo-toggle-bronze   { border-color: rgba(200,121,65,0.3); }
+.elo-toggle-prata    { border-color: rgba(158,173,192,0.22); }
+.elo-toggle-ouro     { border-color: rgba(240,204,110,0.3); }
+.elo-toggle-platina  { border-color: rgba(78,205,196,0.22); }
+.elo-toggle-diamante { border-color: rgba(116,185,255,0.25); }
+.elo-toggle-mestre   { border-color: rgba(155,110,232,0.32); }
+
+/* ── Estados ativos ── */
+
+.elo-toggle-bronze.active {
+  background: rgba(200,121,65,0.15);
+  border-color: rgba(200,121,65,0.55);
+  color: #e8a575;
+}
+
+.elo-toggle-prata.active {
+  background: rgba(158,173,192,0.1);
+  border-color: rgba(158,173,192,0.45);
+  color: #b8c8d8;
+}
+
+/* Ouro: shimmer deslizante */
+.elo-toggle-ouro.active {
+  background: linear-gradient(90deg,
+    rgba(240,204,110,0.12) 0%,
+    rgba(255,238,160,0.32) 50%,
+    rgba(240,204,110,0.12) 100%
+  );
+  background-size: 200% 100%;
+  border-color: rgba(240,204,110,0.55);
+  color: #f0cc6e;
+  animation: eloShimmer 2.5s linear infinite;
+}
+
+.elo-toggle-platina.active {
+  background: rgba(78,205,196,0.12);
+  border-color: rgba(78,205,196,0.5);
+  color: #4ecdc4;
+}
+
+.elo-toggle-diamante.active {
+  background: rgba(116,185,255,0.11);
+  border-color: rgba(116,185,255,0.5);
+  color: #74b9ff;
+}
+
+/* Mestre: pulso void roxo */
+.elo-toggle-mestre.active {
+  background: rgba(155,110,232,0.15);
+  border-color: rgba(155,110,232,0.6);
+  color: #c39bd3;
+  animation: eloVoidPulse 2s ease-in-out infinite;
+}
+
+/* ── Animações ── */
+
+@keyframes eloShimmer {
+  0%   { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+@keyframes eloVoidPulse {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(155,110,232,0.2);
+    border-color: rgba(155,110,232,0.5);
+  }
+  50% {
+    box-shadow: 0 0 14px rgba(155,110,232,0.5), 0 0 26px rgba(155,110,232,0.15);
+    border-color: rgba(155,110,232,0.8);
+  }
+}
+
+/* Respeitar preferência do usuário por menos movimento */
+@media (prefers-reduced-motion: reduce) {
+  .elo-toggle-ouro.active,
+  .elo-toggle-mestre.active {
+    animation: none !important;
+  }
+}

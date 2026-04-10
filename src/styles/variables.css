@@ -1,0 +1,39 @@
+:root {
+  /* ── Fundos — escala oficial Blizzard HotS ── */
+  --bg:       #0a0d15;
+  --bg2:      #151c28;
+  --bg3:      #232a39;
+  --bg4:      #3a465f;
+
+  /* ── Dourado/amarelo — identidade Inhouse League logo ── */
+  --gold:     #e8b520;
+  --gold2:    #f5cc50;
+  --gold3:    #fde27a;
+  --gold-dim: rgba(232, 181, 32, 0.12);
+  --gold-glow:rgba(245, 204, 80, 0.3);
+  --border-gold: rgba(232, 181, 32, 0.28);
+
+  /* ── Azuis primários — HotS oficial ── */
+  --blue:     #38a8ff;
+  --blue2:    #0592ff;
+  --blue3:    #0076d1;
+  --blue-dim: rgba(5, 146, 255, 0.12);
+
+  /* ── Roxo — HotS oficial ── */
+  --purple:   #6c3b9e;
+  --purple2:  #2a044b;
+  --purple-dim: rgba(106, 59, 158, 0.2);
+
+  /* ── Bordas ── */
+  --border:   rgba(255, 255, 255, 0.07);
+  --border2:  rgba(255, 255, 255, 0.12);
+
+  /* ── Texto ── */
+  --text:     #edeae2;
+  --text2:    #7a8aaa;
+  --text3:    #3a465f;
+
+  /* ── Status ── */
+  --red:      #e03c3c;
+  --green:    #3dba7a;
+}

@@ -1,0 +1,85 @@
+{
+  "nav": {
+    "home": "Home",
+    "inscritos": "Players",
+    "inscricao": "Sign Up",
+    "espectador": "Spectator",
+    "draft": "Draft"
+  },
+  "home": {
+    "title": "Copa Inhouse",
+    "subtitle": "Internal Heroes of the Storm Championship",
+    "cards": {
+      "inscricao": "Sign Up",
+      "inscricao_desc": "Register to participate in the next event",
+      "inscritos": "Players",
+      "inscritos_desc": "See all registered players",
+      "espectador": "Watch Live",
+      "espectador_desc": "Follow the draft in real time"
+    },
+    "next_event": "Next Event",
+    "format": "Format",
+    "format_value": "Auction — 4 to 6 captains, 15 coins each",
+    "roles": "Roles",
+    "roles_value": "Tank · Offlane · DPS · Healer · Flex"
+  },
+  "form": {
+    "title": "Sign Up",
+    "subtitle": "Fill in your details to participate",
+    "fields": {
+      "discord": "Discord Nick",
+      "battletag": "Battletag",
+      "battletag_placeholder": "Nick#0000",
+      "pais": "Country",
+      "linguas": "Languages you speak",
+      "elo": "Rank",
+      "role_primaria": "Primary Role",
+      "role_secundaria": "Secondary Role",
+      "capitar": "Do you want to be a captain?",
+      "regras": "I have read and accept the Copa Inhouse rules"
+    },
+    "submit": "Submit Registration",
+    "success": "Registration submitted successfully!",
+    "error": "Error submitting. Please try again.",
+    "login_required": "Sign in with Google to register"
+  },
+  "inscritos": {
+    "title": "Players",
+    "subtitle": "Players registered for the event",
+    "filters": {
+      "all": "All",
+      "search": "Search player...",
+      "elo": "Rank",
+      "role": "Role"
+    },
+    "table": {
+      "player": "Player",
+      "elo": "Rank",
+      "role": "Role",
+      "pais": "Country",
+      "status": "Status",
+      "captain": "Captain"
+    },
+    "empty": "No players found"
+  },
+  "draft": {
+    "turn": "Turn of",
+    "coins": "coins",
+    "buy": "Buy",
+    "steal": "Steal",
+    "round": "Round",
+    "extra_turn": "Extra Turn",
+    "available": "Available",
+    "teams": "Teams",
+    "standby": "Standby",
+    "confirm_buy": "Confirm purchase of {{player}} for {{price}} coin(s)?",
+    "confirm_steal": "Steal {{player}} from {{team}} for {{price}} coin(s)?"
+  },
+  "espectador": {
+    "live": "LIVE",
+    "spotlight": "Spotlight",
+    "available": "Available",
+    "turn": "NOW PICKING",
+    "round": "ROUND"
+  }
+}

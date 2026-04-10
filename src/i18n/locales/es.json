@@ -1,0 +1,85 @@
+{
+  "nav": {
+    "home": "Inicio",
+    "inscritos": "Inscritos",
+    "inscricao": "Inscripción",
+    "espectador": "Espectador",
+    "draft": "Draft"
+  },
+  "home": {
+    "title": "Copa Inhouse",
+    "subtitle": "Campeonato interno de Heroes of the Storm",
+    "cards": {
+      "inscricao": "Inscripción",
+      "inscricao_desc": "Regístrate para participar en el próximo evento",
+      "inscritos": "Inscritos",
+      "inscritos_desc": "Ver todos los jugadores registrados",
+      "espectador": "Ver en Vivo",
+      "espectador_desc": "Sigue el draft en tiempo real"
+    },
+    "next_event": "Próximo Evento",
+    "format": "Formato",
+    "format_value": "Subasta — 4 a 6 capitanes, 15 monedas cada uno",
+    "roles": "Roles",
+    "roles_value": "Tank · Offlane · DPS · Healer · Flex"
+  },
+  "form": {
+    "title": "Inscripción",
+    "subtitle": "Completa tus datos para participar",
+    "fields": {
+      "discord": "Nick en Discord",
+      "battletag": "Battletag",
+      "battletag_placeholder": "Nick#0000",
+      "pais": "País",
+      "linguas": "Idiomas que hablas",
+      "elo": "Elo",
+      "role_primaria": "Rol Primario",
+      "role_secundaria": "Rol Secundario",
+      "capitar": "¿Quieres ser capitán?",
+      "regras": "Leí y acepto las reglas de la Copa Inhouse"
+    },
+    "submit": "Enviar Inscripción",
+    "success": "¡Inscripción enviada con éxito!",
+    "error": "Error al enviar. Inténtalo de nuevo.",
+    "login_required": "Inicia sesión con Google para inscribirte"
+  },
+  "inscritos": {
+    "title": "Inscritos",
+    "subtitle": "Jugadores registrados para el evento",
+    "filters": {
+      "all": "Todos",
+      "search": "Buscar jugador...",
+      "elo": "Elo",
+      "role": "Rol"
+    },
+    "table": {
+      "player": "Jugador",
+      "elo": "Elo",
+      "role": "Rol",
+      "pais": "País",
+      "status": "Estado",
+      "captain": "Capitán"
+    },
+    "empty": "No se encontraron jugadores"
+  },
+  "draft": {
+    "turn": "Turno de",
+    "coins": "monedas",
+    "buy": "Comprar",
+    "steal": "Robar",
+    "round": "Ronda",
+    "extra_turn": "Turno Extra",
+    "available": "Disponibles",
+    "teams": "Equipos",
+    "standby": "Standby",
+    "confirm_buy": "¿Confirmar compra de {{player}} por {{price}} moneda(s)?",
+    "confirm_steal": "¿Robar {{player}} de {{team}} por {{price}} moneda(s)?"
+  },
+  "espectador": {
+    "live": "EN VIVO",
+    "spotlight": "Destacado",
+    "available": "Disponibles",
+    "turn": "TURNO DE",
+    "round": "RONDA"
+  }
+}

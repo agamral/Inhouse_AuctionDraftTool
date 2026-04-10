@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Draft Leilão — Copa Inhouse</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Barlow:wght@300;400;500&family=Barlow+Condensed:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c10;
+    --bg2: #0f1318;
+    --bg3: #141820;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --gold: #c9a84c;
+    --gold2: #f0cc6e;
+    --gold-dim: rgba(201,168,76,0.15);
+    --red: #e05555;
+    --green: #4caf7d;
+    --blue: #4a9eda;
+    --purple: #9b6ee8;
+    --text: #e2ddd6;
+    --text2: #8a8680;
+    --text3: #555250;
+    --accent: #c9a84c;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Barlow', sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background texture */
+  body::before {
+    content:'';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 40% at 50% 0%, rgba(201,168,76,0.04) 0%, transparent 70%),
+      radial-gradient(ellipse 40% 60% at 0% 50%, rgba(74,158,218,0.03) 0%, transparent 60%),
+      radial-gradient(ellipse 40% 60% at 100% 50%, rgba(155,110,232,0.03) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app { position: relative; z-index: 1; display: flex; flex-direction: column; min-height: 100vh; }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 28px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(10,12,16,0.85);
+    backdrop-filter: blur(12px);
+    position: sticky; top: 0; z-index: 100;
+  }
+
+  .logo {
+    display: flex; align-items: center; gap: 12px;
+  }
+  .logo-icon {
+    width: 34px; height: 34px;
+    background: var(--gold-dim);
+    border: 1px solid rgba(201,168,76,0.3);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+  .logo-text {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: 18px;
+    letter-spacing: 0.05em;
+    color: var(--gold2);
+  }
+  .logo-sub {
+    font-size: 11px;
+    color: var(--text2);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .header-center {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+  }
+  .phase-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text2);
+  }
+  .turn-indicator {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--text);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .turn-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.6;transform:scale(.85)} }
+
+  .header-right { display: flex; align-items: center; gap: 16px; }
+  .round-badge {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--gold);
+    border: 1px solid rgba(201,168,76,0.25);
+    padding: 4px 10px;
+    border-radius: 4px;
+    background: var(--gold-dim);
+  }
+
+  /* ── Main layout ── */
+  .main {
+    display: grid;
+    grid-template-columns: 280px 1fr 280px;
+    gap: 0;
+    flex: 1;
+    min-height: 0;
+  }
+
+  /* ── Sidebar teams ── */
+  .sidebar {
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    background: var(--bg2);
+    max-height: calc(100vh - 65px);
+    overflow-y: auto;
+  }
+  .sidebar.right { border-right: none; border-left: 1px solid var(--border); }
+
+  .sidebar-header {
+    padding: 16px 18px 12px;
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; background: var(--bg2); z-index: 10;
+  }
+  .sidebar-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text2);
+    margin-bottom: 8px;
+  }
+
+  /* ── Team card ── */
+  .team-card {
+    margin: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg3);
+    overflow: hidden;
+    transition: border-color .2s;
+  }
+  .team-card.active-team {
+    border-color: rgba(201,168,76,0.4);
+    box-shadow: 0 0 0 1px rgba(201,168,76,0.1) inset;
+  }
+  .team-card-header {
+    padding: 10px 14px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+  }
+  .team-name {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .team-color { width: 10px; height: 10px; border-radius: 2px; }
+  .team-coins {
+    display: flex; align-items: center; gap: 5px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 13px;
+    color: var(--gold);
+    font-weight: 600;
+  }
+  .coin-icon { font-size: 11px; }
+  .captain-tag {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    background: rgba(201,168,76,0.15);
+    border: 1px solid rgba(201,168,76,0.25);
+    color: var(--gold);
+    font-family: 'Barlow Condensed', sans-serif;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .roster {
+    padding: 8px 10px;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .roster-player {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 5px 8px;
+    border-radius: 5px;
+    background: rgba(255,255,255,0.03);
+    font-size: 13px;
+  }
+  .roster-player-name { color: var(--text); }
+  .roster-player-price {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 12px; color: var(--text3);
+  }
+  .roster-slot-empty {
+    padding: 5px 8px;
+    border-radius: 5px;
+    border: 1px dashed var(--border);
+    font-size: 12px;
+    color: var(--text3);
+    text-align: center;
+    font-style: italic;
+  }
+  .team-progress {
+    padding: 0 10px 10px;
+    display: flex; gap: 4px;
+  }
+  .prog-dot {
+    flex: 1; height: 3px; border-radius: 2px;
+    background: var(--border2);
+  }
+  .prog-dot.filled { background: var(--gold); }
+
+  /* ── Center panel ── */
+  .center {
+    display: flex; flex-direction: column;
+    max-height: calc(100vh - 65px);
+    overflow: hidden;
+  }
+
+  /* Turn banner */
+  .turn-banner {
+    padding: 14px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    background: rgba(201,168,76,0.04);
+  }
+  .turn-info { display: flex; align-items: center; gap: 12px; }
+  .turn-avatar {
+    width: 38px; height: 38px; border-radius: 6px;
+    border: 2px solid var(--gold);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    background: var(--gold-dim);
+  }
+  .turn-name {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700; font-size: 17px;
+  }
+  .turn-sub { font-size: 12px; color: var(--text2); }
+  .turn-coins-big {
+    text-align: right;
+  }
+  .coins-value {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700; font-size: 24px;
+    color: var(--gold2);
+    line-height: 1;
+  }
+  .coins-label { font-size: 11px; color: var(--text2); margin-top: 2px; }
+
+  /* Turn order strip */
+  .turn-order {
+    padding: 10px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+    background: var(--bg2);
+    overflow-x: auto;
+  }
+  .turn-order-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text3);
+    white-space: nowrap;
+    margin-right: 4px;
+  }
+  .turn-pip {
+    display: flex; align-items: center; gap: 6px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    border: 1px solid var(--border);
+    white-space: nowrap;
+    color: var(--text2);
+    font-family: 'Barlow Condensed', sans-serif;
+  }
+  .turn-pip.current {
+    background: var(--gold-dim);
+    border-color: rgba(201,168,76,0.35);
+    color: var(--gold2);
+    font-weight: 600;
+  }
+  .turn-pip.extra {
+    background: rgba(224,85,85,0.1);
+    border-color: rgba(224,85,85,0.3);
+    color: var(--red);
+  }
+  .turn-pip-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  /* Players grid */
+  .players-section {
+    flex: 1;
+    overflow-y: auto;
+    padding: 18px 24px;
+  }
+  .players-section-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .section-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text2);
+  }
+  .filter-tabs {
+    display: flex; gap: 4px;
+  }
+  .filter-tab {
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-family: 'Barlow Condensed', sans-serif;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    color: var(--text2);
+    text-transform: uppercase;
+    transition: all .15s;
+  }
+  .filter-tab.active {
+    background: var(--gold-dim);
+    border-color: rgba(201,168,76,0.3);
+    color: var(--gold);
+  }
+
+  .players-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+  }
+
+  .player-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: all .18s;
+    position: relative;
+    overflow: hidden;
+  }
+  .player-card::before {
+    content:'';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: transparent;
+    transition: background .18s;
+  }
+  .player-card:hover {
+    border-color: var(--border2);
+    transform: translateY(-1px);
+  }
+  .player-card:hover::before { background: var(--gold); }
+  .player-card.owned {
+    background: rgba(201,168,76,0.04);
+    border-color: rgba(201,168,76,0.2);
+  }
+  .player-card.owned::before { background: var(--gold); }
+  .player-card.premium {
+    border-color: rgba(155,110,232,0.3);
+  }
+  .player-card.premium::before { background: var(--purple); }
+
+  .player-card-top {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .player-name {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 600; font-size: 15px;
+    line-height: 1.2;
+  }
+  .player-price-badge {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700; font-size: 16px;
+    color: var(--gold2);
+    display: flex; align-items: center; gap: 3px;
+  }
+  .player-price-badge.premium-price { color: var(--purple); }
+  .player-role {
+    font-size: 11px;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-family: 'Barlow Condensed', sans-serif;
+    margin-bottom: 8px;
+  }
+  .player-card-footer {
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .owned-by {
+    font-size: 11px;
+    color: var(--text2);
+    display: flex; align-items: center; gap: 5px;
+  }
+  .owned-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .buy-btn {
+    padding: 4px 12px;
+    border-radius: 4px;
+    border: 1px solid rgba(201,168,76,0.35);
+    background: var(--gold-dim);
+    color: var(--gold);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all .15s;
+  }
+  .buy-btn:hover { background: rgba(201,168,76,0.25); border-color: var(--gold); }
+  .steal-btn {
+    padding: 4px 12px;
+    border-radius: 4px;
+    border: 1px solid rgba(224,85,85,0.3);
+    background: rgba(224,85,85,0.08);
+    color: var(--red);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all .15s;
+  }
+  .steal-btn:hover { background: rgba(224,85,85,0.16); border-color: var(--red); }
+
+  /* ── Activity feed ── */
+  .activity-sidebar {
+    max-height: calc(100vh - 65px);
+    overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  .activity-header {
+    padding: 16px 18px 12px;
+    border-bottom: 1px solid var(--border);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text2);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .live-badge {
+    display: flex; align-items: center; gap: 5px;
+    color: var(--green);
+    font-size: 11px;
+  }
+  .live-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--green);
+    animation: pulse 1.5s infinite;
+  }
+  .activity-feed {
+    flex: 1; overflow-y: auto;
+    padding: 10px 14px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .activity-item {
+    padding: 8px 10px;
+    border-radius: 6px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    font-size: 12px;
+    line-height: 1.5;
+    animation: slideIn .25s ease;
+  }
+  @keyframes slideIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:none; } }
+  .activity-item.steal {
+    border-color: rgba(224,85,85,0.25);
+    background: rgba(224,85,85,0.05);
+  }
+  .activity-item.buy {
+    border-color: rgba(76,175,125,0.2);
+    background: rgba(76,175,125,0.04);
+  }
+  .activity-item.system {
+    border-color: rgba(201,168,76,0.15);
+    background: rgba(201,168,76,0.04);
+    color: var(--text2);
+    font-style: italic;
+  }
+  .activity-time {
+    font-size: 10px;
+    color: var(--text3);
+    margin-bottom: 2px;
+    font-family: 'Barlow Condensed', sans-serif;
+    letter-spacing: 0.04em;
+  }
+  .act-name { color: var(--gold); font-weight: 500; }
+  .act-player { color: var(--text); font-weight: 500; }
+  .act-steal { color: var(--red); }
+  .act-buy { color: var(--green); }
+
+  /* Discord preview section */
+  .discord-preview {
+    margin: 10px 14px;
+    padding: 10px;
+    border-radius: 6px;
+    background: #313338;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .discord-header {
+    font-size: 10px;
+    color: #80848e;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-family: 'Barlow Condensed', sans-serif;
+    margin-bottom: 8px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .discord-hash { color: #5865f2; font-size: 13px; }
+  .discord-msg {
+    display: flex; gap: 8px;
+    margin-bottom: 8px;
+    font-size: 12px;
+  }
+  .discord-avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: #5865f2;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px;
+    flex-shrink: 0;
+  }
+  .discord-msg-content { flex: 1; }
+  .discord-username { color: #c9a84c; font-size: 11px; font-weight: 600; margin-bottom: 2px; }
+  .discord-text { color: #dbdee1; line-height: 1.4; }
+
+  /* Stats bar bottom */
+  .stats-strip {
+    border-top: 1px solid var(--border);
+    padding: 10px 14px;
+    display: flex; flex-direction: column; gap: 6px;
+    background: var(--bg2);
+  }
+  .stat-row {
+    display: flex; justify-content: space-between;
+    font-size: 12px;
+  }
+  .stat-label { color: var(--text3); font-family: 'Barlow Condensed', sans-serif; text-transform: uppercase; letter-spacing: 0.06em; }
+  .stat-val { color: var(--text2); font-family: 'Barlow Condensed', sans-serif; }
+
+  /* Tooltip modal overlay */
+  .modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 200;
+    align-items: center; justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: 12px;
+    padding: 24px;
+    width: 360px;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.6);
+  }
+  .modal-title {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700; font-size: 20px;
+    margin-bottom: 4px;
+  }
+  .modal-sub { font-size: 12px; color: var(--text2); margin-bottom: 18px; }
+  .modal-price-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 14px;
+    border-radius: 8px;
+    background: var(--bg3);
+    margin-bottom: 12px;
+  }
+  .modal-price-label { font-size: 13px; color: var(--text2); }
+  .modal-price-val {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700; font-size: 22px; color: var(--gold2);
+  }
+  .modal-warn {
+    font-size: 12px; color: var(--text2);
+    padding: 8px 12px;
+    border-radius: 6px;
+    background: rgba(224,85,85,0.08);
+    border: 1px solid rgba(224,85,85,0.2);
+    margin-bottom: 16px;
+    display: none;
+  }
+  .modal-warn.show { display: block; }
+  .modal-btns { display: flex; gap: 8px; }
+  .btn-confirm {
+    flex: 1; padding: 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(76,175,125,0.4);
+    background: rgba(76,175,125,0.12);
+    color: var(--green);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 14px; font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .btn-confirm:hover { background: rgba(76,175,125,0.22); }
+  .btn-cancel {
+    padding: 10px 18px;
+    border-radius: 6px;
+    border: 1px solid var(--border2);
+    background: transparent;
+    color: var(--text2);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .btn-cancel:hover { background: rgba(255,255,255,0.04); }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Header -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">⚡</div>
+      <div>
+        <div class="logo-text">COPA INHOUSE</div>
+        <div class="logo-sub">Heroes of the Storm · Draft Leilão</div>
+      </div>
+    </div>
+    <div class="header-center">
+      <div class="phase-label">Turno atual</div>
+      <div class="turn-indicator">
+        <div class="turn-dot"></div>
+        <span id="current-turn-header">Capitão Thorn</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="round-badge" id="round-badge">Rodada 3 de 6</div>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <div class="main">
+
+    <!-- Left sidebar: Times 1 e 2 -->
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-title">Times</div>
+      </div>
+      <div id="teams-left"></div>
+    </div>
+
+    <!-- Center -->
+    <div class="center">
+      <!-- Turn banner -->
+      <div class="turn-banner">
+        <div class="turn-info">
+          <div class="turn-avatar" id="turn-avatar">🛡️</div>
+          <div>
+            <div class="turn-name" id="turn-name">Capitão Thorn</div>
+            <div class="turn-sub" id="turn-sub">Turno normal · Escolha um player</div>
+          </div>
+        </div>
+        <div class="turn-coins-big">
+          <div class="coins-value" id="turn-coins">12</div>
+          <div class="coins-label">moedas restantes</div>
+        </div>
+      </div>
+
+      <!-- Turn order -->
+      <div class="turn-order">
+        <span class="turn-order-label">Ordem:</span>
+        <div id="turn-order-strip"></div>
+      </div>
+
+      <!-- Players -->
+      <div class="players-section">
+      <div class="players-section-header" style="flex-direction:column;align-items:flex-start;gap:8px;margin-bottom:14px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;width:100%;">
+            <div class="section-title">Players disponíveis</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:5px;width:100%;">
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+              <span style="font-family:'Barlow Condensed',sans-serif;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);min-width:42px;">Status</span>
+              <div class="filter-tabs">
+                <div class="filter-tab active" data-group="status" onclick="filterPlayers('status','all',this)">Todos</div>
+                <div class="filter-tab" data-group="status" onclick="filterPlayers('status','available',this)">Livres</div>
+                <div class="filter-tab" data-group="status" onclick="filterPlayers('status','owned',this)">Comprados</div>
+                <div class="filter-tab" data-group="status" onclick="filterPlayers('status','premium',this)">Premium</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+              <span style="font-family:'Barlow Condensed',sans-serif;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);min-width:42px;">Role</span>
+              <div class="filter-tabs">
+                <div class="filter-tab active" data-group="role" onclick="filterPlayers('role','all',this)">Todas</div>
+                <div class="filter-tab" data-group="role" onclick="filterPlayers('role','Healer',this)">Healer</div>
+                <div class="filter-tab" data-group="role" onclick="filterPlayers('role','Tank',this)">Tank</div>
+                <div class="filter-tab" data-group="role" onclick="filterPlayers('role','DPS',this)">DPS</div>
+                <div class="filter-tab" data-group="role" onclick="filterPlayers('role','Offlane',this)">Offlane</div>
+                <div class="filter-tab" data-group="role" onclick="filterPlayers('role','Flex',this)">Flex</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+              <span style="font-family:'Barlow Condensed',sans-serif;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);min-width:42px;">Elo</span>
+              <div class="filter-tabs">
+                <div class="filter-tab active" data-group="elo" onclick="filterPlayers('elo','all',this)">Todos</div>
+                <div class="filter-tab" data-group="elo" onclick="filterPlayers('elo','Bronze',this)"   style="color:#c87a50;border-color:rgba(176,100,60,0.3)">Bronze</div>
+                <div class="filter-tab" data-group="elo" onclick="filterPlayers('elo','Prata',this)"    style="color:#b0b0be;border-color:rgba(160,160,170,0.3)">Prata</div>
+                <div class="filter-tab" data-group="elo" onclick="filterPlayers('elo','Ouro',this)"     style="color:#c9a84c;border-color:rgba(201,168,76,0.3)">Ouro</div>
+                <div class="filter-tab" data-group="elo" onclick="filterPlayers('elo','Platina',this)"  style="color:#3cb4a0;border-color:rgba(60,180,160,0.3)">Platina</div>
+                <div class="filter-tab" data-group="elo" onclick="filterPlayers('elo','Diamante',this)" style="color:#4a9eda;border-color:rgba(74,158,218,0.3)">Diamante</div>
+                <div class="filter-tab" data-group="elo" onclick="filterPlayers('elo','Mestre',this)"   style="color:#9b6ee8;border-color:rgba(155,110,232,0.3)">Mestre</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="players-grid" id="players-grid"></div>
+      </div>
+    </div>
+
+    <!-- Right sidebar: Activity + Discord -->
+    <div class="sidebar right activity-sidebar">
+      <div class="activity-header">
+        <span>Atividade</span>
+        <div class="live-badge"><div class="live-dot"></div> Ao vivo</div>
+      </div>
+      <div class="activity-feed" id="activity-feed"></div>
+
+      <div class="discord-preview">
+        <div class="discord-header"><span class="discord-hash">#</span> leilão-oficial</div>
+        <div id="discord-msgs"></div>
+      </div>
+
+      <div class="stats-strip">
+        <div class="stat-row">
+          <span class="stat-label">Players leiloados</span>
+          <span class="stat-val" id="stat-sold">0 / 0</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Roubos</span>
+          <span class="stat-val" id="stat-steals">0</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Times completos</span>
+          <span class="stat-val" id="stat-complete">0 / 0</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de compra -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-title" id="modal-player-name">—</div>
+    <div class="modal-sub" id="modal-player-role">—</div>
+    <div class="modal-price-row">
+      <span class="modal-price-label" id="modal-action-label">Preço atual</span>
+      <span class="modal-price-val" id="modal-price">—</span>
+    </div>
+    <div class="modal-warn" id="modal-warn"></div>
+    <div class="modal-btns">
+      <button class="btn-confirm" id="modal-confirm-btn" onclick="confirmBuy()">Confirmar compra</button>
+      <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const TEAM_COLORS = ['#4a9eda','#e05555','#4caf7d','#9b6ee8','#e8944a','#50c8c8'];
+const TEAM_EMOJIS = ['🛡️','⚔️','🔥','🌙','🦅','❄️'];
+
+const teams = [
+  { name:'Time Azul', captain:'Capitão Thorn', emoji:'🛡️', color: TEAM_COLORS[0], coins:12, roster:[], minSize:5, maxSize:7 },
+  { name:'Time Vermelho', captain:'Capitão Ash', emoji:'⚔️', color: TEAM_COLORS[1], coins:9, roster:[], minSize:5, maxSize:7 },
+  { name:'Time Verde', captain:'Capitão Lyra', emoji:'🔥', color: TEAM_COLORS[2], coins:15, roster:[], minSize:5, maxSize:7 },
+  { name:'Time Roxo', captain:'Capitão Vex', emoji:'🌙', color: TEAM_COLORS[3], coins:11, roster:[], minSize:5, maxSize:7 },
+];
+
+let players = [
+  { id:1,  name:'ZeroLatency', role:'Tank',    elo:'Ouro',     price:0, basePrice:0, ownedBy:null, premium:false },
+  { id:2,  name:'Mirkfall',    role:'Offlane', elo:'Prata',    price:0, basePrice:0, ownedBy:null, premium:false },
+  { id:3,  name:'Solstice',    role:'Healer',  elo:'Diamante', price:3, basePrice:3, ownedBy:null, premium:true  },
+  { id:4,  name:'NightFang',   role:'DPS',     elo:'Platina',  price:0, basePrice:0, ownedBy:null, premium:false },
+  { id:5,  name:'Crucible',    role:'Healer',  elo:'Ouro',     price:0, basePrice:0, ownedBy:null, premium:false },
+  { id:6,  name:'Warpex',      role:'Flex',    elo:'Mestre',   price:2, basePrice:2, ownedBy:null, premium:true  },
+  { id:7,  name:'Dredge',      role:'Tank',    elo:'Prata',    price:0, basePrice:0, ownedBy:null, premium:false },
+  { id:8,  name:'Prism',       role:'DPS',     elo:'Platina',  price:0, basePrice:0, ownedBy:null, premium:false },
+  { id:9,  name:'Kestrel',     role:'Healer',  elo:'Mestre',   price:4, basePrice:4, ownedBy:null, premium:true  },
+  { id:10, name:'Flare',       role:'Offlane', elo:'Bronze',   price:0, basePrice:0, ownedBy:null, premium:false },
+  { id:11, name:'Vortex',      role:'DPS',     elo:'Ouro',     price:0, basePrice:0, ownedBy:null, premium:false },
+  { id:12, name:'Sable',       role:'Flex',    elo:'Prata',    price:0, basePrice:0, ownedBy:null, premium:false },
+];
+
+// Simulate some pre-existing state
+teams[0].roster = [{ name:'Thorn', price:0, isCaptain:true }, { name:'ZeroLatency', price:1 }];
+teams[0].coins = 12;
+teams[1].roster = [{ name:'Ash', price:0, isCaptain:true }, { name:'Dredge', price:1 }];
+teams[1].coins = 9;
+teams[2].roster = [{ name:'Lyra', price:0, isCaptain:true }];
+teams[2].coins = 15;
+teams[3].roster = [{ name:'Vex', price:0, isCaptain:true }];
+teams[3].coins = 11;
+
+players.find(p=>p.name==='ZeroLatency').ownedBy = 0;
+players.find(p=>p.name==='Dredge').ownedBy = 1;
+
+let currentTeamIdx = 0; // Turno atual
+let roundCount = 3;
+let totalRounds = 6;
+let steals = 0;
+let currentFilter = 'all';
+let currentRole = 'all';
+let currentElo = 'all';
+
+const ELO_COLORS = {
+  'Bronze':   { bg:'rgba(176,100,60,0.18)',  border:'rgba(176,100,60,0.4)',  text:'#c87a50' },
+  'Prata':    { bg:'rgba(160,160,170,0.15)', border:'rgba(160,160,170,0.4)', text:'#b0b0be' },
+  'Ouro':     { bg:'rgba(201,168,76,0.15)',  border:'rgba(201,168,76,0.4)',  text:'#c9a84c' },
+  'Platina':  { bg:'rgba(60,180,160,0.15)',  border:'rgba(60,180,160,0.4)',  text:'#3cb4a0' },
+  'Diamante': { bg:'rgba(74,158,218,0.15)',  border:'rgba(74,158,218,0.4)',  text:'#4a9eda' },
+  'Mestre':   { bg:'rgba(155,110,232,0.18)', border:'rgba(155,110,232,0.4)', text:'#9b6ee8' },
+};
+let selectedPlayer = null;
+
+const discordMsgs = [
+  { user:'🤖 DraftBot', color:'#5865f2', text:'⚔️ <b>Capitão Ash</b> roubou <b>Dredge</b> por <b>2 moedas!</b> Capitão Thorn recebeu 1 de volta.' },
+  { user:'🤖 DraftBot', color:'#5865f2', text:'🟢 <b>Capitão Thorn</b> comprou <b>ZeroLatency</b> por <b>1 moeda.</b> Novo preço: 2.' },
+  { user:'🤖 DraftBot', color:'#5865f2', text:'🏁 <b>Leilão iniciado!</b> 12 players disponíveis. 4 capitães. Boa sorte!' },
+];
+
+const activityLog = [
+  { type:'steal', time:'14:32', text:'<span class="act-name">Capitão Ash</span> <span class="act-steal">ROUBOU</span> <span class="act-player">Dredge</span> de Capitão Thorn por 2 moedas' },
+  { type:'buy', time:'14:30', text:'<span class="act-name">Capitão Thorn</span> <span class="act-buy">comprou</span> <span class="act-player">ZeroLatency</span> por 1 moeda' },
+  { type:'system', time:'14:28', text:'Leilão iniciado. 4 capitães · 12 players disponíveis' },
+];
+
+function renderTeams() {
+  const container = document.getElementById('teams-left');
+  container.innerHTML = '';
+  teams.forEach((team, i) => {
+    const isActive = i === currentTeamIdx;
+    const filled = team.roster.length;
+    const maxSlots = team.maxSize;
+
+    let rosterHTML = team.roster.map(p => `
+      <div class="roster-player">
+        <span class="roster-player-name">${p.isCaptain ? '⭐ '+p.name : p.name}</span>
+        ${!p.isCaptain ? `<span class="roster-player-price">${p.price}🪙</span>` : ''}
+      </div>`).join('');
+
+    const emptySlots = Math.max(0, 5 - filled);
+    for(let s=0; s<emptySlots; s++) rosterHTML += `<div class="roster-slot-empty">vaga aberta</div>`;
+
+    const dots = Array.from({length:5}, (_,d) => `<div class="prog-dot ${d<filled?'filled':''}"></div>`).join('');
+
+    container.innerHTML += `
+      <div class="team-card ${isActive?'active-team':''}">
+        <div class="team-card-header">
+          <div class="team-name">
+            <div class="team-color" style="background:${team.color}"></div>
+            ${team.emoji} ${team.name}
+          </div>
+          <div class="team-coins"><span class="coin-icon">🪙</span>${team.coins}</div>
+        </div>
+        <div style="padding:6px 14px 2px;"><span class="captain-tag">Cap: ${team.captain}</span></div>
+        <div class="roster">${rosterHTML}</div>
+        <div class="team-progress">${dots}</div>
+      </div>`;
+  });
+}
+
+function renderTurnOrder() {
+  const strip = document.getElementById('turn-order-strip');
+  strip.innerHTML = '';
+  const order = [];
+  for(let i=0; i<teams.length; i++) {
+    const idx = (currentTeamIdx + i) % teams.length;
+    order.push({team: teams[idx], isCurrent: i===0});
+  }
+  order.forEach((o,i) => {
+    const pip = document.createElement('div');
+    pip.className = `turn-pip${o.isCurrent?' current':''}`;
+    pip.innerHTML = `<div class="turn-pip-dot"></div>${o.team.emoji} ${o.team.captain.replace('Capitão ','')}`;
+    strip.appendChild(pip);
+    if(i < order.length-1) {
+      const arrow = document.createElement('span');
+      arrow.style.cssText = 'color:var(--text3);font-size:12px;';
+      arrow.textContent = '→';
+      strip.appendChild(arrow);
+    }
+  });
+}
+
+function renderPlayers() {
+  const grid = document.getElementById('players-grid');
+  grid.innerHTML = '';
+  const filtered = players.filter(p => {
+    if(currentFilter==='available' && p.ownedBy !== null) return false;
+    if(currentFilter==='owned'     && p.ownedBy === null) return false;
+    if(currentFilter==='premium'   && !p.premium)         return false;
+    if(currentRole !== 'all' && p.role !== currentRole)   return false;
+    if(currentElo  !== 'all' && p.elo  !== currentElo)    return false;
+    return true;
+  });
+
+  if(filtered.length === 0) {
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:32px;color:var(--text3);font-size:13px;">Nenhum player encontrado com estes filtros.</div>`;
+    return;
+  }
+
+  filtered.forEach(p => {
+    const owned = p.ownedBy !== null;
+    const team = owned ? teams[p.ownedBy] : null;
+    const isCurrentTeam = p.ownedBy === currentTeamIdx;
+    const canAfford = teams[currentTeamIdx].coins >= p.price + 1;
+    const eloStyle = ELO_COLORS[p.elo] || ELO_COLORS['Bronze'];
+
+    const btnHTML = owned
+      ? (!isCurrentTeam
+        ? `<button class="steal-btn" onclick="openModal(${p.id},true)">Roubar ${p.price+1}🪙</button>`
+        : `<span style="font-size:11px;color:var(--text3)">Seu player</span>`)
+      : `<button class="buy-btn" ${!canAfford?'disabled style="opacity:.35;cursor:not-allowed"':''} onclick="openModal(${p.id},false)">Comprar ${p.price}🪙</button>`;
+
+    const ownedByHTML = owned
+      ? `<div class="owned-by"><div class="owned-dot" style="background:${team.color}"></div>${team.captain.replace('Capitão ','')}</div>`
+      : `<span style="font-size:11px;color:var(--text3)">Disponível</span>`;
+
+    grid.innerHTML += `
+      <div class="player-card ${owned?'owned':''} ${p.premium?'premium':''}">
+        <div class="player-card-top">
+          <div class="player-name">${p.name} ${p.premium?'<span style="color:var(--purple);font-size:11px">★ PREM</span>':''}</div>
+          <div class="player-price-badge ${p.premium?'premium-price':''}">${p.price}🪙</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+          <span class="player-role" style="margin-bottom:0">${p.role}</span>
+          <span style="font-size:10px;padding:1px 7px;border-radius:3px;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.05em;background:${eloStyle.bg};border:1px solid ${eloStyle.border};color:${eloStyle.text};">${p.elo}</span>
+        </div>
+        <div class="player-card-footer">
+          ${ownedByHTML}
+          ${btnHTML}
+        </div>
+      </div>`;
+  });
+}
+
+function updateHeader() {
+  const t = teams[currentTeamIdx];
+  document.getElementById('current-turn-header').textContent = t.captain;
+  document.getElementById('turn-avatar').textContent = t.emoji;
+  document.getElementById('turn-name').textContent = t.captain;
+  document.getElementById('turn-coins').textContent = t.coins;
+  document.getElementById('round-badge').textContent = `Rodada ${roundCount} de ${totalRounds}`;
+  document.getElementById('turn-sub').textContent = 'Turno normal · Escolha um player';
+}
+
+function updateStats() {
+  const sold = players.filter(p=>p.ownedBy!==null).length;
+  document.getElementById('stat-sold').textContent = `${sold} / ${players.length}`;
+  document.getElementById('stat-steals').textContent = steals;
+  const complete = teams.filter(t=>t.roster.length>=5).length;
+  document.getElementById('stat-complete').textContent = `${complete} / ${teams.length}`;
+}
+
+function renderActivity() {
+  const feed = document.getElementById('activity-feed');
+  feed.innerHTML = activityLog.map(a => `
+    <div class="activity-item ${a.type}">
+      <div class="activity-time">${a.time}</div>
+      <div>${a.text}</div>
+    </div>`).join('');
+}
+
+function renderDiscord() {
+  const el = document.getElementById('discord-msgs');
+  el.innerHTML = discordMsgs.slice(0,3).map(m => `
+    <div class="discord-msg">
+      <div class="discord-avatar" style="background:${m.color}">${m.user[0]}</div>
+      <div class="discord-msg-content">
+        <div class="discord-username">${m.user}</div>
+        <div class="discord-text">${m.text}</div>
+      </div>
+    </div>`).join('');
+}
+
+function filterPlayers(type, val, el) {
+  if(type==='status') {
+    currentFilter = val;
+    document.querySelectorAll('.filter-tab[data-group="status"]').forEach(t=>t.classList.remove('active'));
+  } else if(type==='role') {
+    currentRole = val;
+    document.querySelectorAll('.filter-tab[data-group="role"]').forEach(t=>t.classList.remove('active'));
+  } else if(type==='elo') {
+    currentElo = val;
+    document.querySelectorAll('.filter-tab[data-group="elo"]').forEach(t=>t.classList.remove('active'));
+  }
+  el.classList.add('active');
+  renderPlayers();
+}
+
+function openModal(playerId, isSteal) {
+  selectedPlayer = { id: playerId, isSteal };
+  const p = players.find(x=>x.id===playerId);
+  const t = teams[currentTeamIdx];
+  const cost = isSteal ? p.price + 1 : p.price;
+  document.getElementById('modal-player-name').textContent = p.name;
+  document.getElementById('modal-player-role').textContent = p.role + (p.premium ? ' · Premium' : '');
+  document.getElementById('modal-action-label').textContent = isSteal ? 'Custo do roubo' : 'Preço atual';
+  document.getElementById('modal-price').textContent = cost + ' 🪙';
+  const warn = document.getElementById('modal-warn');
+  if(t.coins < cost) {
+    warn.textContent = '⚠️ Moedas insuficientes para esta ação.';
+    warn.classList.add('show');
+    document.getElementById('modal-confirm-btn').disabled = true;
+    document.getElementById('modal-confirm-btn').style.opacity = '.4';
+  } else {
+    warn.classList.remove('show');
+    document.getElementById('modal-confirm-btn').disabled = false;
+    document.getElementById('modal-confirm-btn').style.opacity = '1';
+  }
+  document.getElementById('modal-confirm-btn').textContent = isSteal ? 'Confirmar roubo' : 'Confirmar compra';
+  document.getElementById('modal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+  selectedPlayer = null;
+}
+
+function confirmBuy() {
+  if(!selectedPlayer) return;
+  const p = players.find(x=>x.id===selectedPlayer.id);
+  const t = teams[currentTeamIdx];
+  const isSteal = selectedPlayer.isSteal;
+  const cost = isSteal ? p.price + 1 : p.price;
+  const now = new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+
+  if(isSteal) {
+    const prevTeam = teams[p.ownedBy];
+    prevTeam.roster = prevTeam.roster.filter(r=>r.name!==p.name);
+    prevTeam.coins += p.price; // reembolso
+    steals++;
+    activityLog.unshift({
+      type:'steal',
+      time: now,
+      text: `<span class="act-name">${t.captain}</span> <span class="act-steal">ROUBOU</span> <span class="act-player">${p.name}</span> de ${prevTeam.captain} por ${cost} moedas`
+    });
+    discordMsgs.unshift({
+      user:'🤖 DraftBot', color:'#5865f2',
+      text:`⚔️ <b>${t.captain}</b> roubou <b>${p.name}</b> por <b>${cost} moedas!</b> ${prevTeam.captain} recebeu ${p.price} de volta.`
+    });
+  } else {
+    activityLog.unshift({
+      type:'buy',
+      time: now,
+      text: `<span class="act-name">${t.captain}</span> <span class="act-buy">comprou</span> <span class="act-player">${p.name}</span> por ${cost} moedas`
+    });
+    discordMsgs.unshift({
+      user:'🤖 DraftBot', color:'#5865f2',
+      text:`🟢 <b>${t.captain}</b> comprou <b>${p.name}</b> por <b>${cost} moeda${cost!==1?'s':''}.</b> Novo preço: ${cost+1}.`
+    });
+  }
+
+  t.coins -= cost;
+  p.price += 1;
+  p.ownedBy = currentTeamIdx;
+  t.roster.push({ name: p.name, price: cost });
+
+  // Advance turn
+  currentTeamIdx = (currentTeamIdx + 1) % teams.length;
+  roundCount = Math.floor(players.filter(pl=>pl.ownedBy!==null).length / teams.length) + 1;
+
+  closeModal();
+  renderAll();
+}
+
+function renderAll() {
+  renderTeams();
+  renderTurnOrder();
+  renderPlayers();
+  updateHeader();
+  updateStats();
+  renderActivity();
+  renderDiscord();
+}
+
+document.getElementById('modal').addEventListener('click', function(e) {
+  if(e.target === this) closeModal();
+});
+
+renderAll();
+</script>
+</body>
+</html>

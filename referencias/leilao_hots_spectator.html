@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Copa Inhouse — Transmissão ao Vivo</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@300;400;600;700;800&family=Barlow:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+
+:root {
+  --bg:    #080a0e;
+  --bg2:   #0d1017;
+  --bg3:   #121620;
+  --gold:  #d4a832;
+  --gold2: #f5cc50;
+  --gold3: rgba(212,168,50,0.12);
+  --red:   #e03c3c;
+  --red2:  #ff5555;
+  --green: #3dba7a;
+  --blue:  #3a8fd4;
+  --dim:   rgba(255,255,255,0.06);
+  --dim2:  rgba(255,255,255,0.10);
+}
+
+body {
+  background: var(--bg);
+  color: #e8e4dc;
+  font-family: 'Barlow', sans-serif;
+  height: 100vh;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* ── Scanline overlay ── */
+body::after {
+  content:'';
+  position: fixed; inset: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+  pointer-events: none;
+  z-index: 9998;
+}
+
+/* ── Vignette ── */
+body::before {
+  content:'';
+  position: fixed; inset: 0;
+  background: radial-gradient(ellipse 80% 80% at 50% 50%, transparent 40%, rgba(0,0,0,0.65) 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.stage {
+  position: relative;
+  width: 100vw; height: 100vh;
+  display: grid;
+  grid-template-rows: 64px 1fr 52px;
+  z-index: 2;
+}
+
+/* ══════════════════════════
+   TOP BAR
+══════════════════════════ */
+.topbar {
+  display: flex; align-items: center;
+  padding: 0 28px;
+  border-bottom: 1px solid rgba(212,168,50,0.2);
+  background: rgba(8,10,14,0.9);
+  backdrop-filter: blur(8px);
+  position: relative;
+  z-index: 10;
+}
+.topbar-logo {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 26px;
+  letter-spacing: 0.08em;
+  color: var(--gold2);
+  display: flex; align-items: center; gap: 10px;
+}
+.topbar-logo span { color: rgba(245,204,80,0.45); font-size: 18px; }
+.topbar-center {
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 24px;
+}
+.topbar-round {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: rgba(255,255,255,0.4);
+}
+.topbar-turn {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700; font-size: 15px; letter-spacing: 0.06em;
+  color: var(--gold2);
+  display: flex; align-items: center; gap: 8px;
+}
+.live-pip {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--red2);
+  box-shadow: 0 0 10px var(--red2);
+  animation: blink 1.2s infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+.topbar-right {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: rgba(255,255,255,0.3);
+  display: flex; align-items: center; gap: 6px;
+}
+
+/* ══════════════════════════
+   MAIN CONTENT
+══════════════════════════ */
+.content {
+  display: grid;
+  grid-template-columns: 300px 1fr 300px;
+  overflow: hidden;
+}
+
+/* ── TEAM PANELS ── */
+.team-panel {
+  display: flex; flex-direction: column;
+  padding: 0;
+  border-right: 1px solid rgba(255,255,255,0.05);
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba(13,16,23,0.95) 0%, rgba(8,10,14,0.98) 100%);
+}
+.team-panel.right { border-right: none; border-left: 1px solid rgba(255,255,255,0.05); }
+
+.team-header {
+  padding: 18px 20px 14px;
+  position: relative;
+  overflow: hidden;
+}
+.team-header::after {
+  content:'';
+  position: absolute; bottom: 0; left: 0; right: 0;
+  height: 1px;
+}
+.team-color-bar {
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 3px;
+}
+.team-emoji-big { font-size: 28px; margin-bottom: 6px; }
+.team-name-big {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 22px; letter-spacing: 0.06em;
+  line-height: 1;
+}
+.team-captain-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: rgba(255,255,255,0.35);
+  margin-top: 3px;
+}
+.team-coins-row {
+  display: flex; align-items: center; gap: 6px;
+  margin-top: 10px;
+}
+.coins-count {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 32px; line-height: 1;
+  color: var(--gold2);
+}
+.coins-label-sm {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: rgba(255,255,255,0.3);
+}
+.team-progress-bar {
+  height: 3px; margin: 10px 20px 0;
+  background: rgba(255,255,255,0.08);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.team-progress-fill {
+  height: 100%; border-radius: 2px;
+  transition: width 0.6s cubic-bezier(.4,0,.2,1);
+}
+
+/* Roster list */
+.roster-list {
+  flex: 1; padding: 10px 16px;
+  display: flex; flex-direction: column; gap: 5px;
+  overflow-y: auto;
+}
+.roster-entry {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 7px 10px;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  animation: entryIn .35s cubic-bezier(.2,1,.4,1);
+}
+@keyframes entryIn {
+  from { opacity:0; transform: translateX(-12px) scale(.97); }
+  to   { opacity:1; transform: none; }
+}
+.roster-entry.captain {
+  background: rgba(212,168,50,0.08);
+  border-color: rgba(212,168,50,0.18);
+}
+.roster-name {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 600; font-size: 14px; letter-spacing: 0.03em;
+}
+.roster-meta {
+  display: flex; align-items: center; gap: 5px;
+}
+.roster-role-badge {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 1px 5px; border-radius: 2px;
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.4);
+}
+.roster-elo-badge {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 10px; letter-spacing: 0.05em;
+  padding: 1px 5px; border-radius: 2px;
+}
+.roster-slot-empty {
+  padding: 7px 10px;
+  border-radius: 4px;
+  border: 1px dashed rgba(255,255,255,0.07);
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 12px; letter-spacing: 0.04em;
+  color: rgba(255,255,255,0.15);
+  text-align: center;
+}
+
+/* ── CENTER STAGE ── */
+.center-stage {
+  display: flex; flex-direction: column;
+  position: relative; overflow: hidden;
+}
+
+/* VS diagonal decoration */
+.center-bg {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 70% 50% at 50% 30%, rgba(212,168,50,0.04) 0%, transparent 70%);
+  pointer-events: none;
+}
+.center-diag {
+  position: absolute; top: 0; left: 50%;
+  transform: translateX(-50%);
+  width: 2px; height: 100%;
+  background: linear-gradient(180deg, transparent 0%, rgba(212,168,50,0.08) 30%, rgba(212,168,50,0.08) 70%, transparent 100%);
+}
+
+/* Currently auctioning player */
+.auction-spotlight {
+  flex: 1;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  position: relative; z-index: 2;
+  padding: 24px;
+}
+.spotlight-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase;
+  color: rgba(255,255,255,0.25);
+  margin-bottom: 12px;
+}
+.spotlight-player {
+  text-align: center;
+}
+.spotlight-name {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 72px; line-height: 0.9;
+  letter-spacing: 0.04em;
+  color: #fff;
+  text-shadow: 0 0 60px rgba(212,168,50,0.3);
+  transition: all .3s;
+}
+.spotlight-role {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 600; font-size: 16px; letter-spacing: 0.2em; text-transform: uppercase;
+  color: rgba(255,255,255,0.35);
+  margin-top: 4px;
+}
+.spotlight-elo {
+  display: inline-block;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 14px; letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 3px 14px; border-radius: 3px;
+  margin-top: 10px;
+}
+.spotlight-price {
+  margin-top: 20px;
+  display: flex; align-items: baseline; justify-content: center; gap: 8px;
+}
+.price-value {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 56px; line-height: 1;
+  color: var(--gold2);
+  text-shadow: 0 0 30px rgba(212,168,50,0.5);
+  transition: all .25s;
+}
+.price-unit {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 16px; letter-spacing: 0.1em;
+  color: rgba(212,168,50,0.5);
+  text-transform: uppercase;
+}
+.spotlight-status {
+  margin-top: 12px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 14px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: rgba(255,255,255,0.25);
+}
+.spotlight-owner-tag {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-top: 8px;
+  padding: 4px 14px;
+  border-radius: 3px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase;
+  font-weight: 600;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.owner-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+/* Turn order pips */
+.turn-strip {
+  padding: 10px 24px;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  border-top: 1px solid rgba(255,255,255,0.05);
+  position: relative; z-index: 2;
+}
+.t-pip {
+  display: flex; align-items: center; gap: 5px;
+  padding: 5px 12px; border-radius: 20px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 12px; letter-spacing: 0.06em;
+  border: 1px solid rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.3);
+  white-space: nowrap;
+  transition: all .3s;
+}
+.t-pip.active {
+  border-color: rgba(212,168,50,0.5);
+  background: rgba(212,168,50,0.1);
+  color: var(--gold2);
+}
+.t-pip-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.turn-arrow { color: rgba(255,255,255,0.15); font-size: 11px; }
+
+/* Player pool bottom */
+.player-pool {
+  padding: 10px 24px 14px;
+  border-top: 1px solid rgba(255,255,255,0.05);
+  position: relative; z-index: 2;
+}
+.pool-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase;
+  color: rgba(255,255,255,0.2);
+  margin-bottom: 7px;
+}
+.pool-chips {
+  display: flex; flex-wrap: wrap; gap: 5px;
+}
+.pool-chip {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 12px; letter-spacing: 0.04em;
+  padding: 3px 10px; border-radius: 3px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.5);
+  transition: all .2s;
+}
+.pool-chip.premium {
+  border-color: rgba(155,110,232,0.3);
+  color: rgba(155,110,232,0.7);
+}
+.pool-chip.sold {
+  background: transparent;
+  border-color: rgba(255,255,255,0.03);
+  color: rgba(255,255,255,0.15);
+  text-decoration: line-through;
+}
+
+/* ══════════════════════════
+   BOTTOM BAR
+══════════════════════════ */
+.bottombar {
+  display: flex; align-items: center;
+  padding: 0 28px; gap: 20px;
+  border-top: 1px solid rgba(212,168,50,0.15);
+  background: rgba(8,10,14,0.95);
+  position: relative; z-index: 10;
+  overflow: hidden;
+}
+.ticker-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--gold);
+  background: rgba(212,168,50,0.12);
+  border: 1px solid rgba(212,168,50,0.2);
+  padding: 3px 10px; border-radius: 2px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.ticker-track {
+  flex: 1; overflow: hidden; position: relative; height: 100%;
+  display: flex; align-items: center;
+}
+.ticker-inner {
+  display: flex; gap: 48px;
+  white-space: nowrap;
+  animation: ticker 30s linear infinite;
+}
+@keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.ticker-item {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px; letter-spacing: 0.04em;
+  color: rgba(255,255,255,0.4);
+  display: flex; align-items: center; gap: 8px;
+}
+.ticker-item b { color: rgba(255,255,255,0.7); }
+.ticker-sep { color: rgba(212,168,50,0.3); }
+
+/* ══════════════════════════
+   ANNOUNCEMENT OVERLAY
+══════════════════════════ */
+.announce-overlay {
+  position: fixed; inset: 0;
+  z-index: 9000;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+  opacity: 0;
+}
+.announce-overlay.show { animation: announceAnim 2.8s cubic-bezier(.2,1,.3,1) forwards; }
+
+@keyframes announceAnim {
+  0%   { opacity:0; }
+  8%   { opacity:1; }
+  75%  { opacity:1; }
+  100% { opacity:0; }
+}
+
+.announce-bg {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,0.75);
+}
+.announce-content {
+  position: relative; z-index: 1;
+  text-align: center;
+  animation: announceSlide 2.8s cubic-bezier(.2,1,.3,1) forwards;
+}
+@keyframes announceSlide {
+  0%   { transform: translateY(30px) scale(.9); }
+  8%   { transform: translateY(0) scale(1); }
+  75%  { transform: translateY(0) scale(1); }
+  100% { transform: translateY(-20px) scale(1.02); }
+}
+
+.announce-type {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 14px; letter-spacing: 0.28em; text-transform: uppercase;
+  margin-bottom: 8px;
+  opacity: 0.6;
+}
+.announce-headline {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 96px; line-height: 0.88;
+  letter-spacing: 0.06em;
+  position: relative;
+}
+.announce-headline::after {
+  content: attr(data-text);
+  position: absolute; inset: 0;
+  filter: blur(20px);
+  opacity: 0.4;
+  z-index: -1;
+}
+.announce-sub {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 600; font-size: 22px; letter-spacing: 0.1em;
+  margin-top: 12px;
+  opacity: 0.8;
+}
+.announce-detail {
+  font-family: 'Barlow', sans-serif;
+  font-size: 14px;
+  color: rgba(255,255,255,0.4);
+  margin-top: 8px;
+}
+
+/* Flash line */
+.flash-lines {
+  position: absolute; inset: 0; overflow: hidden; pointer-events: none;
+}
+.flash-line {
+  position: absolute;
+  height: 1px; width: 60%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  animation: flashLine 2.8s ease forwards;
+}
+@keyframes flashLine {
+  0%   { left: -60%; opacity:0; }
+  10%  { opacity:1; }
+  50%  { left: 100%; opacity:0; }
+  100% { opacity:0; }
+}
+
+/* Horizontal slash decorations */
+.announce-slash {
+  display: flex; align-items: center; justify-content: center;
+  gap: 16px; margin: 10px 0;
+}
+.slash-line {
+  height: 1px; width: 80px;
+  background: linear-gradient(90deg, transparent, currentColor);
+  opacity: 0.4;
+}
+.slash-line.right { background: linear-gradient(90deg, currentColor, transparent); }
+
+/* ══════════════════════════
+   SIMULATION BUTTON
+══════════════════════════ */
+.sim-btn {
+  position: fixed; bottom: 70px; right: 24px;
+  z-index: 9999;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 10px 20px; border-radius: 4px;
+  background: rgba(212,168,50,0.15);
+  border: 1px solid rgba(212,168,50,0.4);
+  color: var(--gold2);
+  cursor: pointer;
+  transition: all .2s;
+  display: flex; align-items: center; gap: 8px;
+}
+.sim-btn:hover { background: rgba(212,168,50,0.25); }
+.sim-btn.running { border-color: rgba(224,60,60,0.5); background: rgba(224,60,60,0.1); color: var(--red2); }
+.sim-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+/* Elo colors util */
+.elo-bronze  { background:rgba(176,100,60,0.2);  border:1px solid rgba(176,100,60,0.4);  color:#c87a50; }
+.elo-prata   { background:rgba(160,160,170,0.15); border:1px solid rgba(160,160,170,0.35); color:#b0b0be; }
+.elo-ouro    { background:rgba(212,168,50,0.15);  border:1px solid rgba(212,168,50,0.4);  color:#d4a832; }
+.elo-platina { background:rgba(60,180,160,0.15);  border:1px solid rgba(60,180,160,0.4);  color:#3cb4a0; }
+.elo-diamante{ background:rgba(74,158,218,0.15);  border:1px solid rgba(74,158,218,0.4);  color:#4a9eda; }
+.elo-mestre  { background:rgba(155,110,232,0.18); border:1px solid rgba(155,110,232,0.4); color:#9b6ee8; }
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <!-- TOP BAR -->
+  <header class="topbar">
+    <div class="topbar-logo">⚡ <span>|</span> COPA INHOUSE</div>
+    <div class="topbar-center">
+      <div class="topbar-round" id="top-round">Rodada 1</div>
+      <div class="topbar-turn">
+        <div class="live-pip"></div>
+        <span id="top-turn">Turno: Capitão Thorn</span>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="live-pip"></div> Ao vivo
+    </div>
+  </header>
+
+  <!-- MAIN -->
+  <div class="content">
+    <!-- LEFT TEAMS (cols 1-2) -->
+    <div class="team-panel" id="panel-left"></div>
+
+    <!-- CENTER -->
+    <div class="center-stage">
+      <div class="center-bg"></div>
+      <div class="center-diag"></div>
+
+      <div class="auction-spotlight">
+        <div class="spotlight-label">Em destaque</div>
+        <div class="spotlight-player">
+          <div class="spotlight-name" id="spot-name">—</div>
+          <div class="spotlight-role" id="spot-role">—</div>
+          <div class="spotlight-elo" id="spot-elo">—</div>
+          <div class="spotlight-price">
+            <div class="price-value" id="spot-price">0</div>
+            <div class="price-unit">moedas</div>
+          </div>
+          <div class="spotlight-status" id="spot-status">Disponível</div>
+          <div class="spotlight-owner-tag" id="spot-owner" style="display:none">
+            <div class="owner-dot" id="spot-owner-dot"></div>
+            <span id="spot-owner-name"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="turn-strip" id="turn-strip"></div>
+
+      <div class="player-pool">
+        <div class="pool-label">Todos os players</div>
+        <div class="pool-chips" id="pool-chips"></div>
+      </div>
+    </div>
+
+    <!-- RIGHT TEAMS -->
+    <div class="team-panel right" id="panel-right"></div>
+  </div>
+
+  <!-- BOTTOM TICKER -->
+  <div class="bottombar">
+    <div class="ticker-label">Ao vivo</div>
+    <div class="ticker-track">
+      <div class="ticker-inner" id="ticker"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ANNOUNCEMENT OVERLAY -->
+<div class="announce-overlay" id="announce">
+  <div class="announce-bg"></div>
+  <div class="flash-lines">
+    <div class="flash-line" style="top:30%;animation-delay:.05s"></div>
+    <div class="flash-line" style="top:70%;animation-delay:.15s;left:20%"></div>
+  </div>
+  <div class="announce-content">
+    <div class="announce-type" id="ann-type">Compra</div>
+    <div class="announce-slash" id="ann-slash-top">
+      <div class="slash-line" style="color:#fff"></div>
+      <div style="font-size:11px;letter-spacing:.2em;opacity:.4;font-family:'Barlow Condensed',sans-serif">✦</div>
+      <div class="slash-line right" style="color:#fff"></div>
+    </div>
+    <div class="announce-headline" id="ann-headline" data-text="">—</div>
+    <div class="announce-sub" id="ann-sub">—</div>
+    <div class="announce-detail" id="ann-detail">—</div>
+  </div>
+</div>
+
+<!-- SIM BUTTON -->
+<button class="sim-btn" id="sim-btn" onclick="toggleSim()">
+  <div class="sim-dot"></div> <span id="sim-label">Simular Draft</span>
+</button>
+
+<script>
+// ── DATA ──────────────────────────────────────────
+const TEAM_DEFS = [
+  { name:'Time Azul',    captain:'Thorn',  emoji:'🛡️', color:'#3a8fd4' },
+  { name:'Time Vermelho',captain:'Ash',    emoji:'⚔️', color:'#e03c3c' },
+  { name:'Time Verde',   captain:'Lyra',   emoji:'🔥', color:'#3dba7a' },
+  { name:'Time Roxo',    captain:'Vex',    emoji:'🌙', color:'#9b6ee8' },
+];
+
+const ELO_CLASS = {
+  'Bronze':'elo-bronze','Prata':'elo-prata','Ouro':'elo-ouro',
+  'Platina':'elo-platina','Diamante':'elo-diamante','Mestre':'elo-mestre'
+};
+
+let teams = TEAM_DEFS.map(d => ({
+  ...d, coins:15, roster:[{ name:d.captain, role:'Capitão', elo:'—', isCaptain:true }]
+}));
+
+let players = [
+  { id:1,  name:'ZeroLatency', role:'Tank',    elo:'Ouro',     price:0, ownedBy:null, premium:false },
+  { id:2,  name:'Mirkfall',    role:'Offlane', elo:'Prata',    price:0, ownedBy:null, premium:false },
+  { id:3,  name:'Solstice',    role:'Healer',  elo:'Diamante', price:3, ownedBy:null, premium:true  },
+  { id:4,  name:'NightFang',   role:'DPS',     elo:'Platina',  price:0, ownedBy:null, premium:false },
+  { id:5,  name:'Crucible',    role:'Healer',  elo:'Ouro',     price:0, ownedBy:null, premium:false },
+  { id:6,  name:'Warpex',      role:'Flex',    elo:'Mestre',   price:2, ownedBy:null, premium:true  },
+  { id:7,  name:'Dredge',      role:'Tank',    elo:'Prata',    price:0, ownedBy:null, premium:false },
+  { id:8,  name:'Prism',       role:'DPS',     elo:'Platina',  price:0, ownedBy:null, premium:false },
+  { id:9,  name:'Kestrel',     role:'Healer',  elo:'Mestre',   price:4, ownedBy:null, premium:true  },
+  { id:10, name:'Flare',       role:'Offlane', elo:'Bronze',   price:0, ownedBy:null, premium:false },
+  { id:11, name:'Vortex',      role:'DPS',     elo:'Ouro',     price:0, ownedBy:null, premium:false },
+  { id:12, name:'Sable',       role:'Flex',    elo:'Prata',    price:0, ownedBy:null, premium:false },
+  { id:13, name:'Ironveil',    role:'Tank',    elo:'Platina',  price:0, ownedBy:null, premium:false },
+  { id:14, name:'Auryn',       role:'Healer',  elo:'Ouro',     price:0, ownedBy:null, premium:false },
+  { id:15, name:'Reckless',    role:'DPS',     elo:'Prata',    price:0, ownedBy:null, premium:false },
+  { id:16, name:'Coldsnap',    role:'Offlane', elo:'Bronze',   price:0, ownedBy:null, premium:false },
+  { id:17, name:'Phantom',     role:'Flex',    elo:'Diamante', price:2, ownedBy:null, premium:true  },
+  { id:18, name:'Brackish',    role:'Tank',    elo:'Ouro',     price:0, ownedBy:null, premium:false },
+  { id:19, name:'Emberlore',   role:'DPS',     elo:'Mestre',   price:3, ownedBy:null, premium:true  },
+  { id:20, name:'Quarrel',     role:'Offlane', elo:'Prata',    price:0, ownedBy:null, premium:false },
+];
+
+let currentTeamIdx = 0;
+let spotlightIdx   = 0;
+let roundCount = 1;
+let simInterval = null;
+let tickerItems = [];
+
+// ── SPOTLIGHT ─────────────────────────────────────
+function setSpotlight(idx) {
+  spotlightIdx = idx;
+  const p = players[idx];
+  document.getElementById('spot-name').textContent  = p.name;
+  document.getElementById('spot-role').textContent  = p.role;
+  document.getElementById('spot-price').textContent = p.price;
+  const eloEl = document.getElementById('spot-elo');
+  eloEl.textContent = p.elo;
+  eloEl.className = 'spotlight-elo ' + (ELO_CLASS[p.elo]||'');
+  const ownerEl = document.getElementById('spot-owner');
+  if(p.ownedBy !== null) {
+    const t = teams[p.ownedBy];
+    document.getElementById('spot-status').textContent = 'Pertence a';
+    document.getElementById('spot-owner-dot').style.background = t.color;
+    document.getElementById('spot-owner-name').textContent = t.name;
+    ownerEl.style.display = 'inline-flex';
+    ownerEl.style.borderColor = t.color + '44';
+    ownerEl.style.background  = t.color + '18';
+  } else {
+    document.getElementById('spot-status').textContent = 'Disponível para compra';
+    ownerEl.style.display = 'none';
+  }
+}
+
+// ── TEAMS RENDER ──────────────────────────────────
+function renderTeams() {
+  const leftIds  = [0, 2];
+  const rightIds = [1, 3];
+  renderTeamPanel('panel-left',  leftIds);
+  renderTeamPanel('panel-right', rightIds);
+}
+
+function renderTeamPanel(panelId, idxs) {
+  const panel = document.getElementById(panelId);
+  panel.innerHTML = '';
+  idxs.forEach(i => {
+    const t = teams[i];
+    const isActive = i === currentTeamIdx;
+    const progress = Math.min(t.roster.length / 5, 1);
+    const div = document.createElement('div');
+    div.style.cssText = 'flex:1;display:flex;flex-direction:column;border-bottom:1px solid rgba(255,255,255,0.04);min-height:0;';
+
+    let rosterHTML = t.roster.map(p => `
+      <div class="roster-entry ${p.isCaptain?'captain':''}">
+        <span class="roster-name">${p.isCaptain?'⭐ ':''} ${p.name}</span>
+        <div class="roster-meta">
+          ${!p.isCaptain?`<span class="roster-role-badge">${p.role}</span><span class="roster-elo-badge ${ELO_CLASS[p.elo]||''}">${p.elo}</span>`:''}
+        </div>
+      </div>`).join('');
+
+    const emptyCount = Math.max(0, 5 - t.roster.length);
+    for(let s=0; s<emptyCount; s++) rosterHTML += `<div class="roster-slot-empty">vaga aberta</div>`;
+
+    div.innerHTML = `
+      <div class="team-header" style="border-bottom:1px solid ${t.color}22;">
+        <div class="team-color-bar" style="background:${t.color}"></div>
+        <div class="team-emoji-big">${t.emoji}</div>
+        <div class="team-name-big" style="color:${isActive?t.color:'#e8e4dc'}">${t.name}</div>
+        <div class="team-captain-label">Cap. ${t.captain}${isActive?' · Turno atual':''}</div>
+        <div class="team-coins-row">
+          <div class="coins-count" style="color:${isActive?'var(--gold2)':'rgba(255,255,255,0.4)'}">${t.coins}</div>
+          <div class="coins-label-sm">moedas</div>
+        </div>
+      </div>
+      <div class="team-progress-bar"><div class="team-progress-fill" style="width:${progress*100}%;background:${t.color}"></div></div>
+      <div class="roster-list">${rosterHTML}</div>`;
+    panel.appendChild(div);
+  });
+}
+
+// ── TURN ORDER ────────────────────────────────────
+function renderTurnOrder() {
+  const strip = document.getElementById('turn-strip');
+  strip.innerHTML = '';
+  for(let i=0; i<teams.length; i++) {
+    const idx = (currentTeamIdx + i) % teams.length;
+    const t = teams[idx];
+    if(i > 0) {
+      const arr = document.createElement('div');
+      arr.className = 'turn-arrow'; arr.textContent = '→';
+      strip.appendChild(arr);
+    }
+    const pip = document.createElement('div');
+    pip.className = `t-pip${i===0?' active':''}`;
+    if(i===0) pip.style.borderColor = t.color + '88';
+    pip.innerHTML = `<div class="t-pip-dot"></div>${t.emoji} ${t.captain}`;
+    strip.appendChild(pip);
+  }
+}
+
+// ── PLAYER POOL ───────────────────────────────────
+function renderPool() {
+  const chips = document.getElementById('pool-chips');
+  chips.innerHTML = players.map(p => {
+    const sold = p.ownedBy !== null;
+    const isSpot = players.indexOf(p) === spotlightIdx;
+    return `<div class="pool-chip ${p.premium?'premium':''} ${sold?'sold':''}"
+      style="${isSpot && !sold ? 'border-color:rgba(212,168,50,0.5);color:var(--gold2);background:rgba(212,168,50,0.1);' : ''}"
+      onclick="setSpotlight(${players.indexOf(p)}); renderAll();">
+      ${p.name}</div>`;
+  }).join('');
+}
+
+// ── TICKER ────────────────────────────────────────
+function buildTicker() {
+  const items = [...tickerItems].reverse().slice(0,12);
+  if(items.length === 0) {
+    items.push({text:'Leilão iniciado · Copa Inhouse · Heroes of the Storm · Boa sorte a todos os capitães!'});
+  }
+  const doubled = [...items, ...items];
+  const el = document.getElementById('ticker');
+  el.innerHTML = doubled.map(it => `<div class="ticker-item">${it.text} <span class="ticker-sep">✦</span></div>`).join('');
+}
+
+// ── ANNOUNCEMENT ──────────────────────────────────
+function announce(type, headline, sub, detail, color) {
+  const el = document.getElementById('announce');
+  document.getElementById('ann-type').textContent = type;
+  const h = document.getElementById('ann-headline');
+  h.textContent = headline;
+  h.setAttribute('data-text', headline);
+  h.style.color = color || '#fff';
+  h.style.textShadow = `0 0 80px ${color || '#fff'}55`;
+  document.getElementById('ann-sub').textContent = sub;
+  document.getElementById('ann-detail').textContent = detail;
+  document.getElementById('ann-slash-top').style.color = color || '#fff';
+
+  el.classList.remove('show');
+  void el.offsetWidth;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2900);
+}
+
+// ── HEADER ────────────────────────────────────────
+function updateHeader() {
+  const t = teams[currentTeamIdx];
+  document.getElementById('top-round').textContent = `Rodada ${roundCount}`;
+  document.getElementById('top-turn').textContent  = `Turno: Capitão ${t.captain}`;
+}
+
+// ── FULL RENDER ───────────────────────────────────
+function renderAll() {
+  renderTeams();
+  renderTurnOrder();
+  renderPool();
+  updateHeader();
+  buildTicker();
+}
+
+// ── SIMULATION ────────────────────────────────────
+function toggleSim() {
+  if(simInterval) {
+    clearInterval(simInterval);
+    simInterval = null;
+    document.getElementById('sim-btn').classList.remove('running');
+    document.getElementById('sim-label').textContent = 'Simular Draft';
+  } else {
+    document.getElementById('sim-btn').classList.add('running');
+    document.getElementById('sim-label').textContent = 'Parar simulação';
+    runSimStep();
+    simInterval = setInterval(runSimStep, 3800);
+  }
+}
+
+function runSimStep() {
+  const available = players.filter(p => p.ownedBy === null);
+  const allTeamsFull = teams.every(t => t.roster.length >= 5);
+
+  if(allTeamsFull || available.length === 0) {
+    clearInterval(simInterval); simInterval = null;
+    document.getElementById('sim-btn').classList.remove('running');
+    document.getElementById('sim-label').textContent = 'Simulação encerrada';
+    announce('Leilão', 'FIM DO', 'DRAFT', 'Todos os times foram formados!', '#d4a832');
+    return;
+  }
+
+  const t = teams[currentTeamIdx];
+
+  // Decide: roubar ou comprar novo?
+  const ownedByOthers = players.filter(p => p.ownedBy !== null && p.ownedBy !== currentTeamIdx);
+  const shouldSteal = ownedByOthers.length > 0 && Math.random() < 0.28 && t.coins >= 2;
+
+  if(shouldSteal) {
+    // Escolhe player pra roubar
+    const affordable = ownedByOthers.filter(p => t.coins >= p.price + 1);
+    if(affordable.length > 0) {
+      const target = affordable[Math.floor(Math.random() * affordable.length)];
+      const cost = target.price + 1;
+      const prevTeamIdx = target.ownedBy;
+      const prevTeam = teams[prevTeamIdx];
+
+      // Reembolso
+      prevTeam.coins += target.price;
+      prevTeam.roster = prevTeam.roster.filter(r => r.name !== target.name);
+
+      // Compra
+      t.coins -= cost;
+      target.price += 1;
+      target.ownedBy = currentTeamIdx;
+      t.roster.push({ name: target.name, role: target.role, elo: target.elo });
+
+      setSpotlight(players.indexOf(target));
+
+      tickerItems.push({
+        text: `⚔️ <b>${t.name}</b> roubou <b>${target.name}</b> de ${prevTeam.name} por ${cost} moedas`
+      });
+      announce(
+        '⚔️ ROUBO',
+        target.name,
+        `${t.captain} roubou de ${prevTeam.captain}`,
+        `Custo: ${cost} moedas · Reembolso: ${target.price - 1} moedas para ${prevTeam.captain}`,
+        '#e03c3c'
+      );
+
+      roundCount = Math.floor(players.filter(p=>p.ownedBy!==null).length / teams.length) + 1;
+      currentTeamIdx = (currentTeamIdx + 1) % teams.length;
+      renderAll();
+      return;
+    }
+  }
+
+  // Compra normal
+  const affordable = available.filter(p => t.coins >= p.price);
+  if(affordable.length === 0) {
+    currentTeamIdx = (currentTeamIdx + 1) % teams.length;
+    renderAll(); return;
+  }
+
+  // Prefere premium às vezes
+  const premiums = affordable.filter(p => p.premium);
+  const pool = premiums.length > 0 && Math.random() < 0.4 ? premiums : affordable;
+  const target = pool[Math.floor(Math.random() * pool.length)];
+  const cost = target.price;
+
+  t.coins -= (cost === 0 ? 0 : cost);
+  target.price += 1;
+  target.ownedBy = currentTeamIdx;
+  t.roster.push({ name: target.name, role: target.role, elo: target.elo });
+
+  setSpotlight(players.indexOf(target));
+
+  tickerItems.push({
+    text: `🟢 <b>${t.name}</b> comprou <b>${target.name}</b> por ${cost} moeda${cost!==1?'s':''}`
+  });
+
+  announce(
+    target.premium ? '★ PREMIUM ADQUIRIDO' : '✓ Compra confirmada',
+    target.name,
+    `${t.captain} · ${t.name}`,
+    `${target.role} · ${target.elo} · ${cost} moeda${cost!==1?'s':''}`,
+    target.premium ? '#9b6ee8' : t.color
+  );
+
+  roundCount = Math.floor(players.filter(p=>p.ownedBy!==null).length / teams.length) + 1;
+  currentTeamIdx = (currentTeamIdx + 1) % teams.length;
+  renderAll();
+}
+
+// ── INIT ──────────────────────────────────────────
+setSpotlight(0);
+renderAll();
+</script>
+</body>
+</html>

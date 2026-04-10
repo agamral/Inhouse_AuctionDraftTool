@@ -1,0 +1,177 @@
+.navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 28px;
+  border-bottom: 1px solid rgba(56, 168, 255, 0.15);
+  background: rgba(10, 13, 21, 0.94);
+  backdrop-filter: blur(18px);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow:
+    0 1px 0 rgba(108, 59, 158, 0.3),
+    0 4px 32px rgba(10, 13, 21, 0.6);
+}
+
+.navbar-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.navbar-logo-icon {
+  width: 34px;
+  height: 34px;
+  background: var(--gold-dim);
+  border: 1px solid rgba(201, 168, 76, 0.3);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+.navbar-logo-text {
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: 0.08em;
+  color: var(--gold2);
+  line-height: 1.2;
+  text-shadow: 0 0 16px rgba(245, 204, 80, 0.45);
+}
+
+.navbar-logo-sub {
+  font-size: 10px;
+  color: var(--text2);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-family: 'Barlow Condensed', sans-serif;
+}
+
+.navbar-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.nav-link {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text2);
+  padding: 6px 13px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  transition: color 0.2s, border-color 0.2s, background 0.2s, text-shadow 0.2s;
+}
+
+.nav-link:hover {
+  color: var(--blue);
+  background: rgba(56, 168, 255, 0.06);
+}
+
+.nav-link.active {
+  color: var(--gold2);
+  border-color: var(--border-gold);
+  background: var(--gold-dim);
+  text-shadow: 0 0 12px rgba(245, 204, 80, 0.4);
+}
+
+.navbar-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.lang-switcher {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  overflow: hidden;
+  background: var(--bg2);
+}
+
+.lang-btn {
+  background: none;
+  border: none;
+  padding: 5px 9px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--text2);
+  transition: color 0.2s, background 0.2s;
+}
+
+.lang-btn:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.lang-btn.active {
+  color: var(--gold);
+  background: var(--gold-dim);
+}
+
+/* Admin area */
+.navbar-admin-area {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-link {
+  color: var(--gold) !important;
+  border-color: rgba(201, 168, 76, 0.25) !important;
+}
+
+.admin-link:hover {
+  background: var(--gold-dim) !important;
+}
+
+.navbar-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid rgba(201, 168, 76, 0.4);
+  background: var(--bg3);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gold2);
+  font-family: 'Barlow Condensed', sans-serif;
+  transition: border-color 0.2s;
+  padding: 0;
+}
+
+.navbar-avatar:hover {
+  border-color: var(--gold);
+}
+
+.navbar-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.navbar-login-btn {
+  font-size: 15px;
+  opacity: 0.35;
+  transition: opacity 0.2s;
+  padding: 4px;
+  line-height: 1;
+}
+
+.navbar-login-btn:hover {
+  opacity: 0.75;
+}

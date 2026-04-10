@@ -1,0 +1,145 @@
+.inscricao-gate,
+.inscricao-loading {
+  text-align: center;
+  padding: 60px 20px;
+  max-width: 400px;
+}
+
+.inscricao-gate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.inscricao-form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 560px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text2);
+  font-weight: 600;
+}
+
+.form-input,
+.form-select {
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: 5px;
+  padding: 10px 12px;
+  color: var(--text);
+  font-family: 'Barlow', sans-serif;
+  font-size: 14px;
+  transition: border-color 0.2s;
+  width: 100%;
+}
+
+.form-input:focus,
+.form-select:focus {
+  outline: none;
+  border-color: rgba(201, 168, 76, 0.4);
+}
+
+.form-input.error,
+.form-select.error {
+  border-color: var(--red);
+}
+
+.form-select option {
+  background: var(--bg2);
+  color: var(--text);
+}
+
+.form-error {
+  font-size: 12px;
+  color: var(--red);
+  font-family: 'Barlow Condensed', sans-serif;
+  letter-spacing: 0.04em;
+}
+
+.form-toggle-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.form-toggle {
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  padding: 6px 14px;
+  color: var(--text2);
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  transition: border-color 0.2s, background 0.2s, color 0.2s;
+}
+
+.form-toggle:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  color: var(--text);
+}
+
+.form-toggle.active {
+  background: var(--gold-dim);
+  border-color: rgba(201, 168, 76, 0.4);
+  color: var(--gold2);
+}
+
+.form-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text2);
+  line-height: 1.4;
+}
+
+.form-checkbox input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  accent-color: var(--gold);
+  flex-shrink: 0;
+}
+
+.inscricao-submit {
+  font-size: 14px;
+  padding: 12px 24px;
+  margin-top: 8px;
+  align-self: flex-start;
+}
+
+.inscricao-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 80px 0;
+  text-align: center;
+}
+
+.inscricao-success-icon {
+  font-size: 48px;
+}
+
+.inscricao-success h2 {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 24px;
+  color: var(--green);
+}
