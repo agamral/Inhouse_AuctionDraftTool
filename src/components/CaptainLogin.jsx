@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import { ref, onValue } from 'firebase/database'
 import { db } from '../firebase/database'
+import { useTranslation } from 'react-i18next'
 
 export default function CaptainLogin({ onLogin }) {
+  const { t } = useTranslation()
   const [captains, setCaptains] = useState({})
   const [loading, setLoading]   = useState(true)
   const [selected, setSelected] = useState(null)   // captainId
@@ -40,7 +42,7 @@ export default function CaptainLogin({ onLogin }) {
 
     setTentando(true)
     setTimeout(() => {
-      if (pin === cap.pin) {
+      if (String(pin) === String(cap.pin)) {
         const session = {
           captainId:   selected,
           nome:        cap.nome,
@@ -52,7 +54,7 @@ export default function CaptainLogin({ onLogin }) {
         sessionStorage.setItem('captainSession', JSON.stringify(session))
         onLogin(session)
       } else {
-        setErro('PIN incorreto. Tente novamente.')
+        setErro(t('captainLogin.pin_wrong'))
         setPin('')
       }
       setTentando(false)
@@ -76,20 +78,20 @@ export default function CaptainLogin({ onLogin }) {
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <div style={{ fontSize: '32px', marginBottom: '12px' }}>⚔️</div>
           <h1 style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: '26px', color: 'var(--text)', marginBottom: '6px' }}>
-            Acesso do Capitão
+            {t('captainLogin.title')}
           </h1>
           <p style={{ color: 'var(--text2)', fontSize: '14px' }}>
-            Selecione seu time e insira o PIN fornecido pelo admin
+            {t('captainLogin.subtitle')}
           </p>
         </div>
 
         {loading ? (
-          <p style={{ textAlign: 'center', color: 'var(--text2)', fontSize: '14px' }}>Carregando times...</p>
+          <p style={{ textAlign: 'center', color: 'var(--text2)', fontSize: '14px' }}>{t('captainLogin.loading')}</p>
         ) : list.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '32px', border: '1px solid var(--border)', borderRadius: '10px', background: 'var(--bg2)', color: 'var(--text2)', fontSize: '14px' }}>
-            Nenhum time cadastrado ainda.
+            {t('captainLogin.no_teams')}
             <br />
-            <span style={{ fontSize: '12px', opacity: 0.6 }}>Aguarde o admin configurar os times.</span>
+            <span style={{ fontSize: '12px', opacity: 0.6 }}>{t('captainLogin.no_teams_sub')}</span>
           </div>
         ) : (
           <form onSubmit={handleSubmit}>
@@ -97,7 +99,7 @@ export default function CaptainLogin({ onLogin }) {
             {/* Team grid */}
             <div style={{ marginBottom: '24px' }}>
               <div style={{ fontSize: '11px', fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text2)', marginBottom: '10px' }}>
-                Seu time
+                {t('captainLogin.your_team')}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '8px' }}>
                 {list.map(([id, cap]) => {
@@ -151,7 +153,7 @@ export default function CaptainLogin({ onLogin }) {
             {selectedCap && (
               <div style={{ marginBottom: '20px' }}>
                 <div style={{ fontSize: '11px', fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text2)', marginBottom: '10px' }}>
-                  PIN do time <span style={{ color: selectedCap.cor }}>{selectedCap.nome}</span>
+                  {t('captainLogin.pin_label')} <span style={{ color: selectedCap.cor }}>{selectedCap.nome}</span>
                 </div>
                 <input
                   type="password"
@@ -191,7 +193,7 @@ export default function CaptainLogin({ onLogin }) {
                 disabled={pin.length < 4 || tentando}
                 style={{ width: '100%', padding: '12px', fontSize: '14px', fontWeight: 600 }}
               >
-                {tentando ? 'Verificando...' : `Entrar como ${selectedCap.nome}`}
+                {tentando ? t('captainLogin.verifying') : t('captainLogin.enter_as', { nome: selectedCap.nome })}
               </button>
             )}
 

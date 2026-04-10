@@ -4,7 +4,8 @@
     "inscritos": "Inscritos",
     "inscricao": "Inscrição",
     "espectador": "Espectador",
-    "draft": "Draft"
+    "draft": "Draft",
+    "resultados": "Resultados"
   },
   "home": {
     "title": "Copa Inhouse",
@@ -80,6 +81,41 @@
     "spotlight": "Em Destaque",
     "available": "Disponíveis",
     "turn": "VEZ DE",
-    "round": "RODADA"
+    "round": "RODADA",
+    "waiting": "Aguardando o draft iniciar",
+    "ended": "Draft Encerrado",
+    "waiting_pick": "Aguardando primeira escolha...",
+    "no_players": "Nenhum jogador ainda",
+    "stolen_from": "roubado de",
+    "coins": "moedas",
+    "buy_label": "compra",
+    "steal_label": "roubo",
+    "extra_turn": "TURNO EXTRA"
+  },
+  "captainLogin": {
+    "title": "Acesso do Capitão",
+    "subtitle": "Selecione seu time e insira o PIN fornecido pelo admin",
+    "loading": "Carregando times...",
+    "no_teams": "Nenhum time cadastrado ainda.",
+    "no_teams_sub": "Aguarde o admin configurar os times.",
+    "your_team": "Seu time",
+    "pin_label": "PIN do time",
+    "pin_wrong": "PIN incorreto. Tente novamente.",
+    "verifying": "Verificando...",
+    "enter_as": "Entrar como {{nome}}"
+  },
+  "resultados": {
+    "loading": "Carregando resultados...",
+    "title": "Resultados",
+    "subtitle": "Times formados",
+    "empty": "Nenhum draft encerrado ainda.",
+    "empty_sub": "Os times aparecerão aqui quando o draft for concluído.",
+    "stat_teams": "Times",
+    "stat_players": "Jogadores",
+    "stat_rounds": "Rodadas",
+    "stat_spent": "Moedas gastas",
+    "players_count": "{{n}} jogadores",
+    "spent": "gastos",
+    "remaining": "Moedas restantes:"
   }
 }

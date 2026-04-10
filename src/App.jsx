@@ -8,6 +8,7 @@ import Draft from './pages/Draft.jsx'
 import Espectador from './pages/Espectador.jsx'
 import Admin from './pages/Admin.jsx'
 import Login from './pages/Login.jsx'
+import Resultados from './pages/Resultados.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
 
 export default function App() {
@@ -20,6 +21,7 @@ export default function App() {
         <Route path="/inscricao" element={<Inscricao />} />
         <Route path="/draft" element={<Draft />} />
         <Route path="/espectador" element={<Espectador />} />
+        <Route path="/resultados" element={<Resultados />} />
         <Route path="/login" element={<Login />} />
         <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
       </Routes>

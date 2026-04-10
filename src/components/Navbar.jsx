@@ -39,6 +39,9 @@ export default function Navbar() {
         <NavLink to="/inscritos" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
           {t('nav.inscritos')}
         </NavLink>
+        <NavLink to="/resultados" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+          {t('nav.resultados')}
+        </NavLink>
         {modules.inscricaoAberta && (
           <NavLink to="/inscricao" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
             {t('nav.inscricao')}

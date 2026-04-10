@@ -4,7 +4,8 @@
     "inscritos": "Inscritos",
     "inscricao": "Inscripción",
     "espectador": "Espectador",
-    "draft": "Draft"
+    "draft": "Draft",
+    "resultados": "Resultados"
   },
   "home": {
     "title": "Copa Inhouse",
@@ -80,6 +81,41 @@
     "spotlight": "Destacado",
     "available": "Disponibles",
     "turn": "TURNO DE",
-    "round": "RONDA"
+    "round": "RONDA",
+    "waiting": "Esperando que comience el draft",
+    "ended": "Draft Finalizado",
+    "waiting_pick": "Esperando la primera selección...",
+    "no_players": "Sin jugadores aún",
+    "stolen_from": "robado de",
+    "coins": "monedas",
+    "buy_label": "compra",
+    "steal_label": "robo",
+    "extra_turn": "TURNO EXTRA"
+  },
+  "captainLogin": {
+    "title": "Acceso del Capitán",
+    "subtitle": "Selecciona tu equipo e ingresa el PIN proporcionado por el admin",
+    "loading": "Cargando equipos...",
+    "no_teams": "Ningún equipo registrado aún.",
+    "no_teams_sub": "Espera que el admin configure los equipos.",
+    "your_team": "Tu equipo",
+    "pin_label": "PIN del equipo",
+    "pin_wrong": "PIN incorrecto. Inténtalo de nuevo.",
+    "verifying": "Verificando...",
+    "enter_as": "Entrar como {{nome}}"
+  },
+  "resultados": {
+    "loading": "Cargando resultados...",
+    "title": "Resultados",
+    "subtitle": "Equipos formados",
+    "empty": "Ningún draft completado aún.",
+    "empty_sub": "Los equipos aparecerán aquí cuando el draft esté terminado.",
+    "stat_teams": "Equipos",
+    "stat_players": "Jugadores",
+    "stat_rounds": "Rondas",
+    "stat_spent": "Monedas gastadas",
+    "players_count": "{{n}} jugadores",
+    "spent": "gastados",
+    "remaining": "Monedas restantes:"
   }
 }

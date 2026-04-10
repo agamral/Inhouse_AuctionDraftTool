@@ -64,7 +64,7 @@ export default function Espectador() {
           <div style={{ fontSize: '48px' }}>⏳</div>
           <div className="espectador-logo" style={{ fontSize: '30px' }}>{cupName}</div>
           <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: '13px', color: 'rgba(255,255,255,0.22)', letterSpacing: '0.2em', textTransform: 'uppercase' }}>
-            Aguardando o draft iniciar
+            {t('espectador.waiting')}
           </div>
         </div>
       </div>
@@ -77,7 +77,7 @@ export default function Espectador() {
       <div className="espectador">
         <div className="espectador-waiting">
           <div style={{ fontSize: '56px' }}>🏁</div>
-          <div className="espectador-logo" style={{ fontSize: '36px', color: 'var(--gold2)' }}>Draft Encerrado</div>
+          <div className="espectador-logo" style={{ fontSize: '36px', color: 'var(--gold2)' }}>{t('espectador.ended')}</div>
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center', marginTop: '12px' }}>
             {sortedCaptains.map(([id, cap]) => (
               <div key={id} style={{ padding: '8px 20px', borderRadius: '5px', border: `1px solid ${cap.cor}44`, background: cap.cor + '10', fontFamily: "'Barlow Condensed', sans-serif", fontSize: '14px', fontWeight: 700, color: cap.cor, letterSpacing: '0.08em' }}>
@@ -108,7 +108,7 @@ export default function Espectador() {
           <div className="espectador-round">{t('espectador.round')} {draftState.rodada}</div>
           {draftState.turnoExtra && (
             <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: '11px', color: 'var(--red)', border: '1px solid rgba(224,85,85,0.35)', padding: '2px 8px', borderRadius: '4px', background: 'rgba(224,85,85,0.1)', letterSpacing: '0.1em' }}>
-              TURNO EXTRA
+              {t('espectador.extra_turn')}
             </div>
           )}
           <div className="espectador-turn-display">
@@ -143,7 +143,7 @@ export default function Espectador() {
               <SpotlightCard action={lastAction} key={lastAction.ts} />
             ) : (
               <div className="spotlight-label" style={{ marginTop: '40px' }}>
-                Aguardando primeira escolha...
+                {t('espectador.waiting_pick')}
               </div>
             )}
           </div>
@@ -176,9 +176,10 @@ export default function Espectador() {
 
 // ── Announcement overlay ──────────────────────────────────────
 function AnnounceOverlay({ action }) {
-  const isSteal = action.type === 'steal'
-  const color   = isSteal ? action.byTeamCor : 'var(--gold2)'
-  const typeLabel = isSteal ? '⚔ ROUBO' : '✓ COMPRA'
+  const { t } = useTranslation()
+  const isSteal   = action.type === 'steal'
+  const color     = isSteal ? action.byTeamCor : 'var(--gold2)'
+  const typeLabel = isSteal ? `⚔ ${t('espectador.steal_label').toUpperCase()}` : `✓ ${t('espectador.buy_label').toUpperCase()}`
 
   return (
     <div className="announce-overlay show">
@@ -208,10 +209,10 @@ function AnnounceOverlay({ action }) {
         </div>
         <div className="announce-detail">
           {isSteal && action.fromTeamNome
-            ? `roubado de ${action.fromTeamEmoji} ${action.fromTeamNome}  ·  `
+            ? `${t('espectador.stolen_from')} ${action.fromTeamEmoji} ${action.fromTeamNome}  ·  `
             : ''
           }
-          🪙 {action.preco} moedas
+          🪙 {action.preco} {t('espectador.coins')}
         </div>
       </div>
     </div>
@@ -220,13 +221,14 @@ function AnnounceOverlay({ action }) {
 
 // ── Spotlight card (center stage) ─────────────────────────────
 function SpotlightCard({ action }) {
+  const { t }    = useTranslation()
   const isSteal  = action.type === 'steal'
   const eloColor = ELO_CONFIG[action.playerElo]?.color ?? 'rgba(255,255,255,0.45)'
 
   return (
     <div style={{ textAlign: 'center', animation: 'spotlightIn 0.4s cubic-bezier(.2,1,.4,1)' }}>
       <div className="spotlight-action-type" style={{ color: isSteal ? 'var(--red)' : 'var(--gold)' }}>
-        {isSteal ? '⚔ roubo' : '✓ compra'}
+        {isSteal ? `⚔ ${t('espectador.steal_label')}` : `✓ ${t('espectador.buy_label')}`}
       </div>
       <div className="spotlight-name">{action.playerDiscord}</div>
       <div className="spotlight-meta">
@@ -236,7 +238,7 @@ function SpotlightCard({ action }) {
       </div>
       <div className="spotlight-price-row">
         <span className="spotlight-price-value">{action.preco}</span>
-        <span className="spotlight-price-unit">moedas</span>
+        <span className="spotlight-price-unit">{t('espectador.coins')}</span>
       </div>
       <div
         className="spotlight-owner-tag"
@@ -246,7 +248,7 @@ function SpotlightCard({ action }) {
       </div>
       {isSteal && action.fromTeamNome && (
         <div className="spotlight-steal-from">
-          roubado de{' '}
+          {t('espectador.stolen_from')}{' '}
           <span style={{ color: action.fromTeamCor }}>
             {action.fromTeamEmoji} {action.fromTeamNome}
           </span>
@@ -284,13 +286,14 @@ function TurnStrip({ sortedCaptains, activeTurnId, turnoExtra }) {
 
 // ── Player pool ───────────────────────────────────────────────
 function PlayerPool({ players, overrides, playerState, teamCaptainNames }) {
+  const { t }     = useTranslation()
   const visible   = players.filter(p => !overrides[p.id]?.descartado && !teamCaptainNames.has(p.discord))
   const available = visible.filter(p => !playerState[p.id]?.ownedBy).length
 
   return (
     <div className="player-pool">
       <div className="pool-label">
-        Disponíveis: {available}
+        {t('espectador.available')}: {available}
       </div>
       <div className="pool-chips">
         {visible.map(p => {
@@ -312,6 +315,7 @@ function PlayerPool({ players, overrides, playerState, teamCaptainNames }) {
 
 // ── Team card ─────────────────────────────────────────────────
 function SpectatorTeam({ team, isActive, players }) {
+  const { t } = useTranslation()
   const roster     = Object.entries(team.roster ?? {})
   const totalSlots = roster.length + (team.capitaoNome ? 1 : 0)
   const maxSlots   = 7
@@ -374,7 +378,7 @@ function SpectatorTeam({ team, isActive, players }) {
           )
         })}
         {totalSlots === 0 && (
-          <div className="spec-roster-empty">Nenhum jogador ainda</div>
+          <div className="spec-roster-empty">{t('espectador.no_players')}</div>
         )}
       </div>
     </div>
