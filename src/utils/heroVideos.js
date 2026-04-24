@@ -11,9 +11,11 @@
  *   - varian usa prefixo de role "warrior_"
  */
 
-// Vídeos servidos localmente de /public/videos/ (baixar com: npm run download-videos)
-// Fallback automático para imagem estática no componente se o arquivo não existir.
-const BASE = '/videos'
+// Em produção usa o psionic-storm diretamente.
+// Para servir localmente: npm run download-videos e trocar para '/videos'.
+const BASE = import.meta.env.PROD
+  ? 'https://psionic-storm.com/media/videos/skins'
+  : '/videos'
 
 const SLUGS = {
   // ── TANKS ──────────────────────────────────────────────────────────────────
