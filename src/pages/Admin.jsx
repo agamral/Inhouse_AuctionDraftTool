@@ -7,6 +7,7 @@ import AdminPlayersSection from '../components/AdminPlayersSection'
 import AdminCaptainsSection from '../components/AdminCaptainsSection'
 import AdminDraftControl from '../components/AdminDraftControl'
 import AdminDraftSimulator from '../components/AdminDraftSimulator'
+import AdminHeroDraftSection from '../components/AdminHeroDraftSection'
 import './Admin.css'
 
 export default function Admin() {
@@ -92,6 +93,8 @@ export default function Admin() {
       <AdminDraftControl draftConfig={draft} />
 
       {isSuperAdmin && <AdminDraftSimulator />}
+
+      <AdminHeroDraftSection />
 
       <div className="admin-grid">
 

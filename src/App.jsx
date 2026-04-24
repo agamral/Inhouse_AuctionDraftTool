@@ -9,6 +9,9 @@ import Espectador from './pages/Espectador.jsx'
 import Admin from './pages/Admin.jsx'
 import Login from './pages/Login.jsx'
 import Resultados from './pages/Resultados.jsx'
+import HeroDraft from './pages/HeroDraft.jsx'
+import HeroDraftEspectador from './pages/HeroDraftEspectador.jsx'
+import HeroDraftOverlay from './pages/HeroDraftOverlay.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
 
 export default function App() {
@@ -24,6 +27,9 @@ export default function App() {
         <Route path="/resultados" element={<Resultados />} />
         <Route path="/login" element={<Login />} />
         <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
+        <Route path="/hero-draft" element={<HeroDraft />} />
+        <Route path="/hero-draft/espectador" element={<HeroDraftEspectador />} />
+        <Route path="/hero-draft/overlay" element={<HeroDraftOverlay />} />
       </Routes>
       <Footer />
     </BrowserRouter>

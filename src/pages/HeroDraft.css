@@ -1,0 +1,426 @@
+/* ── Layout raiz ─────────────────────────────────────────────────────────── */
+.hd-root {
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Barlow', sans-serif;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.hd-loading,
+.hd-erro {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.4rem;
+  color: var(--text2);
+}
+
+/* ── Header / Times ──────────────────────────────────────────────────────── */
+.hd-header {
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border2);
+  padding: 1.5rem 2rem 1rem;
+}
+
+.hd-times {
+  display: grid;
+  grid-template-columns: 1fr 180px 1fr;
+  gap: 1rem;
+  align-items: center;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* ── Painel de time ──────────────────────────────────────────────────────── */
+.hd-time-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.hd-time-panel--b {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.hd-time-panel--b .hd-time-slots {
+  flex-direction: row-reverse;
+}
+
+.hd-time-nome {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--cor-time, var(--blue));
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.hd-time-secao {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.hd-time-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text2);
+}
+
+.hd-time-slots {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+/* ── Slot individual ─────────────────────────────────────────────────────── */
+.hd-slot {
+  width: 52px;
+  height: 52px;
+  border-radius: 4px;
+  border: 1px solid var(--border2);
+  background: var(--bg3);
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.2s;
+}
+
+.hd-slot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hd-slot--pick {
+  border-color: var(--cor-time, var(--border2));
+}
+
+.hd-slot--ban {
+  filter: grayscale(0.7);
+  opacity: 0.7;
+}
+
+.hd-slot--vazio {
+  background: var(--bg3);
+}
+
+.hd-slot-ban-x {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  color: var(--red);
+  background: rgba(0,0,0,0.55);
+  font-weight: 700;
+}
+
+/* ── Turn strip (centro) ─────────────────────────────────────────────────── */
+.hd-turn-strip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 1rem 0.75rem;
+  min-height: 120px;
+}
+
+.hd-turn-acao {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.hd-turn-acao[data-acao="ban"]  { color: var(--red); }
+.hd-turn-acao[data-acao="pick"] { color: var(--green); }
+
+.hd-turn-time {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.hd-turn-progresso {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.75rem;
+  color: var(--text2);
+}
+
+.hd-turn-strip--aguardando,
+.hd-turn-strip--fim {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text2);
+}
+
+/* ── Aviso de status ─────────────────────────────────────────────────────── */
+.hd-aviso {
+  text-align: center;
+  padding: 0.75rem;
+  background: var(--blue-dim);
+  border-bottom: 1px solid var(--border2);
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--text);
+}
+
+.hd-aviso--fim {
+  background: var(--gold-dim);
+  color: var(--gold2);
+}
+
+/* ── Pool de heróis ──────────────────────────────────────────────────────── */
+.hd-pool {
+  flex: 1;
+  padding: 1.25rem 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.hd-filtros {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.hd-busca {
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  color: var(--text);
+  font-family: 'Barlow', sans-serif;
+  font-size: 0.9rem;
+  width: 260px;
+  outline: none;
+}
+
+.hd-busca:focus {
+  border-color: var(--blue);
+}
+
+.hd-role-tabs {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.hd-role-tab {
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  padding: 0.3rem 0.75rem;
+  color: var(--text2);
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-transform: uppercase;
+}
+
+.hd-role-tab:hover { border-color: var(--blue); color: var(--text); }
+.hd-role-tab--ativo {
+  background: var(--blue-dim);
+  border-color: var(--blue);
+  color: var(--blue);
+}
+
+/* ── Grid de heróis ──────────────────────────────────────────────────────── */
+.hd-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 0.5rem;
+}
+
+/* ── Card de herói ───────────────────────────────────────────────────────── */
+.hd-hero-card {
+  position: relative;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0;
+  cursor: default;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: border-color 0.15s, transform 0.1s;
+  aspect-ratio: 3/4;
+}
+
+.hd-hero-card img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  object-position: top;
+}
+
+.hd-hero-nome {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--text);
+  text-align: center;
+  padding: 0.15rem 0.25rem 0;
+  line-height: 1.1;
+}
+
+.hd-hero-role {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.55rem;
+  color: var(--text2);
+  text-align: center;
+  padding-bottom: 0.25rem;
+}
+
+.hd-hero-card--clicavel {
+  cursor: pointer;
+}
+
+.hd-hero-card--clicavel:hover {
+  border-color: var(--blue);
+  transform: translateY(-2px);
+}
+
+.hd-hero-card--selecionado {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 2px var(--gold-glow);
+}
+
+.hd-hero-card--bloqueado {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* ── Overlay de status no card ───────────────────────────────────────────── */
+.hd-hero-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.hd-hero-overlay--ban,
+.hd-hero-overlay--global-ban {
+  background: rgba(224, 60, 60, 0.55);
+  color: var(--red);
+}
+
+.hd-hero-overlay--pick-a { background: rgba(56, 168, 255, 0.35); }
+.hd-hero-overlay--pick-b { background: rgba(224, 60, 60, 0.35); }
+
+/* ── Confirmação modal ───────────────────────────────────────────────────── */
+.hd-confirmar-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.hd-confirmar-modal {
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  min-width: 220px;
+}
+
+.hd-confirmar-img {
+  width: 96px;
+  height: 96px;
+  border-radius: 8px;
+  object-fit: cover;
+  object-position: top;
+  border: 1px solid var(--border2);
+}
+
+.hd-confirmar-nome {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin: 0;
+  text-align: center;
+}
+
+.hd-confirmar-acao {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.hd-confirmar-acao[data-acao="ban"]  { color: var(--red); }
+.hd-confirmar-acao[data-acao="pick"] { color: var(--green); }
+
+.hd-confirmar-btns {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.hd-btn {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 0.5rem 1.25rem;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.hd-btn--confirmar {
+  background: var(--green);
+  color: #fff;
+  border-color: var(--green);
+}
+
+.hd-btn--cancelar {
+  background: transparent;
+  color: var(--text2);
+  border-color: var(--border2);
+}
+
+.hd-btn:hover { opacity: 0.85; }

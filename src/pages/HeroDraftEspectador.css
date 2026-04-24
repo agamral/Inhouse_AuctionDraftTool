@@ -1,0 +1,615 @@
+/* ── Root ────────────────────────────────────────────────────────────────── */
+.hde-root {
+  min-height: 100vh;
+  background: radial-gradient(ellipse at center, #12183a 0%, #080c20 55%, #050612 100%);
+  color: var(--text);
+  font-family: 'Barlow', sans-serif;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.hde-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.4rem;
+  color: var(--text2);
+}
+
+/* ── Background: grid diagonal sutil ────────────────────────────────────── */
+.hde-bg-grid {
+  position: absolute;
+  inset: 0;
+  opacity: 0.12;
+  background-image:
+    repeating-linear-gradient(60deg,  transparent 0 22px, rgba(100,150,255,0.07) 22px 23px),
+    repeating-linear-gradient(-60deg, transparent 0 22px, rgba(100,150,255,0.07) 22px 23px),
+    repeating-linear-gradient(0deg,   transparent 0 22px, rgba(100,150,255,0.07) 22px 23px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Glows de cor dos times ──────────────────────────────────────────────── */
+.hde-glow {
+  position: absolute;
+  width: 600px;
+  height: 600px;
+  border-radius: 50%;
+  filter: blur(160px);
+  opacity: 0.10;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.hde-glow--a { top: -100px; left: -150px; }
+.hde-glow--b { top: -100px; right: -150px; }
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+.hde-header {
+  position: relative;
+  z-index: 400; /* acima do overlay de anúncio (300) */
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: start;
+  gap: 1rem;
+  padding: 1rem 2rem 0.75rem;
+}
+
+/* ── Team sides no header ────────────────────────────────────────────────── */
+.hde-tside {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.hde-tside--b {
+  align-items: flex-end;
+}
+
+.hde-tnome {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  transition: text-shadow 0.4s;
+}
+
+.hde-tside--ativo .hde-tnome {
+  text-shadow: 0 0 18px currentColor;
+}
+
+/* ── Bans no header ──────────────────────────────────────────────────────── */
+.hde-bans-strip {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.hde-bans-strip--b {
+  flex-direction: row-reverse;
+}
+
+/* ── Badge de status ─────────────────────────────────────────────────────── */
+.hde-header-mid {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 0.25rem;
+}
+
+.hde-badge {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  padding: 0.3rem 1rem;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.hde-badge--wait {
+  background: rgba(255,255,255,0.05);
+  color: var(--text2);
+  border: 1px solid var(--border2);
+}
+
+.hde-badge--ban {
+  background: rgba(224,85,85,0.16);
+  color: var(--red);
+  border: 1px solid rgba(224,85,85,0.4);
+}
+
+.hde-badge--pick {
+  background: rgba(76,175,125,0.16);
+  color: var(--green);
+  border: 1px solid rgba(76,175,125,0.4);
+}
+
+/* ── Stage: grid 3 colunas ───────────────────────────────────────────────── */
+/*  Largura de coluna = hex (120px) + stagger (50px) = 170px                 */
+.hde-stage {
+  position: relative;
+  z-index: 400; /* acima do overlay de anúncio (300) — stage fica visível sobre o vídeo */
+  display: grid;
+  grid-template-columns: 170px 1fr 170px;
+  align-items: center;
+  flex: 1;
+  padding: 1.5rem 2rem 2rem;
+  gap: 0;
+  min-height: 0;
+}
+
+/* ── Colunas hexagonais ──────────────────────────────────────────────────── */
+.hde-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Honeycomb: alterna os hexes pares para a direita (Time A) */
+.hde-col--a > .hde-hex:nth-child(even) {
+  margin-left: 50px;
+}
+
+/* Honeycomb: alterna os hexes pares para a esquerda (Time B, espelhado) */
+.hde-col--b {
+  align-items: flex-end;
+}
+
+.hde-col--b > .hde-hex:nth-child(even) {
+  margin-right: 50px;
+}
+
+/* ── Hex slot: técnica double-div para borda colorida ────────────────────── */
+.hde-hex {
+  position: relative;
+  flex-shrink: 0;
+}
+
+/* Grande: picks */
+.hde-hex--l {
+  width: 120px;
+  height: 139px;
+}
+
+/* Pequeno: bans */
+.hde-hex--s {
+  width: 50px;
+  height: 58px;
+}
+
+/* Camada externa: cor do time (borda visual) */
+.hde-hex-bd {
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  background: rgba(255,255,255,0.10);
+  transition: background 0.3s;
+}
+
+.hde-hex--has .hde-hex-bd {
+  background: var(--c, #4a9eda);
+}
+
+/* Camada interna: fundo escuro + imagem */
+.hde-hex-in {
+  position: absolute;
+  inset: 4px;
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  background: rgba(8, 12, 28, 0.92);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hde-hex-in img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+}
+
+/* Drop shadow colorido que respeita o contorno (só quando tem herói) */
+.hde-hex--has {
+  filter: drop-shadow(0 0 6px var(--c, #4a9eda));
+}
+
+/* ── Nome do herói dentro do hex grande ──────────────────────────────────── */
+.hde-hex-name {
+  position: absolute;
+  bottom: 18%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(5, 8, 20, 0.90);
+  color: #fff;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  white-space: nowrap;
+  clip-path: polygon(8% 0, 92% 0, 100% 100%, 0% 100%);
+  border: 1px solid var(--c, rgba(255,255,255,0.2));
+  z-index: 1;
+}
+
+/* ── Bans ────────────────────────────────────────────────────────────────── */
+.hde-hex--ban .hde-hex-bd {
+  background: rgba(255,255,255,0.06);
+}
+
+.hde-hex--ban .hde-hex-in {
+  filter: grayscale(0.75);
+  opacity: 0.65;
+}
+
+.hde-hex-ban-x {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--red);
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.hde-hex--ban.hde-hex--has {
+  filter: none;
+}
+
+/* ── Centro ──────────────────────────────────────────────────────────────── */
+.hde-centro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  text-align: center;
+  padding: 1rem;
+}
+
+.hde-centro-acao {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.hde-centro-acao--ban  { color: var(--red); }
+.hde-centro-acao--pick { color: var(--green); }
+
+.hde-centro-time {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.hde-centro-timer {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 3rem;
+  font-weight: 700;
+  color: var(--text2);
+  line-height: 1;
+  transition: color 0.3s;
+  letter-spacing: -0.02em;
+}
+
+.hde-centro-timer--urgente {
+  color: var(--red);
+  animation: hde-timer-pulse 0.6s ease infinite alternate;
+}
+
+@keyframes hde-timer-pulse {
+  from { opacity: 1; }
+  to   { opacity: 0.5; }
+}
+
+.hde-centro-prog {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.78rem;
+  color: var(--text2);
+}
+
+.hde-centro-emblema {
+  font-size: 3rem;
+  opacity: 0.2;
+}
+
+.hde-centro-fim {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--gold);
+  line-height: 1.25;
+  letter-spacing: 0.06em;
+}
+
+/* ── Overlay de anúncio ──────────────────────────────────────────────────── */
+@keyframes hde-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes hde-fade-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+@keyframes hde-pick-pop {
+  0%   { opacity: 0; transform: scale(0.6) translateY(20px); }
+  65%  { opacity: 1; transform: scale(1.06) translateY(-5px); }
+  100% { opacity: 1; transform: scale(1)    translateY(0); }
+}
+
+@keyframes hde-rays-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.hde-anuncio {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.80);
+  animation: hde-fade-in 0.25s ease forwards;
+}
+
+.hde-anuncio--saindo {
+  animation: hde-fade-out 0.42s ease forwards;
+  pointer-events: none;
+}
+
+.hde-anuncio-rays {
+  display: none;
+}
+
+.hde-anuncio-body {
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Linha de picks (1, 2 ou 3 lado a lado) ──────────────────────────────── */
+.hde-anuncio-picks {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2.5rem;
+}
+
+/* Pick individual anima ao montar */
+.hde-anuncio-pick {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.9rem;
+  animation: hde-pick-pop 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ── Painéis de vídeo fullscreen ─────────────────────────────────────────── */
+/* Os painéis dividem a tela horizontalmente (1 = 100%, 2 = 50% cada) */
+.hde-anuncio-videos {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  z-index: 0;
+}
+
+.hde-anuncio-vpanel {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Segundo herói desliza pela direita */
+@keyframes hde-panel-entrar {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+/* Primeiro herói cede espaço com um nudge sutil para a esquerda */
+@keyframes hde-panel-ceder {
+  0%   { transform: translateX(0);    }
+  35%  { transform: translateX(-14px); }
+  100% { transform: translateX(0);    }
+}
+
+.hde-anuncio-videos--2 .hde-anuncio-vpanel:first-child {
+  animation: hde-panel-ceder 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.hde-anuncio-videos--2 .hde-anuncio-vpanel:last-child {
+  animation: hde-panel-entrar 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Vídeo posicionado com precisão usando as dimensões reais (1480 × 800).
+   Herói sempre centrado em X=985px = 66.6% da largura do vídeo.
+   Fórmula:
+     - height: 150% → zoom 1.5× preservando aspect ratio
+     - top: -25%    → (150-100)/2, centraliza verticalmente
+     - left: 50%    → ancora no centro horizontal do painel
+     - translateX(-66.6%) → desloca o vídeo para o centro do herói (985/1480)
+       fique exatamente no centro do painel, independente da largura dele.
+*/
+.hde-anuncio-vpanel video {
+  position: absolute;
+  height: 150%;
+  width: auto;
+  top: -25%;
+  left: 50%;
+  transform: translateX(-66.6%);
+}
+
+/* Pick duplo — painel direito: espelha para os heróis ficarem "frente a frente".
+   Após scaleX(-1) o herói está em 100% - 66.6% = 33.4% do vídeo espelhado.
+   translateX(-33.4%) centra o herói espelhado no painel direito.            */
+.hde-anuncio-videos--2 .hde-anuncio-vpanel:last-child video {
+  transform: scaleX(-1) translateX(33.4%);
+}
+
+/* Imagem fullsize — mesmo enquadramento do vídeo (herói em 66.6% da largura) */
+.hde-anuncio-vpanel-img {
+  position: absolute;
+  height: 150%;
+  width: auto;
+  top: -25%;
+  left: 50%;
+  transform: translateX(-66.6%);
+  object-fit: cover;
+}
+
+/* Pick duplo — painel direito: espelha a imagem igual ao vídeo */
+.hde-anuncio-videos--2 .hde-anuncio-vpanel:last-child .hde-anuncio-vpanel-img {
+  transform: scaleX(-1) translateX(33.4%);
+}
+
+/* Vinheta: escurece o rodapé (texto fica lá) e as bordas laterais */
+.hde-anuncio-vinheta {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to bottom,
+      rgba(0,0,0,0.15) 0%,
+      transparent       35%,
+      transparent       55%,
+      rgba(0,0,0,0.75) 100%),
+    linear-gradient(to right,
+      rgba(0,0,0,0.30) 0%,
+      transparent       25%,
+      transparent       75%,
+      rgba(0,0,0,0.30) 100%);
+  pointer-events: none;
+}
+
+/* Linha divisória sutil no pick duplo */
+.hde-anuncio-videos--2 .hde-anuncio-vpanel + .hde-anuncio-vpanel::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 10%;
+  bottom: 10%;
+  width: 1px;
+  background: rgba(255,255,255,0.12);
+}
+
+/* ── Fallback (sem vídeo): hex centralizado no painel ────────────────────── */
+.hde-anuncio-hex-wrap {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5, 8, 20, 0.95);
+}
+
+.hde-anuncio-hex {
+  position: relative;
+  width: 200px;
+  height: 231px;
+  filter: drop-shadow(0 0 28px var(--c, #4a9eda));
+}
+
+.hde-anuncio-hex-bd {
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  background: var(--c, var(--blue));
+}
+
+.hde-anuncio-hex-in {
+  position: absolute;
+  inset: 5px;
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  background: #08101e;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hde-anuncio-hex-in img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+}
+
+/* ── Labels flutuantes sobre o vídeo (rodapé) ────────────────────────────── */
+.hde-anuncio-labels {
+  position: absolute;
+  bottom: 7%;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+/* Para pick duplo: cada label fica centralizado no seu painel */
+.hde-anuncio-labels--2 {
+  justify-content: space-around;
+}
+
+.hde-anuncio-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  animation: hde-pick-pop 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  padding: 0 2rem;
+}
+
+/* Segundo label entra deslizando da direita */
+@keyframes hde-label-entrar {
+  from { opacity: 0; transform: translateX(50px); }
+  to   { opacity: 1; transform: translateX(0);    }
+}
+
+.hde-anuncio-labels--2 .hde-anuncio-label:last-child {
+  animation: hde-label-entrar 0.5s 0.1s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.hde-anuncio-nome {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 3.5rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #fff;
+  text-shadow:
+    0 0 20px rgba(255,255,255,0.5),
+    0 2px 8px rgba(0,0,0,0.9);
+  text-align: center;
+  line-height: 1;
+}
+
+.hde-anuncio-labels--2 .hde-anuncio-nome {
+  font-size: 2.6rem;
+}
+
+.hde-anuncio-role {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.6);
+  text-shadow: 0 1px 6px rgba(0,0,0,0.8);
+  text-align: center;
+}

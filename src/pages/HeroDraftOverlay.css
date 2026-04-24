@@ -1,0 +1,168 @@
+/* Fundo transparente — essencial para OBS Browser Source */
+.hdo-root {
+  background: transparent;
+  display: grid;
+  grid-template-columns: 1fr 120px 1fr;
+  gap: 0.75rem;
+  align-items: start;
+  padding: 0.75rem;
+  font-family: 'Barlow', sans-serif;
+  /* Dimensões recomendadas no OBS: 1280x280 */
+}
+
+/* ── Painel de time ──────────────────────────────────────────────────────── */
+.hdo-time {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.hdo-time--b {
+  align-items: flex-end;
+}
+
+.hdo-time-header {
+  padding: 0 0.25rem;
+}
+
+.hdo-time-nome {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--cor, #fff);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+}
+
+/* ── Picks ───────────────────────────────────────────────────────────────── */
+.hdo-picks {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.hdo-time--b .hdo-picks { flex-direction: row-reverse; }
+
+.hdo-slot {
+  width: 68px;
+  height: 68px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: rgba(0,0,0,0.5);
+  border: 1px solid rgba(255,255,255,0.15);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.hdo-slot--preenchido {
+  border-color: var(--cor, rgba(255,255,255,0.3));
+}
+
+.hdo-slot img {
+  width: 100%;
+  height: 52px;
+  object-fit: cover;
+  object-position: top;
+}
+
+.hdo-slot-nome {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.55rem;
+  font-weight: 600;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+  text-align: center;
+  padding: 1px 2px 0;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.hdo-slot--vazio {
+  opacity: 0.2;
+}
+
+/* ── Bans ────────────────────────────────────────────────────────────────── */
+.hdo-bans {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.hdo-time--b .hdo-bans { flex-direction: row-reverse; }
+
+.hdo-ban {
+  width: 32px;
+  height: 32px;
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+  background: rgba(0,0,0,0.5);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.hdo-ban img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+  filter: grayscale(0.5);
+  opacity: 0.65;
+}
+
+.hdo-ban-x {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  color: #e03c3c;
+  background: rgba(0,0,0,0.4);
+  font-weight: 700;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+}
+
+.hdo-ban--vazio {
+  opacity: 0.15;
+}
+
+/* ── Centro ──────────────────────────────────────────────────────────────── */
+.hdo-centro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  min-height: 80px;
+}
+
+.hdo-turno-acao {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-shadow: 0 1px 6px rgba(0,0,0,0.9);
+}
+
+.hdo-turno-acao[data-acao="ban"]  { color: #e03c3c; }
+.hdo-turno-acao[data-acao="pick"] { color: #3dba7a; }
+
+.hdo-turno-time {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #fff;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.9);
+}
+
+.hdo-fim {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #e8b520;
+  text-shadow: 0 1px 6px rgba(0,0,0,0.9);
+}
