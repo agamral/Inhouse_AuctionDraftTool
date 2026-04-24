@@ -1,8 +1,9 @@
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useHeroDraft } from '../hooks/useHeroDraft'
 import { HEROES, getHeroesByRole, ROLES } from '../utils/heroPool'
 import { passoAtual, heroiBloqueado, ACOES, STATUS_DRAFT } from '../utils/heroDraft'
+import { getMapaById } from '../utils/mapPool'
 import './HeroDraft.css'
 
 // URL: /hero-draft?sessao=semifinal-1&time=A
@@ -15,7 +16,86 @@ export default function HeroDraft() {
 
   const [filtroRole, setFiltroRole]     = useState('todos')
   const [busca, setBusca]               = useState('')
-  const [confirmando, setConfirmando]   = useState(null)  // heroiId pendente de confirmação
+  const [confirmando, setConfirmando]   = useState(null)
+
+  // ── Timer sincronizado com Firebase ──────────────────────────────────────
+  const TEMPO_TURNO   = 30
+  const [turnoIniciadoEm, setTurnoIniciadoEm] = useState(null)
+  const [tempoRestante, setTempoRestante]     = useState(TEMPO_TURNO)
+  const prevPassoRef   = useRef(null)
+  const autoPickedRef  = useRef(false)
+  const autoPickTimer  = useRef(null)
+  const confirmandoRef = useRef(null)
+
+  // Mantém ref em sincronia com estado (evita closure stale no setTimeout)
+  useEffect(() => { confirmandoRef.current = confirmando }, [confirmando])
+
+  // Ref com snapshot sempre fresco — usada pelo visibilitychange
+  const liveRef = useRef({})
+  liveRef.current = { estado, ehMinhaTez, agir }
+
+  // Display: setInterval atualiza o contador visual
+  useEffect(() => {
+    if (!estado || estado.status !== STATUS_DRAFT.RODANDO) return
+    const ts = estado.turnoIniciadoEm ?? Date.now()
+    if (estado.passoAtual !== prevPassoRef.current || !turnoIniciadoEm) {
+      prevPassoRef.current = estado.passoAtual
+      const decorrido = Math.floor((Date.now() - ts) / 1000)
+      setTurnoIniciadoEm(ts)
+      setTempoRestante(Math.max(0, TEMPO_TURNO - decorrido))
+    }
+  }, [estado?.passoAtual, estado?.status, estado?.turnoIniciadoEm]) // eslint-disable-line
+
+  useEffect(() => {
+    if (!turnoIniciadoEm || estado?.status !== STATUS_DRAFT.RODANDO) return
+    const tick = setInterval(() => {
+      const decorrido = Math.floor((Date.now() - turnoIniciadoEm) / 1000)
+      setTempoRestante(Math.max(0, TEMPO_TURNO - decorrido))
+    }, 1000)
+    return () => clearInterval(tick)
+  }, [turnoIniciadoEm, estado?.status])
+
+  // Auto-pick: setTimeout preciso disparado quando o turno começa
+  useEffect(() => {
+    if (autoPickTimer.current) clearTimeout(autoPickTimer.current)
+    if (!estado || estado.status !== STATUS_DRAFT.RODANDO || !ehMinhaTez()) return
+
+    autoPickedRef.current = false
+    const ts          = estado.turnoIniciadoEm ?? Date.now()
+    const remainingMs = Math.max(0, TEMPO_TURNO * 1000 - (Date.now() - ts))
+    const snap        = estado // captura o estado do turno atual
+
+    autoPickTimer.current = setTimeout(() => {
+      if (autoPickedRef.current) return
+      autoPickedRef.current = true
+      const heroiId = confirmandoRef.current
+        ?? HEROES.filter(h => !heroiBloqueado(snap, h.id)).sort(() => Math.random() - 0.5)[0]?.id
+      if (!heroiId) return
+      setConfirmando(null)
+      agir(heroiId)
+    }, remainingMs)
+
+    return () => clearTimeout(autoPickTimer.current)
+  }, [estado?.passoAtual, estado?.turnoIniciadoEm]) // eslint-disable-line
+
+  // Backup: ao voltar para a aba, verifica se o timer já expirou
+  useEffect(() => {
+    const check = () => {
+      if (document.visibilityState !== 'visible') return
+      const { estado: e, ehMinhaTez: emt, agir: ag } = liveRef.current
+      if (!e || e.status !== STATUS_DRAFT.RODANDO || !emt()) return
+      const ts = e.turnoIniciadoEm ?? Date.now()
+      if (Date.now() - ts < TEMPO_TURNO * 1000 || autoPickedRef.current) return
+      autoPickedRef.current = true
+      const heroiId = confirmandoRef.current
+        ?? HEROES.filter(h => !heroiBloqueado(e, h.id)).sort(() => Math.random() - 0.5)[0]?.id
+      if (!heroiId) return
+      setConfirmando(null)
+      ag(heroiId)
+    }
+    document.addEventListener('visibilitychange', check)
+    return () => document.removeEventListener('visibilitychange', check)
+  }, []) // monta uma vez; liveRef garante valores frescos
 
   // ── Herói selecionado para confirmar antes de agir ────────────────────────
   const selecionarHeroi = (heroiId) => {
@@ -46,6 +126,7 @@ export default function HeroDraft() {
   if (erro)    return <div className="hd-erro">Erro: {erro}</div>
   if (!estado) return <div className="hd-loading">Sessão não encontrada.</div>
 
+  const mapa    = getMapaById(estado.mapaId)
   const passo   = passoAtual(estado)
   const minha   = ehMinhaTez()
   const seq     = estado.sequencia ?? []
@@ -53,13 +134,16 @@ export default function HeroDraft() {
   const maxBansB = seq.filter(s => s.acao === 'ban' && s.time === 'B').length || 3
 
   return (
-    <div className="hd-root">
+    <div
+      className="hd-root"
+      style={mapa?.splashUrl ? { '--mapa-splash': `url(${mapa.splashUrl})` } : {}}
+    >
 
       {/* ── Header: status do draft ──────────────────────────────────────── */}
-      <header className="hd-header">
+      <header className="hd-header" style={mapa?.splashUrl ? { '--mapa-splash': `url(${mapa.splashUrl})` } : {}}>
         <div className="hd-times">
           <TimePanel time={estado.timeA} lado="A" corRealce={estado.timeA.cor} maxBans={maxBansA} />
-          <TurnStrip estado={estado} passo={passo} />
+          <TurnStrip estado={estado} passo={passo} tempoRestante={tempoRestante} mapa={mapa} />
           <TimePanel time={estado.timeB} lado="B" corRealce={estado.timeB.cor} maxBans={maxBansB} />
         </div>
       </header>
@@ -151,22 +235,37 @@ function TimePanel({ time, lado, corRealce, maxBans = 3 }) {
   )
 }
 
-function TurnStrip({ estado, passo }) {
+function TurnStrip({ estado, passo, tempoRestante, mapa }) {
   if (estado.status === STATUS_DRAFT.AGUARDANDO) {
-    return <div className="hd-turn-strip hd-turn-strip--aguardando">Em breve</div>
+    return (
+      <div className="hd-turn-strip hd-turn-strip--aguardando">
+        {mapa && <span className="hd-turn-mapa">{mapa.nome}</span>}
+        <span>Em breve</span>
+      </div>
+    )
   }
   if (estado.status === STATUS_DRAFT.ENCERRADO || !passo) {
-    return <div className="hd-turn-strip hd-turn-strip--fim">FIM</div>
+    return (
+      <div className="hd-turn-strip hd-turn-strip--fim">
+        {mapa && <span className="hd-turn-mapa">{mapa.nome}</span>}
+        <span>FIM</span>
+      </div>
+    )
   }
 
   const acaoLabel = passo.acao === ACOES.BAN ? 'BANIR' : 'ESCOLHER'
   const timeLabel = `Time ${passo.time}`
   const progresso = `${estado.passoAtual + 1} / ${estado.sequencia.length}`
+  const urgente   = tempoRestante <= 10
 
   return (
     <div className="hd-turn-strip">
+      {mapa && <span className="hd-turn-mapa">{mapa.nome}</span>}
       <span className="hd-turn-acao" data-acao={passo.acao}>{acaoLabel}</span>
       <span className="hd-turn-time">{timeLabel}</span>
+      <span className={`hd-turn-timer${urgente ? ' hd-turn-timer--urgente' : ''}`}>
+        {tempoRestante}
+      </span>
       <span className="hd-turn-progresso">{progresso}</span>
     </div>
   )

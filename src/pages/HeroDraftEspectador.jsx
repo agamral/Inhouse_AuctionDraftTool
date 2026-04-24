@@ -4,6 +4,7 @@ import { useHeroDraft } from '../hooks/useHeroDraft'
 import { HEROES } from '../utils/heroPool'
 import { getHeroVideoUrl, getHeroImageUrl } from '../utils/heroVideos'
 import { passoAtual, ACOES, STATUS_DRAFT } from '../utils/heroDraft'
+import { getMapaById } from '../utils/mapPool'
 import './HeroDraftEspectador.css'
 
 const TEMPO_TURNO = 30 // segundos por ação/turno
@@ -83,6 +84,20 @@ export default function HeroDraftEspectador() {
     }
   }, [estado?.historico?.length, estado?.passoAtual]) // eslint-disable-line
 
+  // ── Background pulsante do mapa ──────────────────────────────────────────
+  const [mapaVis, setMapaVis] = useState(false)
+  useEffect(() => {
+    const mapa = getMapaById(estado?.mapaId)
+    if (!mapa?.splashUrl) return
+    const pulse = () => {
+      setMapaVis(true)
+      setTimeout(() => setMapaVis(false), 5000)
+    }
+    pulse()
+    const id = setInterval(pulse, 25000)
+    return () => clearInterval(id)
+  }, [estado?.mapaId]) // eslint-disable-line
+
   // ── Timer de contagem regressiva por turno ────────────────────────────────
   const [turnoIniciadoEm, setTurnoIniciadoEm] = useState(null)
   const [tempoRestante, setTempoRestante]     = useState(TEMPO_TURNO)
@@ -115,7 +130,9 @@ export default function HeroDraftEspectador() {
   if (erro)    return <div className="hde-loading">Erro: {erro}</div>
   if (!estado) return <div className="hde-loading">Nenhum draft ativo.</div>
 
-  const passo    = passoAtual(estado)
+  const mapa  = getMapaById(estado.mapaId)
+  const passo = passoAtual(estado)
+
   const seq      = estado.sequencia ?? []
   const bansA    = seq.filter(s => s.acao === 'ban'  && s.time === 'A').length || 3
   const bansB    = seq.filter(s => s.acao === 'ban'  && s.time === 'B').length || 3
@@ -138,44 +155,72 @@ export default function HeroDraftEspectador() {
       <div className="hde-bg-grid" />
       <div className="hde-glow hde-glow--a" style={{ background: estado.timeA.cor }} />
       <div className="hde-glow hde-glow--b" style={{ background: estado.timeB.cor }} />
+      {mapa?.splashUrl && (
+        <div
+          className={`hde-mapa-bg${mapaVis ? ' hde-mapa-bg--vis' : ''}`}
+          style={{ backgroundImage: `url(${mapa.splashUrl})` }}
+        />
+      )}
 
-      {/* ── Header: nomes + bans ──────────────────────────────────────────── */}
+      {/* ── Header ────────────────────────────────────────────────────────── */}
       <header className="hde-header">
 
-        <div className={`hde-tside hde-tside--a${isRunning && passo?.time === 'A' ? ' hde-tside--ativo' : ''}`}>
-          <div className="hde-tnome" style={{ color: estado.timeA.cor }}>
-            {estado.timeA.nome}
-          </div>
-          <div className="hde-bans-strip hde-bans-strip--a">
+        {/* Time A: bans na borda, nome aponta para o centro */}
+        <div className={`hde-team hde-team--a${isRunning && passo?.time === 'A' ? ' hde-team--ativo' : ''}`}>
+          <div className="hde-bans-strip">
             {Array.from({ length: bansA }, (_, i) => (
               <HexSlot key={i} heroiId={estado.timeA.bans[i] ?? null} cor={estado.timeA.cor} ban />
             ))}
           </div>
+          <span className="hde-tnome" style={{ color: estado.timeA.cor }}>
+            {estado.timeA.nome}
+          </span>
         </div>
 
+        {/* Centro: mapa + timer circular + dots de fases */}
         <div className="hde-header-mid">
-          {estado.status === STATUS_DRAFT.AGUARDANDO && (
-            <span className="hde-badge hde-badge--wait">EM BREVE</span>
-          )}
-          {isRunning && passo && (
-            <span className={`hde-badge hde-badge--${passo.acao}`}>
-              {passo.acao === ACOES.BAN ? 'BAN' : 'PICK'}
-            </span>
-          )}
-          {estado.status === STATUS_DRAFT.ENCERRADO && (
-            <span className="hde-badge hde-badge--wait">ENCERRADO</span>
-          )}
+          <div className="hde-mapa-nome">{mapa?.nome ?? 'HEROES OF THE STORM'}</div>
+          <div className="hde-timer-row">
+
+            {/* Fases concluídas — mais recente mais perto do timer */}
+            <div className="hde-fases hde-fases--esq">
+              {seq.slice(0, estado.passoAtual).map((p, i) => (
+                <FaseDot key={i} passo={p} corA={estado.timeA.cor} corB={estado.timeB.cor} completado />
+              ))}
+            </div>
+
+            {/* Timer circular */}
+            <div className={[
+              'hde-timer-circulo',
+              timerUrgente && isRunning ? 'hde-timer-circulo--urgente' : '',
+              !isRunning ? 'hde-timer-circulo--inativo' : '',
+            ].filter(Boolean).join(' ')}>
+              {isRunning
+                ? tempoRestante
+                : estado.status === STATUS_DRAFT.AGUARDANDO ? '⚔' : '✓'}
+            </div>
+
+            {/* Fases restantes — próxima mais perto do timer */}
+            <div className="hde-fases hde-fases--dir">
+              {seq.slice(estado.passoAtual).map((p, i) => (
+                <FaseDot key={i} passo={p} corA={estado.timeA.cor} corB={estado.timeB.cor}
+                  ativo={i === 0 && isRunning} />
+              ))}
+            </div>
+
+          </div>
         </div>
 
-        <div className={`hde-tside hde-tside--b${isRunning && passo?.time === 'B' ? ' hde-tside--ativo' : ''}`}>
-          <div className="hde-tnome" style={{ color: estado.timeB.cor }}>
-            {estado.timeB.nome}
-          </div>
-          <div className="hde-bans-strip hde-bans-strip--b">
+        {/* Time B: bans fluindo para o centro + nome */}
+        <div className={`hde-team hde-team--b${isRunning && passo?.time === 'B' ? ' hde-team--ativo' : ''}`}>
+          <div className="hde-bans-strip hde-bans-strip--rev">
             {Array.from({ length: bansB }, (_, i) => (
               <HexSlot key={i} heroiId={estado.timeB.bans[i] ?? null} cor={estado.timeB.cor} ban />
             ))}
           </div>
+          <span className="hde-tnome" style={{ color: estado.timeB.cor }}>
+            {estado.timeB.nome}
+          </span>
         </div>
 
       </header>
@@ -200,15 +245,6 @@ export default function HeroDraftEspectador() {
                 style={{ color: passo.time === 'A' ? estado.timeA.cor : estado.timeB.cor }}
               >
                 {passo.time === 'A' ? estado.timeA.nome : estado.timeB.nome}
-              </div>
-
-              {/* Contagem regressiva */}
-              <div className={`hde-centro-timer${timerUrgente ? ' hde-centro-timer--urgente' : ''}`}>
-                {tempoRestante}
-              </div>
-
-              <div className="hde-centro-prog">
-                {estado.passoAtual + 1} / {estado.sequencia.length}
               </div>
             </>
           ) : estado.status === STATUS_DRAFT.AGUARDANDO ? (
@@ -236,6 +272,24 @@ export default function HeroDraftEspectador() {
       )}
 
     </div>
+  )
+}
+
+// ── Dot de fase (indicador de progresso do draft) ──────────────────────────────
+
+function FaseDot({ passo, corA, corB, completado = false, ativo = false }) {
+  const cor   = passo.time === 'A' ? corA : corB
+  const isBan = passo.acao === ACOES.BAN
+  return (
+    <div
+      className={[
+        'hde-fase-dot',
+        isBan      ? 'hde-fase-dot--ban'        : '',
+        completado ? 'hde-fase-dot--completado'  : '',
+        ativo      ? 'hde-fase-dot--ativo'        : '',
+      ].filter(Boolean).join(' ')}
+      style={{ '--c': cor }}
+    />
   )
 }
 

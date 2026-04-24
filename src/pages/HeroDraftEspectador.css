@@ -1,6 +1,14 @@
+/* Trava o scroll da página quando o espectador está ativo */
+html:has(.hde-root),
+body:has(.hde-root) {
+  overflow: hidden;
+  height: 100%;
+}
+
 /* ── Root ────────────────────────────────────────────────────────────────── */
 .hde-root {
-  min-height: 100vh;
+  flex: 1;
+  min-height: 0;
   background: radial-gradient(ellipse at center, #12183a 0%, #080c20 55%, #050612 100%);
   color: var(--text);
   font-family: 'Barlow', sans-serif;
@@ -9,6 +17,16 @@
   padding: 0;
   position: relative;
   overflow: hidden;
+
+  /*
+   * Tamanho dos hexes derivado da altura do viewport.
+   * Fórmula: 5 hexes + 4 gaps (8px) devem caber na altura disponível
+   * após navbar (~62px), header (~85px) e padding do stage (~56px).
+   * clamp garante min legível e max original (139px).
+   */
+  --hex-h:       clamp(80px, calc(19svh - 40px), 139px);
+  --hex-w:       calc(var(--hex-h) * 120 / 139);
+  --hex-stagger: calc(var(--hex-h) * 50  / 139);
 }
 
 .hde-loading {
@@ -34,6 +52,26 @@
   z-index: 0;
 }
 
+/* ── Splash art do mapa (background pulsante) ───────────────────────────── */
+.hde-mapa-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background-size: cover;
+  background-position: center;
+  opacity: 0;
+  transition: opacity 2.5s ease;
+  pointer-events: none;
+  /* Vinheta nas bordas para não brigar com os hexes */
+  -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 50%, black 30%, transparent 100%);
+  mask-image:         radial-gradient(ellipse 80% 70% at 50% 50%, black 30%, transparent 100%);
+}
+
+.hde-mapa-bg--vis {
+  opacity: 0.14;
+  transition: opacity 2s ease;
+}
+
 /* ── Glows de cor dos times ──────────────────────────────────────────────── */
 .hde-glow {
   position: absolute;
@@ -52,94 +90,167 @@
 /* ── Header ──────────────────────────────────────────────────────────────── */
 .hde-header {
   position: relative;
-  z-index: 400; /* acima do overlay de anúncio (300) */
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: start;
-  gap: 1rem;
-  padding: 1rem 2rem 0.75rem;
-}
-
-/* ── Team sides no header ────────────────────────────────────────────────── */
-.hde-tside {
+  z-index: 400;
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.6rem 1.5rem;
 }
 
-.hde-tside--b {
-  align-items: flex-end;
+/* ── Blocos de time (nome + bans) ────────────────────────────────────────── */
+.hde-team {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-shrink: 0;
+  transition: filter 0.3s;
+}
+
+.hde-team--b {
+  flex-direction: row-reverse;
+}
+
+.hde-team--ativo .hde-tnome {
+  text-shadow: 0 0 16px currentColor;
 }
 
 .hde-tnome {
   font-family: 'Rajdhani', sans-serif;
-  font-size: 1.7rem;
+  font-size: 1.5rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   line-height: 1;
   transition: text-shadow 0.4s;
-}
-
-.hde-tside--ativo .hde-tnome {
-  text-shadow: 0 0 18px currentColor;
-}
-
-/* ── Bans no header ──────────────────────────────────────────────────────── */
-.hde-bans-strip {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.hde-bans-strip--b {
-  flex-direction: row-reverse;
-}
-
-/* ── Badge de status ─────────────────────────────────────────────────────── */
-.hde-header-mid {
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding-top: 0.25rem;
-}
-
-.hde-badge {
-  font-family: 'Rajdhani', sans-serif;
-  font-size: 0.95rem;
-  font-weight: 700;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  padding: 0.3rem 1rem;
-  border-radius: 4px;
   white-space: nowrap;
 }
 
-.hde-badge--wait {
-  background: rgba(255,255,255,0.05);
-  color: var(--text2);
-  border: 1px solid var(--border2);
+/* ── Bans strip ──────────────────────────────────────────────────────────── */
+.hde-bans-strip {
+  display: flex;
+  gap: 5px;
 }
 
-.hde-badge--ban {
-  background: rgba(224,85,85,0.16);
+.hde-bans-strip--rev {
+  flex-direction: row-reverse;
+}
+
+/* ── Centro: mapa + timer + fases ────────────────────────────────────────── */
+.hde-header-mid {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.hde-mapa-nome {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.38);
+}
+
+.hde-timer-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  justify-content: center;
+}
+
+/* ── Dots de fase ────────────────────────────────────────────────────────── */
+.hde-fases {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.hde-fases--esq {
+  justify-content: flex-end;  /* mais recente mais perto do timer */
+}
+
+.hde-fases--dir {
+  justify-content: flex-start; /* próxima mais perto do timer */
+}
+
+.hde-fase-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1.5px solid var(--c, #fff);
+  background: transparent;
+  opacity: 0.35;
+  flex-shrink: 0;
+  transition: opacity 0.25s, transform 0.25s;
+}
+
+/* Ban: quadrado rotacionado + X */
+.hde-fase-dot--ban {
+  border-radius: 2px;
+  transform: rotate(45deg) scale(0.82);
+  position: relative;
+}
+
+/* Concluído: preenchido e levemente opaco */
+.hde-fase-dot--completado {
+  background: var(--c);
+  opacity: 0.28;
+}
+
+/* Ativo (fase atual): destaque */
+.hde-fase-dot--ativo {
+  background: var(--c);
+  opacity: 1;
+  transform: scale(1.45);
+  box-shadow: 0 0 7px var(--c);
+}
+
+.hde-fase-dot--ban.hde-fase-dot--ativo {
+  transform: rotate(45deg) scale(1.2);
+}
+
+/* ── Timer circular ──────────────────────────────────────────────────────── */
+.hde-timer-circulo {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  border: 2px solid rgba(160,120,255,0.55);
+  background: rgba(8,4,24,0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.65rem;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+  transition: border-color 0.3s, color 0.3s;
+}
+
+.hde-timer-circulo--urgente {
+  border-color: var(--red);
   color: var(--red);
-  border: 1px solid rgba(224,85,85,0.4);
+  animation: hde-timer-pulse 0.6s ease infinite alternate;
 }
 
-.hde-badge--pick {
-  background: rgba(76,175,125,0.16);
-  color: var(--green);
-  border: 1px solid rgba(76,175,125,0.4);
+.hde-timer-circulo--inativo {
+  font-size: 1.3rem;
+  color: rgba(255,255,255,0.35);
+  border-color: rgba(255,255,255,0.12);
 }
 
 /* ── Stage: grid 3 colunas ───────────────────────────────────────────────── */
-/*  Largura de coluna = hex (120px) + stagger (50px) = 170px                 */
 .hde-stage {
   position: relative;
-  z-index: 400; /* acima do overlay de anúncio (300) — stage fica visível sobre o vídeo */
+  z-index: 400;
   display: grid;
-  grid-template-columns: 170px 1fr 170px;
+  grid-template-columns: calc(var(--hex-w) + var(--hex-stagger)) 1fr calc(var(--hex-w) + var(--hex-stagger));
   align-items: center;
   flex: 1;
   padding: 1.5rem 2rem 2rem;
@@ -156,7 +267,7 @@
 
 /* Honeycomb: alterna os hexes pares para a direita (Time A) */
 .hde-col--a > .hde-hex:nth-child(even) {
-  margin-left: 50px;
+  margin-left: var(--hex-stagger);
 }
 
 /* Honeycomb: alterna os hexes pares para a esquerda (Time B, espelhado) */
@@ -165,7 +276,7 @@
 }
 
 .hde-col--b > .hde-hex:nth-child(even) {
-  margin-right: 50px;
+  margin-right: var(--hex-stagger);
 }
 
 /* ── Hex slot: técnica double-div para borda colorida ────────────────────── */
@@ -174,10 +285,10 @@
   flex-shrink: 0;
 }
 
-/* Grande: picks */
+/* Grande: picks — tamanho derivado de --hex-h/--hex-w definidos no root */
 .hde-hex--l {
-  width: 120px;
-  height: 139px;
+  width: var(--hex-w);
+  height: var(--hex-h);
 }
 
 /* Pequeno: bans */
@@ -297,30 +408,9 @@
   font-weight: 600;
 }
 
-.hde-centro-timer {
-  font-family: 'Rajdhani', sans-serif;
-  font-size: 3rem;
-  font-weight: 700;
-  color: var(--text2);
-  line-height: 1;
-  transition: color 0.3s;
-  letter-spacing: -0.02em;
-}
-
-.hde-centro-timer--urgente {
-  color: var(--red);
-  animation: hde-timer-pulse 0.6s ease infinite alternate;
-}
-
 @keyframes hde-timer-pulse {
   from { opacity: 1; }
   to   { opacity: 0.5; }
-}
-
-.hde-centro-prog {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 0.78rem;
-  color: var(--text2);
 }
 
 .hde-centro-emblema {

@@ -69,12 +69,13 @@ export function expandirSequencia(sequencia) {
 
 // ── Estado inicial do draft ──────────────────────────────────────────────────
 
-export function criarEstadoInicial({ timeA, timeB, sequencia = SEQUENCIA_PADRAO, globalBans = [] }) {
+export function criarEstadoInicial({ timeA, timeB, sequencia = SEQUENCIA_PADRAO, globalBans = [], mapaId = null }) {
   return {
     status:     STATUS_DRAFT.AGUARDANDO,
     sequencia:  expandirSequencia(sequencia),
     passoAtual: 0,
     globalBans,
+    mapaId,
     timeA: {
       nome:  timeA.nome,
       cor:   timeA.cor   ?? '#4a9eda',
@@ -154,8 +155,14 @@ export function executarAcao(estado, heroiId) {
     timestamp: Date.now(),
   })
 
-  novoEstado.passoAtual      += 1
-  novoEstado.turnoIniciadoEm  = Date.now()
+  novoEstado.passoAtual += 1
+
+  // Só reseta o timer ao trocar de grupo (time ou tipo de ação diferente)
+  const nextPasso = novoEstado.sequencia[novoEstado.passoAtual]
+  const grupoContínua = nextPasso && nextPasso.time === passo.time && nextPasso.acao === passo.acao
+  if (!grupoContínua) {
+    novoEstado.turnoIniciadoEm = Date.now()
+  }
 
   if (novoEstado.passoAtual >= novoEstado.sequencia.length) {
     novoEstado.status = STATUS_DRAFT.ENCERRADO

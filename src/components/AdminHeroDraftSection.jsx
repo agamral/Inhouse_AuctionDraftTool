@@ -4,6 +4,7 @@ import { db } from '../firebase/database'
 import { useHeroDraft } from '../hooks/useHeroDraft'
 import { HEROES } from '../utils/heroPool'
 import { criarEstadoInicial, expandirSequencia, SEQUENCIA_PADRAO } from '../utils/heroDraft'
+import { MAPAS } from '../utils/mapPool'
 
 // ── Sequências predefinidas por nº de bans por time ─────────────────────────
 
@@ -46,14 +47,17 @@ const inputStyle = {
 
 export default function AdminHeroDraftSection() {
   const [sessoes, setSessoes]           = useState({})
+  const [times, setTimes]               = useState({})
   const [sessaoId, setSessaoId]         = useState('')
   const [mostraCriar, setMostraCriar]   = useState(false)
   const [feedback, setFeedback]         = useState(null)
-  const [confirmAcao, setConfirmAcao]   = useState(null) // 'encerrar' | 'deletar' | 'resetar'
+  const [confirmAcao, setConfirmAcao]   = useState(null)
 
   const [form, setForm] = useState({
-    novoId: '', nomeA: '', corA: '#4a9eda', nomeB: '', corB: '#e05555',
-    globalBans: [], bansPerTeam: 3,
+    novoId: '', modoTimes: 'manual',
+    nomeA: '', corA: '#4a9eda', timeAId: '',
+    nomeB: '', corB: '#e05555', timeBId: '',
+    globalBans: [], bansPerTeam: 3, mapaId: '',
   })
   const [buscaBan, setBuscaBan] = useState('')
   const [salvando, setSalvando] = useState(false)
@@ -61,8 +65,23 @@ export default function AdminHeroDraftSection() {
   const { estado, loading, iniciar, encerrar, desfazer } =
     useHeroDraft(sessaoId || '__none__', 'admin')
 
+  useEffect(() => onValue(ref(db, '/heroDraft'), snap => setSessoes(snap.val() ?? {})), [])
+
+  // Listener com retry automático caso o read falhe por regras desatualizadas
   useEffect(() => {
-    return onValue(ref(db, '/heroDraft'), (snap) => setSessoes(snap.val() ?? {}))
+    let unsub = null
+    let retryId = null
+
+    const conectar = () => {
+      unsub = onValue(
+        ref(db, '/teams'),
+        snap => { setTimes(snap.val() ?? {}); retryId && clearTimeout(retryId) },
+        () => { retryId = setTimeout(conectar, 3000) }, // retry em 3s se negar
+      )
+    }
+
+    conectar()
+    return () => { unsub?.(); retryId && clearTimeout(retryId) }
   }, [])
 
   // ── feedback ───────────────────────────────────────────────────────────────
@@ -75,25 +94,41 @@ export default function AdminHeroDraftSection() {
   // ── criar sessão ──────────────────────────────────────────────────────────
 
   async function handleCriar() {
-    const { novoId, nomeA, corA, nomeB, corB, globalBans, bansPerTeam } = form
+    const { novoId, modoTimes, nomeA, corA, nomeB, corB, timeAId, timeBId, globalBans, bansPerTeam, mapaId } = form
+
     if (!novoId.trim()) return flash('erro', 'Informe um ID para a sessão.')
-    if (!nomeA.trim())  return flash('erro', 'Informe o nome do Time A.')
-    if (!nomeB.trim())  return flash('erro', 'Informe o nome do Time B.')
     if (sessoes[novoId.trim()]) return flash('erro', `Já existe uma sessão "${novoId}".`)
+
+    // Resolve nome/cor de acordo com o modo
+    let resolvedNomeA = nomeA, resolvedCorA = corA
+    let resolvedNomeB = nomeB, resolvedCorB = corB
+
+    if (modoTimes === 'campeonato') {
+      const tA = times[timeAId], tB = times[timeBId]
+      if (!tA) return flash('erro', 'Selecione o Time A.')
+      if (!tB) return flash('erro', 'Selecione o Time B.')
+      if (timeAId === timeBId) return flash('erro', 'Os dois times precisam ser diferentes.')
+      resolvedNomeA = tA.nome; resolvedCorA = tA.cor
+      resolvedNomeB = tB.nome; resolvedCorB = tB.cor
+    } else {
+      if (!nomeA.trim()) return flash('erro', 'Informe o nome do Time A.')
+      if (!nomeB.trim()) return flash('erro', 'Informe o nome do Time B.')
+    }
 
     setSalvando(true)
     try {
       const sequencia = SEQUENCIAS[bansPerTeam] ?? SEQUENCIA_PADRAO
       const estadoInicial = criarEstadoInicial({
-        timeA: { nome: nomeA.trim(), cor: corA },
-        timeB: { nome: nomeB.trim(), cor: corB },
+        timeA: { nome: resolvedNomeA.trim(), cor: resolvedCorA },
+        timeB: { nome: resolvedNomeB.trim(), cor: resolvedCorB },
         sequencia,
         globalBans,
+        mapaId: mapaId || null,
       })
       await set(ref(db, `/heroDraft/${novoId.trim()}`), estadoInicial)
       setSessaoId(novoId.trim())
       setMostraCriar(false)
-      setForm({ novoId: '', nomeA: '', corA: '#4a9eda', nomeB: '', corB: '#e05555', globalBans: [], bansPerTeam: 3 })
+      setForm({ novoId: '', modoTimes: 'manual', nomeA: '', corA: '#4a9eda', timeAId: '', nomeB: '', corB: '#e05555', timeBId: '', globalBans: [], bansPerTeam: 3, mapaId: '' })
       setBuscaBan('')
       flash('ok', `Sessão "${novoId.trim()}" criada.`)
     } catch (e) {
@@ -237,26 +272,95 @@ export default function AdminHeroDraftSection() {
               />
             </div>
 
-            {/* Times */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <div>
-                <FieldLabel label="Time A" />
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <input value={form.nomeA} onChange={e => setForm(f => ({ ...f, nomeA: e.target.value }))}
-                    placeholder="Team Alpha" style={{ ...inputStyle, flex: 1 }} />
-                  <input type="color" value={form.corA} onChange={e => setForm(f => ({ ...f, corA: e.target.value }))}
-                    style={{ width: 38, height: 36, border: 'none', borderRadius: 4, cursor: 'pointer', background: 'none', flexShrink: 0 }} />
-                </div>
+            {/* Times — toggle modo */}
+            <div>
+              <FieldLabel label="Times" />
+              <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                {[['manual', 'Criar times'], ['campeonato', 'Usar times do campeonato']].map(([v, l]) => (
+                  <button
+                    key={v}
+                    onClick={() => setForm(f => ({ ...f, modoTimes: v, timeAId: '', timeBId: '' }))}
+                    style={{
+                      padding: '6px 16px', borderRadius: 6, fontSize: 13, cursor: 'pointer',
+                      fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700,
+                      border: `1px solid ${form.modoTimes === v ? 'var(--blue)' : 'var(--border2)'}`,
+                      background: form.modoTimes === v ? 'rgba(56,168,255,0.12)' : 'var(--bg2)',
+                      color: form.modoTimes === v ? 'var(--blue)' : 'var(--text2)',
+                    }}
+                  >
+                    {l}
+                  </button>
+                ))}
               </div>
-              <div>
-                <FieldLabel label="Time B" />
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <input value={form.nomeB} onChange={e => setForm(f => ({ ...f, nomeB: e.target.value }))}
-                    placeholder="Team Bravo" style={{ ...inputStyle, flex: 1 }} />
-                  <input type="color" value={form.corB} onChange={e => setForm(f => ({ ...f, corB: e.target.value }))}
-                    style={{ width: 38, height: 36, border: 'none', borderRadius: 4, cursor: 'pointer', background: 'none', flexShrink: 0 }} />
+
+              {form.modoTimes === 'manual' ? (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div>
+                    <FieldLabel label="Time A" />
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <input value={form.nomeA} onChange={e => setForm(f => ({ ...f, nomeA: e.target.value }))}
+                        placeholder="Team Alpha" style={{ ...inputStyle, flex: 1 }} />
+                      <input type="color" value={form.corA} onChange={e => setForm(f => ({ ...f, corA: e.target.value }))}
+                        style={{ width: 38, height: 36, border: 'none', borderRadius: 4, cursor: 'pointer', background: 'none', flexShrink: 0 }} />
+                    </div>
+                  </div>
+                  <div>
+                    <FieldLabel label="Time B" />
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <input value={form.nomeB} onChange={e => setForm(f => ({ ...f, nomeB: e.target.value }))}
+                        placeholder="Team Bravo" style={{ ...inputStyle, flex: 1 }} />
+                      <input type="color" value={form.corB} onChange={e => setForm(f => ({ ...f, corB: e.target.value }))}
+                        style={{ width: 38, height: 36, border: 'none', borderRadius: 4, cursor: 'pointer', background: 'none', flexShrink: 0 }} />
+                    </div>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                /* Modo campeonato: dois dropdowns com preview */
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  {[['A', 'timeAId'], ['B', 'timeBId']].map(([lado, key]) => {
+                    const timesArr = Object.entries(times)
+                    const selecionado = times[form[key]]
+                    return (
+                      <div key={lado}>
+                        <FieldLabel label={`Time ${lado}`} />
+                        <select
+                          value={form[key]}
+                          onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+                          style={{
+                            ...inputStyle,
+                            color: selecionado ? selecionado.cor : 'var(--text2)',
+                            borderColor: selecionado ? selecionado.cor + '66' : 'var(--border2)',
+                          }}
+                        >
+                          <option value="">— selecionar time —</option>
+                          {timesArr.map(([id, t]) => (
+                            <option key={id} value={id}>{t.nome}</option>
+                          ))}
+                        </select>
+                        {selecionado && (
+                          <div style={{ marginTop: 6, fontSize: 11, color: 'var(--text2)',
+                            fontFamily: "'Barlow Condensed', sans-serif" }}>
+                            {selecionado.jogadores?.length ?? 0} jogadores
+                            {selecionado.jogadores?.slice(0, 3).map((j, i) => (
+                              <span key={i} style={{ marginLeft: 6, color: selecionado.cor }}>
+                                {j.nome}
+                              </span>
+                            ))}
+                            {(selecionado.jogadores?.length ?? 0) > 3 && (
+                              <span style={{ marginLeft: 4 }}>+{selecionado.jogadores.length - 3}</span>
+                            )}
+                          </div>
+                        )}
+                        {timesArr.length === 0 && (
+                          <p style={{ fontSize: 11, color: 'var(--red)', marginTop: 4 }}>
+                            Nenhum time cadastrado. Crie times na seção <strong>Times</strong>.
+                          </p>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
 
             {/* Bans por time */}
@@ -276,6 +380,55 @@ export default function AdminHeroDraftSection() {
                     }}
                   >
                     {n === 0 ? 'Sem bans' : `${n} por time`}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Mapa */}
+            <div>
+              <FieldLabel label="Mapa" hint="opcional" />
+              <div style={{
+                display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))',
+                gap: 6, maxHeight: 200, overflowY: 'auto',
+                padding: 8, background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 6,
+              }}>
+                <button
+                  onClick={() => setForm(f => ({ ...f, mapaId: '' }))}
+                  style={{
+                    padding: '6px 8px', borderRadius: 4, cursor: 'pointer', fontSize: 12,
+                    fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600,
+                    border: `1px solid ${!form.mapaId ? 'var(--blue)' : 'var(--border)'}`,
+                    background: !form.mapaId ? 'rgba(56,168,255,0.12)' : 'var(--bg3)',
+                    color: !form.mapaId ? 'var(--blue)' : 'var(--text2)',
+                  }}
+                >
+                  — Sem mapa
+                </button>
+                {MAPAS.map(m => (
+                  <button
+                    key={m.id}
+                    onClick={() => setForm(f => ({ ...f, mapaId: m.id }))}
+                    style={{
+                      padding: 0, borderRadius: 4, cursor: 'pointer', overflow: 'hidden',
+                      border: `1px solid ${form.mapaId === m.id ? 'var(--gold)' : 'var(--border)'}`,
+                      background: 'var(--bg3)', position: 'relative',
+                      boxShadow: form.mapaId === m.id ? '0 0 8px rgba(201,168,76,0.4)' : 'none',
+                    }}
+                  >
+                    <img
+                      src={m.splashUrl} alt={m.nome}
+                      onError={e => { e.target.style.display = 'none' }}
+                      style={{ width: '100%', height: 50, objectFit: 'cover', display: 'block' }}
+                    />
+                    <div style={{
+                      padding: '4px 6px', fontSize: 10, textAlign: 'center',
+                      fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700,
+                      color: form.mapaId === m.id ? 'var(--gold)' : 'var(--text2)',
+                      lineHeight: 1.2,
+                    }}>
+                      {m.nome}
+                    </div>
                   </button>
                 ))}
               </div>

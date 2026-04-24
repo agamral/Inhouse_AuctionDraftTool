@@ -1,12 +1,20 @@
+/* Trava o scroll da página inteira quando o draft está ativo */
+html:has(.hd-root),
+body:has(.hd-root) {
+  overflow: hidden;
+  height: 100%;
+}
+
 /* ── Layout raiz ─────────────────────────────────────────────────────────── */
 .hd-root {
-  min-height: 100vh;
+  flex: 1;
+  min-height: 0;
   background: var(--bg);
   color: var(--text);
   font-family: 'Barlow', sans-serif;
   display: flex;
   flex-direction: column;
-  gap: 0;
+  overflow: hidden;
 }
 
 .hd-loading,
@@ -24,7 +32,31 @@
 .hd-header {
   background: var(--bg2);
   border-bottom: 1px solid var(--border2);
-  padding: 1.5rem 2rem 1rem;
+  padding: 0.85rem 2rem 0.75rem;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Splash do mapa como fundo sutil do header */
+.hd-header::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: var(--mapa-splash);
+  background-size: cover;
+  background-position: center 30%;
+  opacity: 0.08;
+  pointer-events: none;
+}
+
+.hd-turn-mapa {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text2);
+  opacity: 0.7;
 }
 
 .hd-times {
@@ -140,8 +172,8 @@
   background: var(--bg3);
   border: 1px solid var(--border2);
   border-radius: 8px;
-  padding: 1rem 0.75rem;
-  min-height: 120px;
+  padding: 0.75rem;
+  min-height: 90px;
 }
 
 .hd-turn-acao {
@@ -159,6 +191,25 @@
   font-size: 1rem;
   font-weight: 600;
   color: var(--text);
+}
+
+.hd-turn-timer {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text2);
+  line-height: 1;
+  transition: color 0.3s;
+}
+
+.hd-turn-timer--urgente {
+  color: var(--red);
+  animation: hd-timer-pulse 0.6s ease infinite alternate;
+}
+
+@keyframes hd-timer-pulse {
+  from { opacity: 1; }
+  to   { opacity: 0.45; }
 }
 
 .hd-turn-progresso {
@@ -196,7 +247,9 @@
 /* ── Pool de heróis ──────────────────────────────────────────────────────── */
 .hd-pool {
   flex: 1;
-  padding: 1.25rem 2rem;
+  min-height: 0;       /* permite que o flex child encolha */
+  overflow-y: auto;    /* grid rola aqui, não na página */
+  padding: 1rem 2rem 1.25rem;
   max-width: 1400px;
   margin: 0 auto;
   width: 100%;
