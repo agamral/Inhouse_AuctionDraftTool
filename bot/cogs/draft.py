@@ -21,7 +21,11 @@ def hex_to_int(color: str) -> int:
 # ── Helpers Firebase ──────────────────────────────────────────────────────────
 
 def save_config(guild_id: int, key: str, value):
-    db.reference(f"/botConfig/{guild_id}/{key}").set(value)
+    ref = db.reference(f"/botConfig/{guild_id}/{key}")
+    if value is None:
+        ref.delete()
+    else:
+        ref.set(value)
 
 def load_config(guild_id: int, key: str):
     return db.reference(f"/botConfig/{guild_id}/{key}").get()
