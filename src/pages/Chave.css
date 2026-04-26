@@ -1,0 +1,236 @@
+/* ── Root — sem usar .page para não limitar a 1200px ─────────────────────── */
+.chave-root {
+  max-width: 1500px;
+  margin: 0 auto;
+  padding: 48px 32px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Wrapper com scroll horizontal se o bracket não couber na tela */
+.chave-secao-bracket-wrap {
+  overflow-x: auto;
+  padding-bottom: 12px;
+}
+
+.chave-vazio {
+  text-align: center;
+  padding: 3rem;
+  color: var(--text2);
+  font-size: 14px;
+  background: var(--bg2);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  line-height: 1.8;
+}
+
+/* ── Seções ──────────────────────────────────────────────────────────────── */
+.chave-secao { margin-bottom: 3rem; }
+
+.chave-secao-titulo {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  margin-bottom: 1.5rem;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border2);
+}
+
+.chave-secao-titulo--upper { color: var(--blue);  border-color: rgba(74,158,218,0.3); }
+.chave-secao-titulo--lower { color: var(--red);   border-color: rgba(224,85,85,0.3);  }
+.chave-secao-titulo--final { color: var(--gold);  border-color: rgba(201,168,76,0.4); }
+
+/* ── Bracket side ────────────────────────────────────────────────────────── */
+.bracket-side {
+  display: inline-block; /* cresce para acomodar o conteúdo */
+}
+
+/* ── Label de coluna (round) ─────────────────────────────────────────────── */
+.bracket-col-label {
+  position: absolute;
+  top: 0;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text3);
+  text-align: center;
+  height: 20px;
+  line-height: 20px;
+}
+
+/* ── Match Card ──────────────────────────────────────────────────────────── */
+.match-card {
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: 7px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: border-color 0.15s;
+}
+
+.match-card:hover { border-color: rgba(255,255,255,0.18); }
+
+.match-card--realizado { border-color: var(--border); }
+
+.match-card--destaque {
+  border-color: var(--gold);
+  box-shadow: 0 0 18px rgba(201,168,76,0.18);
+}
+
+.match-card--destaque:hover { border-color: var(--gold2); }
+
+.match-card-sep {
+  height: 1px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+.match-card-slot {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--blue);
+  text-align: center;
+  padding: 2px 8px;
+  background: rgba(74,158,218,0.07);
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+/* ── Team Slot ────────────────────────────────────────────────────────────── */
+.team-slot {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 10px;
+  flex: 1;
+  min-height: 0;
+  transition: background 0.12s;
+}
+
+.team-slot--vazio   { opacity: 0.35; }
+.team-slot--venceu  { background: rgba(255,255,255,0.035); }
+.team-slot--perdeu  { opacity: 0.4; }
+
+.team-slot-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.team-slot-nome {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text);
+  letter-spacing: 0.01em;
+}
+
+.team-slot-placar {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text2);
+  min-width: 16px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.team-slot-placar--venceu { color: var(--green); }
+
+/* ── Fase Regular ─────────────────────────────────────────────────────────── */
+.chave-regular {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.chave-rodada {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  border-left: 3px solid var(--border2);
+}
+
+.chave-rodada-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text2);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.chave-rodada-data {
+  font-weight: 400;
+  color: var(--text3);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 10px;
+}
+
+.chave-rodada-matches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chave-rodada-matches .match-card {
+  width: 220px;
+}
+
+.match-card--small .team-slot {
+  padding: 6px 10px;
+}
+
+/* ── Fase Classificatória ─────────────────────────────────────────────────── */
+.chave-classif-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.chave-classif-grid .match-card {
+  width: 220px;
+}
+
+.chave-classif-hint {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--text3);
+}
+
+/* ── Grande Final ─────────────────────────────────────────────────────────── */
+.chave-grande-final {
+  display: flex;
+  justify-content: center;
+}
+
+.chave-grande-final .match-card {
+  width: 280px;
+}
+
+.chave-grande-final .team-slot-nome { font-size: 15px; }
+.chave-grande-final .team-slot-placar { font-size: 16px; }

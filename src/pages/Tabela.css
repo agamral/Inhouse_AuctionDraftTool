@@ -1,0 +1,249 @@
+/* ── Filtros de rodada ────────────────────────────────────────────────────── */
+.tab-filtros {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+
+.tab-filtro-btn {
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: 5px;
+  padding: 5px 14px;
+  color: var(--text2);
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.tab-filtro-btn:hover    { border-color: var(--gold); color: var(--text); }
+.tab-filtro-btn.ativo    { background: var(--gold-dim); border-color: var(--gold); color: var(--gold); }
+
+/* ── Tabela ───────────────────────────────────────────────────────────────── */
+.tab-wrapper {
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid var(--border2);
+  margin-bottom: 2.5rem;
+}
+
+.tab-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Barlow Condensed', sans-serif;
+}
+
+.tab-th {
+  background: var(--bg3);
+  color: var(--text2);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 10px 12px;
+  text-align: center;
+  border-bottom: 1px solid var(--border2);
+  white-space: nowrap;
+}
+
+.tab-th--time  { text-align: left; padding-left: 16px; }
+.tab-th--pts   { color: var(--gold); }
+.tab-th--forma { text-align: left; }
+
+.tab-tr {
+  border-bottom: 1px solid var(--border);
+  transition: background 0.12s;
+}
+
+.tab-tr:last-child     { border-bottom: none; }
+.tab-tr:hover          { background: rgba(255,255,255,0.03); }
+.tab-tr--gold          { background: rgba(201,168,76,0.05); }
+.tab-tr--gold:hover    { background: rgba(201,168,76,0.09); }
+.tab-tr--silver        { background: rgba(180,180,190,0.03); }
+.tab-tr--bronze        { background: rgba(180,100,60,0.03); }
+
+.tab-td {
+  padding: 11px 12px;
+  font-size: 14px;
+  color: var(--text2);
+  text-align: center;
+  vertical-align: middle;
+}
+
+.tab-td--time  { text-align: left; padding-left: 16px; }
+.tab-td--pts   { font-size: 16px; color: var(--gold); text-align: center; }
+.tab-td--v     { color: var(--green); }
+.tab-td--d     { color: var(--red); }
+.tab-td--forma { text-align: left; }
+.tab-td--num   { font-size: 14px; font-weight: 600; }
+
+/* ── Posição ──────────────────────────────────────────────────────────────── */
+.tab-pos {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--bg3);
+  color: var(--text2);
+  border: 1px solid var(--border);
+}
+
+.tab-pos--gold   { background: rgba(201,168,76,0.18); border-color: var(--gold);   color: var(--gold2); }
+.tab-pos--silver { background: rgba(180,180,190,0.12); border-color: #aaa;          color: #ccc; }
+.tab-pos--bronze { background: rgba(180,100,60,0.12);  border-color: #b46040;       color: #c87850; }
+
+/* ── Time na tabela ───────────────────────────────────────────────────────── */
+.tab-time-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+.tab-time-nome {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+/* ── Indicador de forma ───────────────────────────────────────────────────── */
+.tab-forma {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+}
+
+.tab-forma-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.tab-forma-dot--v { background: var(--green); }
+.tab-forma-dot--d { background: var(--red); }
+.tab-forma-dot--e { background: var(--gold-dim); border: 1px solid var(--gold); }
+
+/* ── Vazio ────────────────────────────────────────────────────────────────── */
+.tab-vazio {
+  text-align: center;
+  padding: 3rem;
+  color: var(--text2);
+  font-family: 'Barlow', sans-serif;
+  font-size: 14px;
+  background: var(--bg2);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  margin-bottom: 2rem;
+}
+
+/* ── Partidas ─────────────────────────────────────────────────────────────── */
+.tab-partidas-titulo {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text2);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 0.75rem;
+}
+
+.tab-partidas-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tab-partida {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 1rem;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 10px 16px;
+  transition: border-color 0.15s;
+}
+
+.tab-partida--realizada {
+  border-color: var(--border2);
+}
+
+.tab-partida-time {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.tab-partida-time--b {
+  justify-content: flex-end;
+  text-align: right;
+}
+
+.tab-partida-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.tab-partida-centro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 90px;
+}
+
+.tab-partida-placar {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tab-partida-sep {
+  color: var(--text3);
+  font-size: 1rem;
+}
+
+.tab-partida-slot {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--blue);
+  letter-spacing: 0.04em;
+}
+
+.tab-partida-tipo {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 10px;
+  color: var(--text3);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.tab-partida-obs {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 10px;
+  color: var(--gold);
+  letter-spacing: 0.04em;
+}

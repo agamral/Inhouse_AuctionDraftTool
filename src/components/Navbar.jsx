@@ -13,7 +13,7 @@ const LANGUAGES = [
 
 export default function Navbar() {
   const { t, i18n } = useTranslation()
-  const { user, isAdmin } = useAuth()
+  const { user, isAdmin, capitao } = useAuth()
   const modules = useModules()
   const navigate = useNavigate()
 
@@ -36,25 +36,67 @@ export default function Navbar() {
         <NavLink to="/" end className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
           {t('nav.home')}
         </NavLink>
-        <NavLink to="/inscritos" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-          {t('nav.inscritos')}
-        </NavLink>
-        <NavLink to="/resultados" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-          {t('nav.resultados')}
-        </NavLink>
+        {/* Inscritos — só capitães e admins */}
+        {(isAdmin || capitao) && (
+          <NavLink to="/inscritos" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+            {t('nav.inscritos')}
+          </NavLink>
+        )}
+
+        {/* Leilão — renomeado, só durante a fase de leilão */}
+        {modules.draftAtivo && (isAdmin || capitao) && (
+          <NavLink to="/draft" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+            {t('nav.leilao')}
+          </NavLink>
+        )}
+
+        {/* Inscrição — quando aberta */}
         {modules.inscricaoAberta && (
           <NavLink to="/inscricao" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
             {t('nav.inscricao')}
           </NavLink>
         )}
+
+        {/* Resultado do leilão — visível quando campeonato ativo */}
+        {(modules.campeonatoAtivo || isAdmin) && (
+          <NavLink to="/resultados" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+            {t('nav.resultados')}
+          </NavLink>
+        )}
+
+        {/* Campeonato — elenco, tabela, chave, agendamento */}
+        {(modules.campeonatoAtivo || isAdmin) && (
+          <NavLink to="/elenco" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+            {t('nav.elenco')}
+          </NavLink>
+        )}
+        {(modules.campeonatoAtivo || isAdmin) && (
+          <NavLink to="/tabela" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+            {t('nav.tabela')}
+          </NavLink>
+        )}
+        {(modules.campeonatoAtivo || isAdmin) && (
+          <NavLink to="/chave" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+            {t('nav.chave')}
+          </NavLink>
+        )}
+        {(modules.campeonatoAtivo || isAdmin || capitao) && (
+          <NavLink to="/agendamento" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+            {t('nav.agenda')}
+          </NavLink>
+        )}
+
+        {/* Espectador do leilão */}
         {modules.espectadorAtivo && (
           <NavLink to="/espectador" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
             {t('nav.espectador')}
           </NavLink>
         )}
-        {modules.draftAtivo && (
-          <NavLink to="/draft" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-            {t('nav.draft')}
+
+        {/* Hero Draft — quando ativo */}
+        {(modules.heroDraftAtivo || isAdmin) && (
+          <NavLink to="/hero-draft/espectador" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+            {t('nav.heroDraft')}
           </NavLink>
         )}
       </nav>
@@ -84,9 +126,21 @@ export default function Navbar() {
               }
             </button>
           </div>
+        ) : capitao ? (
+          /* Capitão logado */
+          <div className="navbar-admin-area">
+            <span style={{ fontSize: 12, color: capitao.cor ?? 'var(--blue)', fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700 }}>
+              {capitao.nome}
+            </span>
+            <button className="navbar-avatar" onClick={handleLogout} title={`Sair (${user?.email})`}
+              style={{ background: `${capitao.cor ?? 'var(--blue)'}22`, borderColor: capitao.cor ?? 'var(--blue)' }}>
+              <span style={{ color: capitao.cor ?? 'var(--blue)' }}>⚔</span>
+            </button>
+          </div>
         ) : (
-          <NavLink to="/login" className="navbar-login-btn" title="Acesso admin">
-            🔒
+          /* Visitante — link discreto para login capitão */
+          <NavLink to="/login-capitao" className="navbar-login-btn" title="Área do Capitão">
+            ⚔
           </NavLink>
         )}
       </div>

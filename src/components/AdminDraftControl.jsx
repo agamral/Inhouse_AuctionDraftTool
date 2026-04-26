@@ -51,17 +51,17 @@ export default function AdminDraftControl({ draftConfig }) {
       turnoExtra: null,
       rodada:     1,
     })
-    flash('Draft iniciado!')
+    flash('Leilão iniciado!')
   }
 
   async function encerrarDraft() {
     await update(ref(db, '/draftSession/state'), { status: 'encerrado' })
-    flash('Draft encerrado.')
+    flash('Leilão encerrado.')
   }
 
   async function retomar() {
     await update(ref(db, '/draftSession/state'), { status: 'rodando' })
-    flash('Draft retomado.')
+    flash('Leilão retomado.')
   }
 
   async function avancarTurno() {
@@ -72,7 +72,7 @@ export default function AdminDraftControl({ draftConfig }) {
     const next = proximoCom(sortedCaptains, captains, currentId, currentSize, maxPlayers)
     if (!next) {
       await update(ref(db, '/draftSession/state'), { status: 'encerrado' })
-      flash('Todos os times estão completos. Draft encerrado.')
+      flash('Todos os times estão completos. Leilão encerrado.')
       return
     }
     const updates = {
@@ -95,7 +95,7 @@ export default function AdminDraftControl({ draftConfig }) {
     updates['/draftSession/state']       = DEFAULT_STATE
     await update(ref(db), updates)
     setConfirmReset(false)
-    flash('Draft resetado. Times mantidos, compras apagadas.')
+    flash('Leilão resetado. Times mantidos, compras apagadas.')
   }
 
   // ── Status display ────────────────────────────────────────
@@ -114,7 +114,7 @@ export default function AdminDraftControl({ draftConfig }) {
 
   return (
     <div className="admin-section admin-players-section" style={{ marginBottom: '28px' }}>
-      <div className="admin-section-title">Controle do Draft</div>
+      <div className="admin-section-title">Controle do Leilão</div>
 
       {/* Status geral */}
       <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
@@ -197,7 +197,7 @@ export default function AdminDraftControl({ draftConfig }) {
             disabled={!podeIniciar}
             onClick={iniciarDraft}
           >
-            ▶ Iniciar Draft
+            ▶ Iniciar Leilão
           </button>
         )}
 
@@ -207,14 +207,14 @@ export default function AdminDraftControl({ draftConfig }) {
               ⏭ Avançar Turno
             </button>
             <button className="btn" style={{ fontSize: '13px', padding: '8px 18px', color: 'var(--red)', borderColor: 'rgba(224,85,85,0.3)' }} onClick={encerrarDraft}>
-              ⏹ Encerrar Draft
+              ⏹ Encerrar Leilão
             </button>
           </>
         )}
 
         {draftState.status === 'encerrado' && (
           <button className="btn primary" style={{ fontSize: '13px', padding: '8px 18px' }} onClick={retomar}>
-            ↩ Reabrir Draft
+            ↩ Reabrir Leilão
           </button>
         )}
 
@@ -225,7 +225,7 @@ export default function AdminDraftControl({ draftConfig }) {
             style={{ fontSize: '13px', padding: '8px 18px', color: 'var(--red)', borderColor: 'rgba(224,85,85,0.3)', marginLeft: 'auto' }}
             onClick={() => setConfirmReset(true)}
           >
-            🗑 Resetar Draft
+            🗑 Resetar Leilão
           </button>
         ) : (
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>

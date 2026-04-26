@@ -9,6 +9,11 @@ import Espectador from './pages/Espectador.jsx'
 import Admin from './pages/Admin.jsx'
 import Login from './pages/Login.jsx'
 import Resultados from './pages/Resultados.jsx'
+import Tabela from './pages/Tabela.jsx'
+import Agendamento from './pages/Agendamento.jsx'
+import LoginCapitao from './pages/LoginCapitao.jsx'
+import Elenco from './pages/Elenco.jsx'
+import Chave from './pages/Chave.jsx'
 import HeroDraft from './pages/HeroDraft.jsx'
 import HeroDraftEspectador from './pages/HeroDraftEspectador.jsx'
 import HeroDraftOverlay from './pages/HeroDraftOverlay.jsx'
@@ -25,6 +30,11 @@ export default function App() {
         <Route path="/draft" element={<Draft />} />
         <Route path="/espectador" element={<Espectador />} />
         <Route path="/resultados" element={<Resultados />} />
+        <Route path="/tabela" element={<Tabela />} />
+        <Route path="/chave" element={<Chave />} />
+        <Route path="/agendamento"    element={<Agendamento />} />
+        <Route path="/login-capitao"  element={<LoginCapitao />} />
+        <Route path="/elenco"         element={<Elenco />} />
         <Route path="/login" element={<Login />} />
         <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
         <Route path="/hero-draft" element={<HeroDraft />} />

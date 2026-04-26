@@ -1,0 +1,101 @@
+.elenco-root { max-width: 1200px; }
+
+.elenco-vazio {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 2rem; text-align: center;
+  color: var(--text2); font-size: 14px;
+}
+
+.elenco-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.elenco-card {
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-top: 3px solid var(--cor);
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.elenco-card-header {
+  padding: 14px 16px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.elenco-card-nome {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--cor);
+  line-height: 1;
+}
+
+.elenco-card-wl {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.elenco-v   { color: var(--green); }
+.elenco-d   { color: var(--red);   }
+.elenco-sep { color: var(--text3); }
+
+.elenco-roster {
+  list-style: none;
+  margin: 0;
+  padding: 8px 0;
+  flex: 1;
+}
+
+.elenco-player {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 16px;
+  border-bottom: 1px solid var(--border);
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px;
+  transition: background 0.1s;
+}
+
+.elenco-player:last-child { border-bottom: none; }
+.elenco-player:hover { background: rgba(255,255,255,0.02); }
+
+.elenco-player-nome {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.elenco-captain-star {
+  color: var(--gold);
+  font-size: 11px;
+}
+
+.elenco-player-role {
+  font-size: 11px;
+  color: var(--text3);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.elenco-sem-roster {
+  padding: 16px;
+  font-size: 12px;
+  color: var(--text3);
+  text-align: center;
+  font-style: italic;
+  margin: 0;
+}

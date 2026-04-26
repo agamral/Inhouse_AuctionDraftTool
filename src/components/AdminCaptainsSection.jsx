@@ -114,7 +114,7 @@ export default function AdminCaptainsSection({ draftConfig }) {
 
   return (
     <div className="admin-section admin-players-section" style={{ marginBottom: '28px' }}>
-      <div className="admin-section-title">Capitães do Draft</div>
+      <div className="admin-section-title">Capitães do Leilão</div>
 
       {/* Status */}
       <div className="ap-stats">
@@ -131,7 +131,7 @@ export default function AdminCaptainsSection({ draftConfig }) {
         {list.length >= min && (
           <div className="ap-stat">
             <span className="ap-stat-value" style={{ color: 'var(--green)', fontSize: '14px' }}>✓ Pronto</span>
-            <span className="ap-stat-label">Para draft</span>
+            <span className="ap-stat-label">Para o leilão</span>
           </div>
         )}
       </div>

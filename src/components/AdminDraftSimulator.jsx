@@ -113,7 +113,7 @@ export default function AdminDraftSimulator() {
         const next = proximoCom(sortedCaptains, captains, actingAs, myNewSize, draftConfig.maxPlayers)
         if (!next) {
           updates[`/draftSession/state/status`] = 'encerrado'
-          addLog(`[SIM] ${myCap.nome} comprou ${player.discord} por ${preco}🪙 → draft encerrado automaticamente`, 'ok')
+          addLog(`[SIM] ${myCap.nome} comprou ${player.discord} por ${preco}🪙 → leilão encerrado automaticamente`, 'ok')
         } else {
           updates[`/draftSession/state/turnoAtual`] = next.id
           if (next.novaRodada) updates[`/draftSession/state/rodada`] = (draftState.rodada ?? 1) + 1
@@ -199,7 +199,7 @@ export default function AdminDraftSimulator() {
       >
         <span style={{ fontSize: '16px' }}>🧪</span>
         <div className="admin-section-title" style={{ margin: 0, color: 'var(--purple)', flex: 1 }}>
-          Simulador de Draft
+          Simulador do Leilão
           <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: '11px', fontWeight: 400, marginLeft: '10px', color: 'rgba(155,110,232,0.5)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
             SuperAdmin · Debug
           </span>
@@ -218,7 +218,7 @@ export default function AdminDraftSimulator() {
 
           {notRunning && (
             <div style={{ margin: '14px 18px', padding: '10px 14px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', fontFamily: "'Barlow Condensed', sans-serif", fontSize: '13px', color: 'var(--text2)', border: '1px solid var(--border)' }}>
-              ⏸ O draft precisa estar <strong>em andamento</strong> para simular ações.
+              ⏸ O leilão precisa estar <strong>em andamento</strong> para simular ações.
             </div>
           )}
 

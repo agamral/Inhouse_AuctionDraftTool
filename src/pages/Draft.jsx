@@ -12,7 +12,7 @@ const DEFAULT_CONFIG = { moedas: 15, minPlayers: 5, maxPlayers: 7 }
 
 export default function Draft() {
   const { t } = useTranslation()
-  const { isAdmin } = useAuth()
+  const { isAdmin, capitao } = useAuth()
 
   const [captainSession, setCaptainSession] = useState(() => {
     try { return JSON.parse(sessionStorage.getItem('captainSession')) } catch { return null }
@@ -46,10 +46,23 @@ export default function Draft() {
       .catch(() => {})
   }, [])
 
-  function handleLogin(session)  { setCaptainSession(session) }
-  function handleLogout() { sessionStorage.removeItem('captainSession'); setCaptainSession(null) }
+  // Se capitão está logado via Firebase Auth, identifica automaticamente no draftSession
+  useEffect(() => {
+    if (!capitao || captainSession || Object.keys(captains).length === 0) return
+    const match = Object.entries(captains).find(([, c]) => c.nome === capitao.nome)
+    if (match) {
+      setCaptainSession({ captainId: match[0], captainName: match[1].capitaoNome, viaAuth: true })
+    }
+  }, [capitao, captains]) // eslint-disable-line
 
-  if (!captainSession && !isAdmin) return <CaptainLogin onLogin={handleLogin} />
+  function handleLogin(session)  { setCaptainSession(session) }
+  function handleLogout() {
+    sessionStorage.removeItem('captainSession')
+    setCaptainSession(null)
+  }
+
+  // Só mostra tela de PIN se não está logado via Firebase Auth nem como admin
+  if (!captainSession && !isAdmin && !capitao) return <CaptainLogin onLogin={handleLogin} />
   if (loading) return <main className="page"><p style={{ color: 'var(--text2)' }}>Carregando draft...</p></main>
 
   // ── Dados computados ──────────────────────────────────────

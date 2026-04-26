@@ -1,8 +1,95 @@
+/* ── Dashboard ─────────────────────────────────────────────────────────────── */
+.admin-dashboard { max-width: 1100px; }
+
+.admin-dash-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+
+.admin-dash-status {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  padding-top: 4px;
+}
+
+.admin-status-pill {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1px solid;
+}
+
+.admin-status-pill.on  { border-color: rgba(76,175,125,0.4); color: var(--green); background: rgba(76,175,125,0.08); }
+.admin-status-pill.off { border-color: var(--border);        color: var(--text3); background: var(--bg3); }
+
+.admin-status-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%; flex-shrink: 0;
+}
+.admin-status-pill.on  .admin-status-dot { background: var(--green); }
+.admin-status-pill.off .admin-status-dot { background: var(--text3); }
+
+/* ── Abas ──────────────────────────────────────────────────────────────────── */
+.admin-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border2);
+  margin-bottom: 1.5rem;
+}
+
+.admin-tab {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 9px 20px;
+  color: var(--text2);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+  margin-bottom: -1px;
+}
+
+.admin-tab:hover  { color: var(--text); }
+.admin-tab--ativo { color: var(--gold); border-bottom-color: var(--gold); }
+
+/* Conteúdo da aba — largura máxima consistente e espaçamento uniforme */
+.admin-tab-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 960px;
+}
+
+/* Todos os admin-section dentro de uma aba herdam largura total */
+.admin-tab-content .admin-section {
+  max-width: 100% !important;
+  margin-bottom: 0 !important;
+  box-sizing: border-box;
+}
+
+/* ── Grid ──────────────────────────────────────────────────────────────────── */
 .admin-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 24px;
-  max-width: 900px;
+  gap: 20px;
 }
 
 .admin-section {
