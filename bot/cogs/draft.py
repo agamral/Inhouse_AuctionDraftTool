@@ -232,8 +232,9 @@ class DraftCog(commands.Cog):
         if cargo:
             overwrites[interaction.guild.default_role] = discord.PermissionOverwrite(view_channel=False)
             overwrites[cargo] = discord.PermissionOverwrite(view_channel=True, read_message_history=True)
+        # Cria o canal sem overwrites (só precisa de Gerenciar Canais)
         try:
-            return await interaction.guild.create_text_channel(nome, overwrites=overwrites)
+            canal = await interaction.guild.create_text_channel(nome)
         except Exception as e:
             print(f"Erro ao criar canal '{nome}': {type(e).__name__}: {e}")
             await interaction.followup.send(
@@ -241,6 +242,22 @@ class DraftCog(commands.Cog):
                 ephemeral=True,
             )
             return None
+
+        # Tenta aplicar restrição de cargo (precisa de Gerenciar Cargos)
+        if cargo:
+            try:
+                await canal.set_permissions(interaction.guild.default_role, view_channel=False)
+                await canal.set_permissions(cargo, view_channel=True, read_message_history=True)
+                await canal.set_permissions(interaction.guild.me, view_channel=True, send_messages=True)
+            except discord.Forbidden:
+                await interaction.followup.send(
+                    f"⚠️ Canal {canal.mention} criado, mas não consegui restringir ao cargo "
+                    f"**{cargo.name}** (bot precisa da permissão **Gerenciar Cargos**). "
+                    "Ajuste as permissões do canal manualmente.",
+                    ephemeral=True,
+                )
+
+        return canal
 
     # ── /setup-leilao ─────────────────────────────────────────────────────────
     @app_commands.command(
