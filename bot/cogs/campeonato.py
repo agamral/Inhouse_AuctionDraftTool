@@ -354,9 +354,10 @@ class CampeonatoCog(commands.Cog):
 
         try:
             return await interaction.guild.create_text_channel(nome, overwrites=overwrites)
-        except discord.Forbidden:
+        except Exception as e:
+            print(f"Erro ao criar canal '{nome}': {type(e).__name__}: {e}")
             await interaction.followup.send(
-                "❌ Sem permissão para criar canais. Crie o canal manualmente e rode o comando nele.",
+                f"❌ Não foi possível criar o canal.\n`{type(e).__name__}: {e}`",
                 ephemeral=True,
             )
             return None
