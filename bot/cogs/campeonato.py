@@ -335,6 +335,32 @@ class CampeonatoCog(commands.Cog):
             msg = await ch.send(embed=embed)
             save_config(int(gid_str), "tabela_msg_id", msg.id)
 
+    # ── Helper: criar ou usar canal existente ────────────────────────────────
+
+    async def _criar_canal(
+        self,
+        interaction: discord.Interaction,
+        nome: str,
+        cargo: discord.Role | None,
+    ) -> discord.TextChannel | None:
+        overwrites = {
+            interaction.guild.me: discord.PermissionOverwrite(
+                view_channel=True, send_messages=True, manage_messages=True
+            )
+        }
+        if cargo:
+            overwrites[interaction.guild.default_role] = discord.PermissionOverwrite(view_channel=False)
+            overwrites[cargo] = discord.PermissionOverwrite(view_channel=True, read_message_history=True)
+
+        try:
+            return await interaction.guild.create_text_channel(nome, overwrites=overwrites)
+        except discord.Forbidden:
+            await interaction.followup.send(
+                "❌ Sem permissão para criar canais. Crie o canal manualmente e rode o comando nele.",
+                ephemeral=True,
+            )
+            return None
+
     # ── Helper: canais por tipo ───────────────────────────────────────────────
 
     async def _channels(self, config_key: str) -> list:
@@ -355,36 +381,70 @@ class CampeonatoCog(commands.Cog):
     # ── /setup-campeonato ─────────────────────────────────────────────────────
     @app_commands.command(
         name="setup-campeonato",
-        description="Define este canal para receber resultados, empates e alertas de W.O. automaticamente",
+        description="Define o canal de notificações do campeonato (resultados, empates, W.O.)",
+    )
+    @app_commands.describe(
+        criar="Cria um canal #campeonato automaticamente",
+        cargo="Cargo que poderá ver o canal criado (opcional)",
     )
     @app_commands.checks.has_permissions(manage_channels=True)
-    async def cmd_setup_campeonato(self, interaction: discord.Interaction):
+    async def cmd_setup_campeonato(
+        self,
+        interaction: discord.Interaction,
+        criar: bool = False,
+        cargo: discord.Role | None = None,
+    ):
+        await interaction.response.defer(ephemeral=True)
         try:
-            save_config(interaction.guild_id, "canal_campeonato", interaction.channel_id)
+            if criar:
+                canal = await self._criar_canal(interaction, "campeonato", cargo)
+                if not canal:
+                    return
+            else:
+                canal = interaction.channel
+
+            save_config(interaction.guild_id, "canal_campeonato", canal.id)
             embed = discord.Embed(
                 title="✅  Canal de Campeonato configurado!",
-                description=f"{interaction.channel.mention} receberá atualizações automáticas do campeonato.",
+                description=f"{canal.mention} receberá atualizações automáticas do campeonato.",
                 color=GREEN,
             )
-            embed.add_field(name="🏆 Resultados",       value="Placares registrados pelo admin",          inline=False)
-            embed.add_field(name="📅 Partidas marcadas", value="Quando um horário for confirmado",         inline=False)
-            embed.add_field(name="⚔️ Empates",           value="Quando uma série termina 1–1 (MD3 vem aí)",inline=False)
-            embed.add_field(name="⚠️ W.O. pendente",     value="Quando ninguém marcou disponibilidade",   inline=False)
-            await interaction.response.send_message(embed=embed)
+            embed.add_field(name="🏆 Resultados",        value="Placares registrados pelo admin",           inline=False)
+            embed.add_field(name="📅 Partidas marcadas",  value="Quando um horário for confirmado",          inline=False)
+            embed.add_field(name="⚔️ Empates",            value="Quando uma série termina 1–1 (MD3 vem aí)", inline=False)
+            embed.add_field(name="⚠️ W.O. pendente",      value="Quando ninguém marcou disponibilidade",    inline=False)
+            if criar:
+                embed.add_field(name="📌 Canal criado", value=canal.mention, inline=False)
+            await interaction.followup.send(embed=embed, ephemeral=True)
         except Exception as e:
-            await interaction.response.send_message(f"❌ Erro: {e}", ephemeral=True)
+            await interaction.followup.send(f"❌ Erro: {e}", ephemeral=True)
 
     # ── /setup-tabela ─────────────────────────────────────────────────────────
     @app_commands.command(
         name="setup-tabela",
-        description="Posta a classificação neste canal e a mantém atualizada automaticamente",
+        description="Posta a classificação ao vivo e a mantém atualizada automaticamente",
+    )
+    @app_commands.describe(
+        criar="Cria um canal #tabela automaticamente",
+        cargo="Cargo que poderá ver o canal criado (opcional)",
     )
     @app_commands.checks.has_permissions(manage_channels=True)
-    async def cmd_setup_tabela(self, interaction: discord.Interaction):
-        await interaction.response.defer()
+    async def cmd_setup_tabela(
+        self,
+        interaction: discord.Interaction,
+        criar: bool = False,
+        cargo: discord.Role | None = None,
+    ):
+        await interaction.response.defer(ephemeral=True)
         try:
-            # Remove referência da mensagem anterior se existir
-            save_config(interaction.guild_id, "canal_tabela", interaction.channel_id)
+            if criar:
+                canal = await self._criar_canal(interaction, "tabela", cargo)
+                if not canal:
+                    return
+            else:
+                canal = interaction.channel
+
+            save_config(interaction.guild_id, "canal_tabela", canal.id)
             save_config(interaction.guild_id, "tabela_msg_id", None)
 
             confrontos    = db.reference("/confrontos").get() or {}
@@ -392,36 +452,53 @@ class CampeonatoCog(commands.Cog):
             classificacao = calcular_classificacao(confrontos, teams)
             embed         = build_tabela_embed(classificacao)
 
-            msg = await interaction.channel.send(embed=embed)
+            msg = await canal.send(embed=embed)
             save_config(interaction.guild_id, "tabela_msg_id", msg.id)
 
-            await interaction.followup.send(
-                "✅ Tabela ao vivo postada! Ela será editada automaticamente a cada resultado registrado.",
-                ephemeral=True,
-            )
+            resp = f"✅ Tabela ao vivo postada em {canal.mention}! Será editada automaticamente a cada resultado."
+            await interaction.followup.send(resp, ephemeral=True)
         except Exception as e:
             await interaction.followup.send(f"❌ Erro: {e}", ephemeral=True)
 
     # ── /setup-agenda ─────────────────────────────────────────────────────────
     @app_commands.command(
         name="setup-agenda",
-        description="Define este canal para receber avisos quando uma partida tiver horário confirmado",
+        description="Define o canal de partidas confirmadas (horários acordados pelos times)",
+    )
+    @app_commands.describe(
+        criar="Cria um canal #agenda automaticamente",
+        cargo="Cargo que poderá ver o canal criado (opcional)",
     )
     @app_commands.checks.has_permissions(manage_channels=True)
-    async def cmd_setup_agenda(self, interaction: discord.Interaction):
+    async def cmd_setup_agenda(
+        self,
+        interaction: discord.Interaction,
+        criar: bool = False,
+        cargo: discord.Role | None = None,
+    ):
+        await interaction.response.defer(ephemeral=True)
         try:
-            save_config(interaction.guild_id, "canal_agenda", interaction.channel_id)
+            if criar:
+                canal = await self._criar_canal(interaction, "agenda", cargo)
+                if not canal:
+                    return
+            else:
+                canal = interaction.channel
+
+            save_config(interaction.guild_id, "canal_agenda", canal.id)
             embed = discord.Embed(
                 title="✅  Canal de Agenda configurado!",
                 description=(
-                    f"{interaction.channel.mention} receberá um aviso cada vez que "
+                    f"{canal.mention} receberá um aviso cada vez que "
                     "dois times confirmarem um horário para jogar."
                 ),
                 color=BLUE,
             )
-            await interaction.response.send_message(embed=embed)
+            if criar:
+                embed.add_field(name="📌 Canal criado", value=canal.mention, inline=False)
+            await interaction.followup.send(embed=embed, ephemeral=True)
         except Exception as e:
-            await interaction.response.send_message(f"❌ Erro: {e}", ephemeral=True)
+            await interaction.followup.send(f"❌ Erro: {e}", ephemeral=True)
 
     # ── Erro de permissão para todos os /setup-* ──────────────────────────────
     @cmd_setup_campeonato.error

@@ -216,28 +216,72 @@ class DraftCog(commands.Cog):
         for ch in channels:
             await ch.send(embed=embed)
 
+    # ── Helper: criar ou usar canal existente ─────────────────────────────────
+
+    async def _criar_canal(
+        self,
+        interaction: discord.Interaction,
+        nome: str,
+        cargo: discord.Role | None,
+    ) -> discord.TextChannel | None:
+        overwrites = {
+            interaction.guild.me: discord.PermissionOverwrite(
+                view_channel=True, send_messages=True, manage_messages=True
+            )
+        }
+        if cargo:
+            overwrites[interaction.guild.default_role] = discord.PermissionOverwrite(view_channel=False)
+            overwrites[cargo] = discord.PermissionOverwrite(view_channel=True, read_message_history=True)
+        try:
+            return await interaction.guild.create_text_channel(nome, overwrites=overwrites)
+        except discord.Forbidden:
+            await interaction.followup.send(
+                "❌ Sem permissão para criar canais. Crie o canal manualmente e rode o comando nele.",
+                ephemeral=True,
+            )
+            return None
+
     # ── /setup-leilao ─────────────────────────────────────────────────────────
     @app_commands.command(
         name="setup-leilao",
-        description="Define este canal para receber notificações automáticas do leilão de times",
+        description="Define o canal de notificações do leilão (compras, roubos, início, fim)",
+    )
+    @app_commands.describe(
+        criar="Cria um canal #leilao automaticamente",
+        cargo="Cargo que poderá ver o canal criado (opcional)",
     )
     @app_commands.checks.has_permissions(manage_channels=True)
-    async def cmd_setup_leilao(self, interaction: discord.Interaction):
+    async def cmd_setup_leilao(
+        self,
+        interaction: discord.Interaction,
+        criar: bool = False,
+        cargo: discord.Role | None = None,
+    ):
+        await interaction.response.defer(ephemeral=True)
         try:
-            save_config(interaction.guild_id, "canal_leilao", interaction.channel_id)
+            if criar:
+                canal = await self._criar_canal(interaction, "leilao", cargo)
+                if not canal:
+                    return
+            else:
+                canal = interaction.channel
+
+            save_config(interaction.guild_id, "canal_leilao", canal.id)
             embed = discord.Embed(
                 title="✅  Canal de Leilão configurado!",
-                description=f"{interaction.channel.mention} receberá todas as notificações do leilão.",
+                description=f"{canal.mention} receberá todas as notificações do leilão.",
                 color=GOLD,
             )
-            embed.add_field(name="✅ Compras",     value="Quando um capitão compra um jogador",    inline=False)
-            embed.add_field(name="⚔️ Roubos",      value="Notificação de roubo com reembolso",     inline=False)
-            embed.add_field(name="🚀 Início",       value="Quando o leilão começa",                inline=False)
-            embed.add_field(name="🏁 Encerramento", value="Times formados com roster completo",    inline=False)
+            embed.add_field(name="✅ Compras",      value="Quando um capitão compra um jogador", inline=False)
+            embed.add_field(name="⚔️ Roubos",       value="Notificação de roubo com reembolso",  inline=False)
+            embed.add_field(name="🚀 Início",        value="Quando o leilão começa",              inline=False)
+            embed.add_field(name="🏁 Encerramento",  value="Times formados com roster completo",  inline=False)
+            if criar:
+                embed.add_field(name="📌 Canal criado", value=canal.mention, inline=False)
             embed.set_footer(text="Use /status para verificar a conexão.")
-            await interaction.response.send_message(embed=embed)
+            await interaction.followup.send(embed=embed, ephemeral=True)
         except Exception as e:
-            await interaction.response.send_message(f"❌ Erro: {e}", ephemeral=True)
+            await interaction.followup.send(f"❌ Erro: {e}", ephemeral=True)
 
     @cmd_setup_leilao.error
     async def cmd_setup_leilao_error(self, interaction: discord.Interaction, error):
