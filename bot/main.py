@@ -40,6 +40,7 @@ async def on_ready():
 async def main():
     async with bot:
         await bot.load_extension("cogs.draft")
+        await bot.load_extension("cogs.campeonato")
         await bot.start(TOKEN)
 
 
