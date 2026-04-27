@@ -37,6 +37,24 @@ async def on_ready():
         print(f"Erro ao sincronizar comandos: {e}")
 
 
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def diag(ctx):
+    me = ctx.guild.me
+    perms = me.guild_permissions
+    top = me.top_role
+    lines = [
+        f"**manage_roles:**    `{perms.manage_roles}`",
+        f"**manage_channels:** `{perms.manage_channels}`",
+        f"**administrator:**   `{perms.administrator}`",
+        f"**send_messages:**   `{perms.send_messages}`",
+        f"**view_channel:**    `{perms.view_channel}`",
+        f"**top_role:**        `{top.name}` (posição {top.position})",
+        f"**permissions int:** `{perms.value}`",
+    ]
+    await ctx.send("🔍 **Diagnóstico de permissões do bot:**\n" + "\n".join(lines))
+
+
 async def main():
     async with bot:
         await bot.load_extension("cogs.draft")

@@ -343,7 +343,6 @@ class CampeonatoCog(commands.Cog):
         nome: str,
         cargo: discord.Role | None,
     ) -> discord.TextChannel | None:
-        # Cria o canal sem overwrites (só precisa de Gerenciar Canais)
         try:
             canal = await interaction.guild.create_text_channel(nome)
         except Exception as e:
@@ -354,19 +353,13 @@ class CampeonatoCog(commands.Cog):
             )
             return None
 
-        # Tenta aplicar restrição de cargo (precisa de Gerenciar Cargos)
         if cargo:
-            try:
-                await canal.set_permissions(interaction.guild.default_role, view_channel=False)
-                await canal.set_permissions(cargo, view_channel=True, read_message_history=True)
-                await canal.set_permissions(interaction.guild.me, view_channel=True, send_messages=True)
-            except discord.Forbidden:
-                await interaction.followup.send(
-                    f"⚠️ Canal {canal.mention} criado, mas não consegui restringir ao cargo "
-                    f"**{cargo.name}** (bot precisa da permissão **Gerenciar Cargos**). "
-                    "Ajuste as permissões do canal manualmente.",
-                    ephemeral=True,
-                )
+            await interaction.followup.send(
+                f"ℹ️ Canal {canal.mention} criado. Para restringir ao cargo **{cargo.name}**: "
+                f"clique com o botão direito em {canal.mention} → **Editar canal** → "
+                f"**Permissões** → adicione o cargo e desative **Ver Canal** para `@everyone`.",
+                ephemeral=True,
+            )
 
         return canal
 
