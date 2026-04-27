@@ -243,12 +243,24 @@ class DraftCog(commands.Cog):
             return None
 
         if cargo:
-            await interaction.followup.send(
-                f"ℹ️ Canal {canal.mention} criado. Para restringir ao cargo **{cargo.name}**: "
-                f"clique com o botão direito em {canal.mention} → **Editar canal** → "
-                f"**Permissões** → adicione o cargo e desative **Ver Canal** para `@everyone`.",
-                ephemeral=True,
-            )
+            try:
+                overwrites = {
+                    interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
+                    cargo: discord.PermissionOverwrite(view_channel=True, read_message_history=True),
+                }
+                await canal.edit(overwrites=overwrites)
+                print(f"Permissões aplicadas em #{nome} para cargo '{cargo.name}'")
+            except Exception as e:
+                status = getattr(e, 'status', '?')
+                code   = getattr(e, 'code', '?')
+                text   = getattr(e, 'text', '')
+                print(f"Falha ao aplicar permissões em #{nome}: {type(e).__name__} status={status} code={code} text={text}")
+                await interaction.followup.send(
+                    f"⚠️ Canal {canal.mention} criado, mas não consegui aplicar as permissões "
+                    f"(`{type(e).__name__} {status}/{code}`).\n"
+                    f"Restrinja manualmente: botão direito no canal → **Editar canal** → **Permissões**.",
+                    ephemeral=True,
+                )
 
         return canal
 
