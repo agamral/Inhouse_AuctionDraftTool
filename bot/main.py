@@ -30,22 +30,23 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 @bot.event
 async def on_ready():
     print(f"Bot online: {bot.user} (ID: {bot.user.id}) — {len(bot.guilds)} servidor(es)")
-    # Sync em cada guild atual para disponibilidade imediata
-    total = 0
     for guild in bot.guilds:
         try:
             bot.tree.copy_global_to(guild=guild)
             synced = await bot.tree.sync(guild=guild)
-            total += len(synced)
             print(f"  Sincronizado em '{guild.name}': {len(synced)} comandos")
         except Exception as e:
             print(f"  Erro ao sincronizar em '{guild.name}': {e}")
-    # Sync global para novos servidores que adicionarem o bot depois
+
+
+@bot.event
+async def on_guild_join(guild: discord.Guild):
     try:
-        await bot.tree.sync()
+        bot.tree.copy_global_to(guild=guild)
+        await bot.tree.sync(guild=guild)
+        print(f"Novo servidor '{guild.name}' — comandos sincronizados.")
     except Exception as e:
-        print(f"Erro no sync global: {e}")
-    print(f"Sync concluído — {total} comando(s) em {len(bot.guilds)} servidor(es)")
+        print(f"Erro ao sincronizar em novo servidor '{guild.name}': {e}")
 
 
 @bot.command()
