@@ -548,7 +548,7 @@ class CampeonatoCog(commands.Cog):
 
     # ── /setup ────────────────────────────────────────────────────────────────
     @app_commands.command(
-        name="setup",
+        name="setup-all",
         description="Cria todos os canais da Copa Inhouse de uma só vez",
     )
     @app_commands.describe(
