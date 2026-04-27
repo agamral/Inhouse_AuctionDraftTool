@@ -418,18 +418,25 @@ class CampeonatoCog(commands.Cog):
                 canal = interaction.channel
 
             save_config(interaction.guild_id, "canal_campeonato", canal.id)
-            embed = discord.Embed(
-                title="✅  Canal de Campeonato configurado!",
-                description=f"{canal.mention} receberá atualizações automáticas do campeonato.",
+
+            boas_vindas = discord.Embed(
+                title="🏆  Copa Inhouse — Campeonato",
+                description=(
+                    "Este canal recebe atualizações automáticas sempre que algo acontece no campeonato. "
+                    "Não é necessário nenhum comando — tudo chega aqui sozinho."
+                ),
                 color=GREEN,
             )
-            embed.add_field(name="🏆 Resultados",        value="Placares registrados pelo admin",           inline=False)
-            embed.add_field(name="📅 Partidas marcadas",  value="Quando um horário for confirmado",          inline=False)
-            embed.add_field(name="⚔️ Empates",            value="Quando uma série termina 1–1 (MD3 vem aí)", inline=False)
-            embed.add_field(name="⚠️ W.O. pendente",      value="Quando ninguém marcou disponibilidade",    inline=False)
-            if criar:
-                embed.add_field(name="📌 Canal criado", value=canal.mention, inline=False)
-            await interaction.followup.send(embed=embed, ephemeral=True)
+            boas_vindas.add_field(name="🏆 Resultado registrado",  value="Placar de uma partida lançado pelo admin",       inline=False)
+            boas_vindas.add_field(name="📅 Partida confirmada",     value="Dois times acordaram um horário para jogar",     inline=False)
+            boas_vindas.add_field(name="⚔️ Empate — MD3 pendente", value="Série terminou 1–1, desempate será agendado",    inline=False)
+            boas_vindas.add_field(name="⚠️ W.O. pendente",          value="Nenhum time marcou disponibilidade, admin avaliará", inline=False)
+            boas_vindas.set_footer(text="Atualizações em tempo real via Firebase · Copa Inhouse Bot")
+            await canal.send(embed=boas_vindas)
+
+            await interaction.followup.send(
+                f"✅ Canal {canal.mention} configurado!", ephemeral=True
+            )
         except Exception as e:
             await interaction.followup.send(f"❌ Erro: {e}", ephemeral=True)
 
@@ -461,16 +468,28 @@ class CampeonatoCog(commands.Cog):
             save_config(interaction.guild_id, "canal_tabela", canal.id)
             save_config(interaction.guild_id, "tabela_msg_id", None)
 
+            info = discord.Embed(
+                title="📊  Copa Inhouse — Classificação ao Vivo",
+                description=(
+                    "A mensagem abaixo é editada automaticamente pelo bot a cada resultado registrado. "
+                    "Não é necessário nenhum comando."
+                ),
+                color=GOLD,
+            )
+            info.set_footer(text="Atualização automática via Firebase · Copa Inhouse Bot")
+            await canal.send(embed=info)
+
             confrontos    = db.reference("/confrontos").get() or {}
             teams         = db.reference("/teams").get() or {}
             classificacao = calcular_classificacao(confrontos, teams)
-            embed         = build_tabela_embed(classificacao)
+            tabela_embed  = build_tabela_embed(classificacao)
 
-            msg = await canal.send(embed=embed)
+            msg = await canal.send(embed=tabela_embed)
             save_config(interaction.guild_id, "tabela_msg_id", msg.id)
 
-            resp = f"✅ Tabela ao vivo postada em {canal.mention}! Será editada automaticamente a cada resultado."
-            await interaction.followup.send(resp, ephemeral=True)
+            await interaction.followup.send(
+                f"✅ Tabela ao vivo configurada em {canal.mention}!", ephemeral=True
+            )
         except Exception as e:
             await interaction.followup.send(f"❌ Erro: {e}", ephemeral=True)
 
@@ -500,24 +519,170 @@ class CampeonatoCog(commands.Cog):
                 canal = interaction.channel
 
             save_config(interaction.guild_id, "canal_agenda", canal.id)
-            embed = discord.Embed(
-                title="✅  Canal de Agenda configurado!",
+
+            boas_vindas = discord.Embed(
+                title="📅  Copa Inhouse — Agenda de Partidas",
                 description=(
-                    f"{canal.mention} receberá um aviso cada vez que "
-                    "dois times confirmarem um horário para jogar."
+                    "Sempre que dois times confirmarem um horário para jogar, "
+                    "um aviso aparecerá aqui automaticamente."
                 ),
                 color=BLUE,
             )
-            if criar:
-                embed.add_field(name="📌 Canal criado", value=canal.mention, inline=False)
-            await interaction.followup.send(embed=embed, ephemeral=True)
+            boas_vindas.add_field(
+                name="Como funciona",
+                value=(
+                    "Os capitães marcam sua disponibilidade em "
+                    "[copa.inhouse/agendamento](https://copa.inhouse/agendamento). "
+                    "Quando há horário em comum, a partida é confirmada e este canal é notificado."
+                ),
+                inline=False,
+            )
+            boas_vindas.set_footer(text="Atualizações em tempo real via Firebase · Copa Inhouse Bot")
+            await canal.send(embed=boas_vindas)
+
+            await interaction.followup.send(
+                f"✅ Canal {canal.mention} configurado!", ephemeral=True
+            )
         except Exception as e:
             await interaction.followup.send(f"❌ Erro: {e}", ephemeral=True)
+
+    # ── /setup ────────────────────────────────────────────────────────────────
+    @app_commands.command(
+        name="setup",
+        description="Cria todos os canais da Copa Inhouse de uma só vez",
+    )
+    @app_commands.describe(
+        cargo="Cargo que poderá ver os canais criados (opcional)",
+    )
+    @app_commands.checks.has_permissions(manage_channels=True)
+    async def cmd_setup_geral(
+        self,
+        interaction: discord.Interaction,
+        cargo: discord.Role | None = None,
+    ):
+        await interaction.response.defer(ephemeral=True)
+
+        criados  = []   # (emoji, nome, canal)
+        falhas   = []   # nomes que falharam
+
+        # ── Definições dos 4 canais ───────────────────────────────────────────
+        async def criar_leilao():
+            canal = await self._criar_canal(interaction, "leilao", cargo)
+            if not canal:
+                falhas.append("leilao")
+                return
+            save_config(interaction.guild_id, "canal_leilao", canal.id)
+            bv = discord.Embed(
+                title="⚔️  Copa Inhouse — Leilão de Times",
+                description="Este canal acompanha o leilão ao vivo. Tudo chega aqui automaticamente.",
+                color=GOLD,
+            )
+            bv.add_field(name="🚀 Leilão iniciado",  value="Admin abre o leilão e define o primeiro turno",           inline=False)
+            bv.add_field(name="✅ Compra",            value="Jogador, elo, função, preço pago e novo preço de mercado", inline=False)
+            bv.add_field(name="⚔️ Roubo",             value="Quem roubou, de quem, preço e reembolso ao time roubado", inline=False)
+            bv.add_field(name="🏁 Encerrado",         value="Roster completo de todos os times formados",              inline=False)
+            bv.set_footer(text="Copa Inhouse Bot · tempo real via Firebase")
+            await canal.send(embed=bv)
+            criados.append(("⚔️", "leilao", canal))
+
+        async def criar_campeonato():
+            canal = await self._criar_canal(interaction, "campeonato", cargo)
+            if not canal:
+                falhas.append("campeonato")
+                return
+            save_config(interaction.guild_id, "canal_campeonato", canal.id)
+            bv = discord.Embed(
+                title="🏆  Copa Inhouse — Campeonato",
+                description="Notificações automáticas de tudo que acontece no campeonato.",
+                color=GREEN,
+            )
+            bv.add_field(name="🏆 Resultado",         value="Placar lançado pelo admin",                   inline=False)
+            bv.add_field(name="📅 Partida confirmada", value="Dois times acordaram horário para jogar",     inline=False)
+            bv.add_field(name="⚔️ Empate — MD3",       value="Série terminou 1–1, desempate será agendado", inline=False)
+            bv.add_field(name="⚠️ W.O. pendente",      value="Nenhum time marcou disponibilidade",          inline=False)
+            bv.set_footer(text="Copa Inhouse Bot · tempo real via Firebase")
+            await canal.send(embed=bv)
+            criados.append(("🏆", "campeonato", canal))
+
+        async def criar_agenda():
+            canal = await self._criar_canal(interaction, "agenda", cargo)
+            if not canal:
+                falhas.append("agenda")
+                return
+            save_config(interaction.guild_id, "canal_agenda", canal.id)
+            bv = discord.Embed(
+                title="📅  Copa Inhouse — Agenda de Partidas",
+                description="Um aviso é postado aqui toda vez que dois times confirmam horário para jogar.",
+                color=BLUE,
+            )
+            bv.add_field(
+                name="Como funciona",
+                value="Capitães marcam disponibilidade no site. Quando há horário em comum, a partida é confirmada automaticamente.",
+                inline=False,
+            )
+            bv.set_footer(text="Copa Inhouse Bot · tempo real via Firebase")
+            await canal.send(embed=bv)
+            criados.append(("📅", "agenda", canal))
+
+        async def criar_tabela():
+            canal = await self._criar_canal(interaction, "tabela", cargo)
+            if not canal:
+                falhas.append("tabela")
+                return
+            save_config(interaction.guild_id, "canal_tabela", canal.id)
+            save_config(interaction.guild_id, "tabela_msg_id", None)
+            info = discord.Embed(
+                title="📊  Copa Inhouse — Classificação ao Vivo",
+                description="A mensagem abaixo é editada automaticamente a cada resultado registrado.",
+                color=GOLD,
+            )
+            info.set_footer(text="Copa Inhouse Bot · tempo real via Firebase")
+            await canal.send(embed=info)
+            confrontos    = db.reference("/confrontos").get() or {}
+            teams         = db.reference("/teams").get() or {}
+            classificacao = calcular_classificacao(confrontos, teams)
+            msg = await canal.send(embed=build_tabela_embed(classificacao))
+            save_config(interaction.guild_id, "tabela_msg_id", msg.id)
+            criados.append(("📊", "tabela", canal))
+
+        # ── Executa em sequência ──────────────────────────────────────────────
+        for fn in [criar_leilao, criar_campeonato, criar_agenda, criar_tabela]:
+            try:
+                await fn()
+            except Exception as e:
+                print(f"Setup geral — erro inesperado: {e}")
+
+        # ── Resumo final ──────────────────────────────────────────────────────
+        resumo = discord.Embed(
+            title="✅  Copa Inhouse configurada!",
+            description=f"{len(criados)} canal{'is' if len(criados) != 1 else ''} criado{'s' if len(criados) != 1 else ''} e prontos para uso.",
+            color=GOLD,
+        )
+        for emoji, nome, canal in criados:
+            resumo.add_field(name=f"{emoji} #{nome}", value=canal.mention, inline=True)
+
+        if falhas:
+            resumo.add_field(
+                name="⚠️ Falhas",
+                value=", ".join(f"#{f}" for f in falhas) + "\nCrie esses canais manualmente e use os comandos `/setup-*` individuais.",
+                inline=False,
+            )
+
+        if cargo:
+            resumo.add_field(
+                name="🔒 Cargo aplicado",
+                value=cargo.mention,
+                inline=False,
+            )
+
+        resumo.set_footer(text="Use /status para verificar a conexão com o Firebase.")
+        await interaction.followup.send(embed=resumo, ephemeral=True)
 
     # ── Erro de permissão para todos os /setup-* ──────────────────────────────
     @cmd_setup_campeonato.error
     @cmd_setup_tabela.error
     @cmd_setup_agenda.error
+    @cmd_setup_geral.error
     async def setup_error(self, interaction: discord.Interaction, error):
         if isinstance(error, app_commands.MissingPermissions):
             await interaction.response.send_message(

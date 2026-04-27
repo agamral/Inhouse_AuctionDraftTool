@@ -290,19 +290,25 @@ class DraftCog(commands.Cog):
                 canal = interaction.channel
 
             save_config(interaction.guild_id, "canal_leilao", canal.id)
-            embed = discord.Embed(
-                title="✅  Canal de Leilão configurado!",
-                description=f"{canal.mention} receberá todas as notificações do leilão.",
+
+            boas_vindas = discord.Embed(
+                title="⚔️  Copa Inhouse — Leilão de Times",
+                description=(
+                    "Este canal acompanha o leilão de times ao vivo. "
+                    "Todas as notificações chegam aqui automaticamente — nenhum comando necessário."
+                ),
                 color=GOLD,
             )
-            embed.add_field(name="✅ Compras",      value="Quando um capitão compra um jogador", inline=False)
-            embed.add_field(name="⚔️ Roubos",       value="Notificação de roubo com reembolso",  inline=False)
-            embed.add_field(name="🚀 Início",        value="Quando o leilão começa",              inline=False)
-            embed.add_field(name="🏁 Encerramento",  value="Times formados com roster completo",  inline=False)
-            if criar:
-                embed.add_field(name="📌 Canal criado", value=canal.mention, inline=False)
-            embed.set_footer(text="Use /status para verificar a conexão.")
-            await interaction.followup.send(embed=embed, ephemeral=True)
+            boas_vindas.add_field(name="🚀 Leilão iniciado",   value="Quando o admin abre o leilão e define o primeiro turno",        inline=False)
+            boas_vindas.add_field(name="✅ Compra",             value="Nome do jogador, elo, função, preço pago e novo preço de mercado", inline=False)
+            boas_vindas.add_field(name="⚔️ Roubo",              value="Quem roubou, de quem, preço pago e reembolso ao time roubado",  inline=False)
+            boas_vindas.add_field(name="🏁 Leilão encerrado",   value="Roster completo de todos os times formados",                   inline=False)
+            boas_vindas.set_footer(text="Atualizações em tempo real via Firebase · Copa Inhouse Bot")
+            await canal.send(embed=boas_vindas)
+
+            await interaction.followup.send(
+                f"✅ Canal {canal.mention} configurado!", ephemeral=True
+            )
         except Exception as e:
             await interaction.followup.send(f"❌ Erro: {e}", ephemeral=True)
 
