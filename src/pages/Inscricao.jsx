@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { ref, set, get } from 'firebase/database'
 import { db } from '../firebase/database'
 import { useAuth } from '../hooks/useAuth'
+import { useModules, useConteudo } from '../hooks/useConfig'
 import { loginWithGoogle } from '../firebase/auth'
 import './Inscricao.css'
 import '../styles/elo.css'
@@ -54,6 +55,8 @@ const INITIAL = {
 export default function Inscricao() {
   const { t } = useTranslation()
   const { user, loading: authLoading } = useAuth()
+  const { inscricaoAberta } = useModules()
+  const conteudo = useConteudo()
   const [form, setForm] = useState(INITIAL)
   const [errors, setErrors] = useState({})
   const [submitted, setSubmitted] = useState(false)
@@ -183,12 +186,39 @@ export default function Inscricao() {
     )
   }
 
+  if (!inscricaoAberta) {
+    return (
+      <main className="page">
+        <div className="inscricao-success">
+          <div className="inscricao-success-icon">🔒</div>
+          <h2 style={{ color: 'var(--text)' }}>Inscrições encerradas</h2>
+          <p style={{ maxWidth: 420, textAlign: 'center', fontFamily: "'Barlow', sans-serif", fontSize: 14, color: 'var(--text2)', lineHeight: 1.6, marginTop: 8 }}>
+            As inscrições para esta edição estão fechadas no momento.
+            {conteudo.proximoEvento
+              ? ` Próximo evento: ${conteudo.proximoEvento}.`
+              : ' Fique atento ao Discord para novidades sobre a próxima edição.'
+            }
+          </p>
+        </div>
+      </main>
+    )
+  }
+
   if (submitted) {
     return (
       <main className="page">
         <div className="inscricao-success">
           <div className="inscricao-success-icon">✅</div>
           <h2>{t('form.success')}</h2>
+          {conteudo.posInscricaoTexto && (
+            <p style={{
+              marginTop: 16, maxWidth: 480, textAlign: 'center',
+              fontFamily: "'Barlow', sans-serif", fontSize: 14,
+              color: 'var(--text2)', lineHeight: 1.6,
+            }}>
+              {conteudo.posInscricaoTexto}
+            </p>
+          )}
         </div>
       </main>
     )

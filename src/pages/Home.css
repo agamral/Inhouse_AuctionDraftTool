@@ -32,6 +32,24 @@
   text-shadow: 0 0 12px rgba(56, 168, 255, 0.5);
 }
 
+.home-proximo-evento {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--gold2);
+  background: rgba(201, 168, 76, 0.08);
+  border: 1px solid rgba(201, 168, 76, 0.25);
+  padding: 6px 18px;
+  border-radius: 20px;
+  margin-top: 4px;
+}
+
+.home-evento-icon { font-size: 15px; }
+
 .home-hero-title {
   font-family: 'Montserrat', sans-serif;
   font-weight: 800;

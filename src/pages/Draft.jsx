@@ -1,11 +1,13 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { ref, onValue, update, set } from 'firebase/database'
 import { db } from '../firebase/database'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../hooks/useAuth'
+import { useConteudo } from '../hooks/useConfig'
 import RoleIcon from '../components/RoleIcon'
 import EloIcon, { ELO_CONFIG } from '../components/EloIcon'
 import CaptainLogin from '../components/CaptainLogin'
+import HeroDraftAlerta from '../components/HeroDraftAlerta'
 
 const DEFAULT_STATE  = { status: 'aguardando', turnoAtual: null, turnoExtra: null, rodada: 1 }
 const DEFAULT_CONFIG = { moedas: 15, minPlayers: 5, maxPlayers: 7 }
@@ -13,6 +15,7 @@ const DEFAULT_CONFIG = { moedas: 15, minPlayers: 5, maxPlayers: 7 }
 export default function Draft() {
   const { t } = useTranslation()
   const { isAdmin, capitao } = useAuth()
+  const conteudo = useConteudo()
 
   const [captainSession, setCaptainSession] = useState(() => {
     try { return JSON.parse(sessionStorage.getItem('captainSession')) } catch { return null }
@@ -25,6 +28,9 @@ export default function Draft() {
   const [overrides,   setOverrides]   = useState({})
   const [players,     setPlayers]     = useState([])
   const [loading,     setLoading]     = useState(true)
+  const [logAcoes,    setLogAcoes]    = useState([])
+  const [guiaAberto,  setGuiaAberto]  = useState(false)
+  const lastActionTsRef = useRef(null)
 
   useEffect(() => {
     let n = 0
@@ -54,6 +60,14 @@ export default function Draft() {
       setCaptainSession({ captainId: match[0], captainName: match[1].capitaoNome, viaAuth: true })
     }
   }, [capitao, captains]) // eslint-disable-line
+
+  // Acumula log local de ações
+  useEffect(() => {
+    const action = draftState.lastAction
+    if (!action?.ts || action.ts === lastActionTsRef.current) return
+    lastActionTsRef.current = action.ts
+    setLogAcoes(prev => [action, ...prev].slice(0, 20))
+  }, [draftState.lastAction?.ts]) // eslint-disable-line
 
   function handleLogin(session)  { setCaptainSession(session) }
   function handleLogout() {
@@ -176,13 +190,29 @@ export default function Draft() {
 
   // ── Tela de espera ────────────────────────────────────────
   if (draftState.status === 'aguardando') {
+    const nTimes = sortedCaptains.length
     return (
       <div style={{ minHeight: 'calc(100vh - 65px)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '16px', padding: '24px' }}>
         <div style={{ fontSize: '48px' }}>⏳</div>
-        <h2 style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: '22px', color: 'var(--text)', margin: 0 }}>
-          Aguardando o draft iniciar
+        <h2 style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: '24px', color: 'var(--text)', margin: 0 }}>
+          Leilão ainda não iniciado
         </h2>
-        <p style={{ color: 'var(--text2)', fontSize: '14px', margin: 0 }}>O admin ainda não iniciou o draft.</p>
+        <p style={{ color: 'var(--text2)', fontSize: '14px', margin: 0, textAlign: 'center', maxWidth: 380 }}>
+          {captainSession || capitao
+            ? 'Você está logado e pronto. Aguarde o admin iniciar o leilão.'
+            : 'O admin ainda não iniciou o leilão de times.'
+          }
+        </p>
+        {nTimes > 0 && (
+          <p style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 13, color: 'var(--text3)', margin: 0 }}>
+            {nTimes} time{nTimes !== 1 ? 's' : ''} cadastrado{nTimes !== 1 ? 's' : ''} · aguardando início
+          </p>
+        )}
+        {conteudo.proximoEvento && (
+          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 13, color: 'var(--gold2)', background: 'rgba(201,168,76,0.08)', border: '1px solid rgba(201,168,76,0.25)', padding: '6px 18px', borderRadius: 20 }}>
+            📅 {conteudo.proximoEvento}
+          </div>
+        )}
         {captainSession && <SessionBadge session={captainSession} onLogout={handleLogout} />}
         {isAdmin && <AdminDraftBar draftState={draftState} sortedCaptains={sortedCaptains} captains={captains} draftConfig={draftConfig} />}
       </div>
@@ -192,12 +222,17 @@ export default function Draft() {
   // ── Draft encerrado ───────────────────────────────────────
   if (draftState.status === 'encerrado') {
     return (
-      <div style={{ minHeight: 'calc(100vh - 65px)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '16px', padding: '24px' }}>
+      <div style={{ minHeight: 'calc(100vh - 65px)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '16px', padding: '24px', maxWidth: 480, margin: '0 auto' }}>
         <div style={{ fontSize: '48px' }}>🏁</div>
         <h2 style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: '22px', color: 'var(--text)', margin: 0 }}>
-          Draft encerrado!
+          Leilão encerrado!
         </h2>
         <p style={{ color: 'var(--text2)', fontSize: '14px', margin: 0 }}>Todos os times foram formados.</p>
+        {(capitao || captainSession) && (
+          <div style={{ width: '100%', marginTop: 8 }}>
+            <HeroDraftAlerta capitao={capitao} />
+          </div>
+        )}
         {captainSession && <SessionBadge session={captainSession} onLogout={handleLogout} />}
         {isAdmin && <AdminDraftBar draftState={draftState} sortedCaptains={sortedCaptains} captains={captains} draftConfig={draftConfig} />}
       </div>
@@ -299,7 +334,26 @@ export default function Draft() {
             if (ownedPlayers.length === 0) return null
             return (
               <>
-                <SectionLabel accent="red">{t('draft.steal')} ({ownedPlayers.length})</SectionLabel>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  <SectionLabel accent="red">{t('draft.steal')} ({ownedPlayers.length})</SectionLabel>
+                  <button
+                    onClick={() => setGuiaAberto(v => !v)}
+                    style={{ background: 'none', border: '1px solid var(--border2)', borderRadius: 10, padding: '1px 8px', fontSize: 11, color: 'var(--text2)', cursor: 'pointer', fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.04em' }}
+                    title="Como funciona o roubo?"
+                  >
+                    ? regras
+                  </button>
+                </div>
+                {guiaAberto && (
+                  <div style={{ marginBottom: 12, padding: '10px 14px', borderRadius: 7, background: 'rgba(224,85,85,0.06)', border: '1px solid rgba(224,85,85,0.2)', fontFamily: "'Barlow Condensed', sans-serif", fontSize: 12, color: 'var(--text2)', lineHeight: 1.7 }}>
+                    <div style={{ color: 'var(--red)', fontWeight: 700, marginBottom: 4, fontSize: 13 }}>⚔ Como funciona o roubo</div>
+                    <div>• Custo do roubo = <strong>preço atual</strong> do jogador</div>
+                    <div>• O dono anterior recebe de volta o que pagou originalmente</div>
+                    <div>• O dono anterior ganha um <strong>turno extra</strong> imediatamente</div>
+                    <div>• A cada roubo, o preço do jogador sobe +1</div>
+                    <div>• No turno extra: pode comprar, roubar de volta ou roubar outro</div>
+                  </div>
+                )}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {ownedPlayers.map((p) => {
                     const ps       = playerState[p.id]
@@ -321,7 +375,7 @@ export default function Draft() {
         </div>
 
         {/* Coluna direita */}
-        <div style={{ borderLeft: '1px solid var(--border)', background: 'var(--bg2)', overflowY: 'auto', padding: '12px' }}>
+        <div style={{ borderLeft: '1px solid var(--border)', background: 'var(--bg2)', overflowY: 'auto', padding: '12px', display: 'flex', flexDirection: 'column', gap: 0 }}>
           <div style={{ padding: '4px 6px 12px' }}>&nbsp;</div>
           {rightTeams.map(([id, team]) => (
             <TeamCard key={id} id={id} team={team}
@@ -330,6 +384,29 @@ export default function Draft() {
               maxPlayers={draftConfig.maxPlayers}
             />
           ))}
+
+          {/* Log de ações */}
+          {logAcoes.length > 0 && (
+            <div style={{ marginTop: 16, borderTop: '1px solid var(--border)' }}>
+              <div style={{ padding: '8px 6px 6px', fontFamily: "'Barlow Condensed', sans-serif", fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)' }}>
+                Histórico
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {logAcoes.map((a, i) => (
+                  <div key={a.ts} style={{ padding: '5px 6px', borderRadius: 5, background: i === 0 ? (a.type === 'steal' ? 'rgba(224,85,85,0.06)' : 'rgba(76,175,125,0.06)') : 'transparent', opacity: i === 0 ? 1 : 0.55 + (0.45 * (1 - i / logAcoes.length)) }}>
+                    <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 11, color: a.type === 'steal' ? 'var(--red)' : 'var(--green)', fontWeight: 700 }}>
+                      {a.type === 'steal' ? '⚔' : '✓'} {a.byTeamEmoji} {a.byTeamNome}
+                    </div>
+                    <div style={{ fontFamily: "'Barlow', sans-serif", fontSize: 11, color: 'var(--text2)', marginTop: 1 }}>
+                      {a.playerDiscord}
+                      {a.type === 'steal' && a.fromTeamNome && <span style={{ opacity: 0.6 }}> ← {a.fromTeamEmoji} {a.fromTeamNome}</span>}
+                      <span style={{ float: 'right', color: 'var(--gold)', fontSize: 10 }}>🪙{a.preco}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
       </div>

@@ -38,6 +38,7 @@ class DraftCog(commands.Cog):
         self._boot_ts        = 0
         self._last_action_ts = 0
         self._last_status    = None
+        self._privacy        = False
         self._listeners      = []
 
     # ── on_ready ──────────────────────────────────────────────────────────────
@@ -50,10 +51,15 @@ class DraftCog(commands.Cog):
         try:
             la = db.reference("/draftSession/state/lastAction").listen(self._on_last_action)
             st = db.reference("/draftSession/state/status").listen(self._on_status)
-            self._listeners = [la, st]
+            pv = db.reference("/config/modules/privacidadeAtiva").listen(self._on_privacy)
+            self._listeners = [la, st, pv]
             print("DraftCog: listeners Firebase ativos.")
         except Exception as e:
             print(f"DraftCog: erro ao registrar listeners — {e}")
+
+    def _on_privacy(self, event):
+        self._privacy = bool(event.data) if event.data is not None else False
+        print(f"DraftCog: modo privacidade {'ativado' if self._privacy else 'desativado'}")
 
     # ── Firebase callbacks ────────────────────────────────────────────────────
     def _on_last_action(self, event):
@@ -104,7 +110,7 @@ class DraftCog(commands.Cog):
         team_color = hex_to_int(action.get("byTeamCor", ""))
         by_emoji   = action.get("byTeamEmoji", "")
         by_nome    = action.get("byTeamNome", "—")
-        player     = action.get("playerDiscord", "—")
+        player     = "Jogador" if self._privacy else action.get("playerDiscord", "—")
         elo        = action.get("playerElo", "—")
         role       = action.get("playerRole", "—")
         preco      = action.get("preco", 0)
@@ -115,7 +121,8 @@ class DraftCog(commands.Cog):
                 color=team_color,
             )
             embed.add_field(name="Jogador",    value=f"**{player}**",   inline=True)
-            embed.add_field(name="Elo",        value=elo,               inline=True)
+            if not self._privacy:
+                embed.add_field(name="Elo",    value=elo,               inline=True)
             embed.add_field(name="Função",     value=role,              inline=True)
             embed.add_field(name="Pago",       value=f"🪙 {preco}",     inline=True)
             embed.add_field(name="Novo preço", value=f"🪙 {preco + 1}", inline=True)
@@ -140,7 +147,8 @@ class DraftCog(commands.Cog):
                 color=team_color,
             )
             embed.add_field(name="Jogador",        value=f"**{player}**",             inline=True)
-            embed.add_field(name="Elo",            value=elo,                         inline=True)
+            if not self._privacy:
+                embed.add_field(name="Elo",        value=elo,                         inline=True)
             embed.add_field(name="Função",         value=role,                        inline=True)
             embed.add_field(name="Preço do roubo", value=f"🪙 {preco}",               inline=True)
             embed.add_field(name="Roubado de",     value=f"{from_emoji} {from_nome}", inline=True)

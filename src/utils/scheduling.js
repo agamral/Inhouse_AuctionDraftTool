@@ -32,6 +32,71 @@ export const DIA_LABEL = {
   quinta: 'Quinta-feira', sabado: 'Sábado',
 }
 
+// ── Fuso horário ─────────────────────────────────────────────────────────────
+// Todos os slots usam BRT (UTC-3) como referência do torneio
+
+export const FUSO_PADRAO = 'America/Sao_Paulo'
+
+export const FUSOS = [
+  { id: 'America/Sao_Paulo',              label: 'Brasil (BRT, UTC-3)',           abrev: 'BRT' },
+  { id: 'America/Argentina/Buenos_Aires', label: 'Argentina (ART, UTC-3)',        abrev: 'ART' },
+  { id: 'America/Santiago',               label: 'Chile (CLT, UTC-4 / -3 verão)', abrev: 'CLT' },
+  { id: 'America/Lima',                   label: 'Peru (PET, UTC-5)',             abrev: 'PET' },
+  { id: 'America/Bogota',                 label: 'Colômbia (COT, UTC-5)',         abrev: 'COT' },
+  { id: 'America/Caracas',               label: 'Venezuela (VET, UTC-4)',         abrev: 'VET' },
+  { id: 'America/Mexico_City',            label: 'México Centro (CST, UTC-6)',    abrev: 'CST' },
+  { id: 'America/New_York',               label: 'EUA Leste (EST, UTC-5)',        abrev: 'EST' },
+  { id: 'Europe/Lisbon',                  label: 'Portugal (WET, UTC+0)',         abrev: 'WET' },
+  { id: 'Europe/Madrid',                  label: 'Espanha (CET, UTC+1)',          abrev: 'CET' },
+]
+
+// Hora BRT de cada slot (referência fixa)
+const SLOT_BRT_HORA = {
+  'terca-20h': 20, 'terca-21h': 21, 'terca-22h': 22,
+  'quarta-20h': 20, 'quarta-21h': 21, 'quarta-22h': 22,
+  'quinta-20h': 20, 'quinta-21h': 21, 'quinta-22h': 22,
+  'sabado-17h': 17, 'sabado-18h': 18, 'sabado-19h': 19,
+}
+
+// Diferença em horas entre BRT (UTC-3) e um fuso IANA, considerando DST atual
+function offsetVsBRT(fusoId) {
+  if (!fusoId || fusoId === FUSO_PADRAO) return 0
+  try {
+    const agora   = new Date()
+    const toBRT   = new Date(agora.toLocaleString('en-US', { timeZone: FUSO_PADRAO }))
+    const toDest  = new Date(agora.toLocaleString('en-US', { timeZone: fusoId }))
+    return Math.round((toDest - toBRT) / (1000 * 60 * 60))
+  } catch { return 0 }
+}
+
+/**
+ * Retorna a hora local de um slot para um dado fuso.
+ * Ex: slotHoraLocal('terca-20h', 'America/Santiago') → 19
+ */
+export function slotHoraLocal(slot, fusoId) {
+  const horaBRT = SLOT_BRT_HORA[slot] ?? 0
+  const diff    = offsetVsBRT(fusoId)
+  return ((horaBRT + diff) % 24 + 24) % 24
+}
+
+/**
+ * Retorna label completo de um slot no fuso do time.
+ * Se igual ao BRT retorna o label padrão.
+ * Ex: "Terça 19h (CLT) · 20h BRT"
+ */
+export function slotLabelFuso(slot, fusoId) {
+  const diff = offsetVsBRT(fusoId)
+  if (diff === 0) return SLOT_LABEL[slot]
+
+  const fusoInfo  = FUSOS.find(f => f.id === fusoId)
+  const abrev     = fusoInfo?.abrev ?? fusoId
+  const horaLocal = slotHoraLocal(slot, fusoId)
+  const horaBRT   = SLOT_BRT_HORA[slot]
+  const dia       = DIA_LABEL[SLOT_DIA[slot]]?.split('-')[0] ?? ''
+
+  return `${dia} ${horaLocal}h (${abrev}) · ${horaBRT}h BRT`
+}
+
 // ── Enums de estado ──────────────────────────────────────────────────────────
 
 export const STATUS_CONFRONTO = {

@@ -2,15 +2,21 @@ import { useState, useEffect, useCallback } from 'react'
 import { ref, onValue, set, update } from 'firebase/database'
 import { db } from '../firebase/database'
 import { useAuth } from '../hooks/useAuth'
+import { useConteudo } from '../hooks/useConfig'
+import HeroDraftAlerta from '../components/HeroDraftAlerta'
 import {
   SLOTS, SLOT_LABEL, SLOT_DIA, DIA_LABEL,
   STATUS_CONFRONTO, STATUS_LABEL, STATUS_COR,
+  FUSO_PADRAO, FUSOS, slotLabelFuso, slotHoraLocal,
   resolverDisponibilidade, avisaBackToBack, encontrarSlotsEmComum,
 } from '../utils/scheduling'
 import './Agendamento.css'
 
 // ── Vista pública: partidas confirmadas por rodada ─────────────────────────────
 function AgendaPublica({ teams, confrontos, rodadas }) {
+  const [filtroTime, setFiltroTime] = useState('')
+
+  const teamsOrdenados = Object.entries(teams).sort(([, a], [, b]) => a.nome.localeCompare(b.nome))
   const confirmedByRodada = {}
 
   Object.entries(confrontos).forEach(([id, c]) => {
@@ -19,6 +25,7 @@ function AgendaPublica({ teams, confrontos, rodadas }) {
       c.status !== STATUS_CONFRONTO.REALIZADO &&
       c.status !== STATUS_CONFRONTO.EMPATE_PENDENTE
     ) return
+    if (filtroTime && c.timeA !== filtroTime && c.timeB !== filtroTime) return
     const rId = c.rodadaId ?? 'sem-rodada'
     if (!confirmedByRodada[rId]) confirmedByRodada[rId] = []
     confirmedByRodada[rId].push({ id, ...c })
@@ -30,16 +37,42 @@ function AgendaPublica({ teams, confrontos, rodadas }) {
   const semRodada = confirmedByRodada['sem-rodada']
   const totalConfirmados = Object.values(confirmedByRodada).reduce((s, a) => s + a.length, 0)
 
-  if (totalConfirmados === 0) {
-    return (
-      <div className="ag-aviso" style={{ marginBottom: '2rem' }}>
-        Nenhuma partida confirmada ainda. Os confrontos aparecerão aqui assim que os times acordarem os horários.
-      </div>
-    )
-  }
-
   return (
     <div className="ag-publica">
+      {/* Filtro por time */}
+      {teamsOrdenados.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
+          <span className="ag-label">Filtrar por time:</span>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <button
+              className="btn"
+              style={{ fontSize: 12, padding: '4px 12px', ...(filtroTime === '' ? { color: 'var(--gold2)', borderColor: 'rgba(201,168,76,0.5)', background: 'rgba(201,168,76,0.08)' } : {}) }}
+              onClick={() => setFiltroTime('')}
+            >
+              Todos
+            </button>
+            {teamsOrdenados.map(([id, t]) => (
+              <button
+                key={id}
+                className="btn"
+                style={{ fontSize: 12, padding: '4px 12px', ...(filtroTime === id ? { color: t.cor, borderColor: t.cor + '88', background: t.cor + '14' } : {}) }}
+                onClick={() => setFiltroTime(filtroTime === id ? '' : id)}
+              >
+                {t.nome}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {totalConfirmados === 0 && (
+        <div className="ag-aviso" style={{ marginBottom: '1rem' }}>
+          {filtroTime
+            ? `Nenhuma partida confirmada para ${teams[filtroTime]?.nome ?? 'este time'}.`
+            : 'Nenhuma partida confirmada ainda. Os confrontos aparecerão aqui assim que os times acordarem os horários.'
+          }
+        </div>
+      )}
       {rodadaEntries.map(([rId, rodada]) => {
         const confrontosRodada = confirmedByRodada[rId]
         if (!confrontosRodada?.length) return null
@@ -107,12 +140,14 @@ function PartidaCard({ c, teams }) {
 // ── Componente principal ───────────────────────────────────────────────────────
 export default function Agendamento() {
   const { user, isAdmin, capitao } = useAuth()
+  const conteudo = useConteudo()
 
   const [teams,        setTeams]    = useState({})
   const [confrontos,   setConfrs]   = useState({})
   const [dispon,       setDispon]   = useState({})
   const [rodadas,      setRodadas]  = useState({})
   const [teamSelAdmin, setTeamSelAdmin] = useState('')
+  const [fusoTeste,    setFusoTeste]    = useState('')   // só admin, sobrescreve fuso de exibição
   const [selecoes,     setSelecoes] = useState({})
   const [saving,       setSaving]   = useState(null)
   const [feedback,     setFeedback] = useState({})
@@ -220,8 +255,10 @@ export default function Agendamento() {
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
-  const teamsArr = Object.entries(teams).sort(([, a], [, b]) => a.nome.localeCompare(b.nome))
-  const meuTime  = teams[teamSel]
+  const teamsArr     = Object.entries(teams).sort(([, a], [, b]) => a.nome.localeCompare(b.nome))
+  const meuTime      = teams[teamSel]
+  // Admin pode sobrescrever o fuso de exibição para testes; capitão usa o fuso do time
+  const fusoExibicao = fusoTeste || meuTime?.fuso || FUSO_PADRAO
 
   return (
     <div className="ag-root page">
@@ -229,8 +266,20 @@ export default function Agendamento() {
       <p className="page-subtitle">Partidas confirmadas e disponibilidade por confronto</p>
 
       {/* ── Partidas confirmadas (visível a todos) ─────────────────────────── */}
+      {conteudo.prazoDisponibilidade && (
+        <div className="ag-aviso" style={{ marginBottom: '1.5rem', background: 'rgba(201,168,76,0.06)', borderColor: 'rgba(201,168,76,0.25)', color: 'var(--gold2)', textAlign: 'left' }}>
+          📅 {conteudo.prazoDisponibilidade}
+        </div>
+      )}
       <div className="ag-section-title">Partidas Confirmadas</div>
       <AgendaPublica teams={teams} confrontos={confrontos} rodadas={rodadas} />
+
+      {/* Alerta de hero draft disponível para o capitão */}
+      {capitao && (
+        <div style={{ marginBottom: '1.5rem' }}>
+          <HeroDraftAlerta capitao={capitao} />
+        </div>
+      )}
 
       {/* ── Área interativa (capitão / admin) ─────────────────────────────── */}
       {user && (isAdmin || capitao) && (
@@ -245,6 +294,11 @@ export default function Agendamento() {
               <span className="ag-team-badge" style={{ background: (meuTime?.cor ?? 'var(--blue)') + '22', borderColor: meuTime?.cor ?? 'var(--blue)', color: meuTime?.cor ?? 'var(--blue)' }}>
                 {meuTime?.nome ?? capitao.nome}
               </span>
+              {meuTime?.fuso && (
+                <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 12, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  🕐 {FUSOS.find(f => f.id === meuTime.fuso)?.label ?? meuTime.fuso}
+                </span>
+              )}
             </div>
           )}
 
@@ -269,8 +323,46 @@ export default function Agendamento() {
             </div>
           )}
 
+          {isAdmin && (
+            <div className="ag-team-sel" style={{ background: 'rgba(155,110,232,0.06)', borderColor: 'rgba(155,110,232,0.25)' }}>
+              <label className="ag-label" style={{ color: 'var(--purple)' }}>🧪 Testar fuso:</label>
+              <select
+                className="ag-select"
+                value={fusoTeste}
+                onChange={e => setFusoTeste(e.target.value)}
+              >
+                <option value="">— fuso do time (padrão) —</option>
+                {FUSOS.map(f => (
+                  <option key={f.id} value={f.id}>{f.label}</option>
+                ))}
+              </select>
+              {fusoTeste && (
+                <>
+                  <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 12, color: 'var(--purple)' }}>
+                    ativo
+                  </span>
+                  <button
+                    className="btn"
+                    style={{ fontSize: 12, padding: '4px 10px' }}
+                    onClick={() => setFusoTeste('')}
+                  >
+                    Limpar
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+
           {teamSel && confsMeuTime.length === 0 && (
-            <div className="ag-aviso">Nenhum confronto pendente para este time.</div>
+            <div className="ag-aviso" style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
+              <strong style={{ color: 'var(--text)' }}>Nenhum confronto pendente para este time.</strong>
+              <span style={{ fontSize: 13 }}>
+                {isAdmin
+                  ? 'Crie as rodadas e confrontos na aba Campeonato do painel Admin.'
+                  : 'Quando o campeonato começar e suas partidas forem agendadas, elas aparecerão aqui para você marcar sua disponibilidade.'
+                }
+              </span>
+            </div>
           )}
 
           {teamSel && confsMeuTime.map(([id, c]) => {
@@ -305,7 +397,12 @@ export default function Agendamento() {
                 {c.status === STATUS_CONFRONTO.CONFIRMADO && c.slot && (
                   <div className="ag-confirmado">
                     <span className="ag-confirmado-icon">✓</span>
-                    Partida confirmada: <strong>{SLOT_LABEL[c.slot]}</strong>
+                    Partida confirmada: <strong>{slotLabelFuso(c.slot, fusoExibicao)}</strong>
+                    {adv?.fuso && adv.fuso !== (meuTime?.fuso ?? FUSO_PADRAO) && (
+                      <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--text2)' }}>
+                        · {slotLabelFuso(c.slot, adv.fuso)} (adversário)
+                      </span>
+                    )}
                   </div>
                 )}
 
@@ -355,9 +452,14 @@ export default function Agendamento() {
                                     }}
                                     onClick={() => !ocupado && toggleSlot(id, slot)}
                                     disabled={ocupado}
-                                    title={ocupado ? 'Slot ocupado por outra partida confirmada' : backToBack ? '⚠ Back-to-back com outra partida' : SLOT_LABEL[slot]}
+                                    title={ocupado ? 'Slot ocupado por outra partida confirmada' : backToBack ? '⚠ Back-to-back com outra partida' : slotLabelFuso(slot, fusoExibicao)}
                                   >
-                                    <span className="ag-slot-hora">{slot.split('-')[1]}</span>
+                                    <span className="ag-slot-hora">
+                                      {fusoExibicao !== FUSO_PADRAO
+                                        ? `${slotHoraLocal(slot, fusoExibicao)}h`
+                                        : slot.split('-')[1]
+                                      }
+                                    </span>
                                     {backToBack && !euMarcei && <span className="ag-slot-warn">!</span>}
                                   </button>
                                 )
@@ -394,9 +496,13 @@ export default function Agendamento() {
                         {saving === id ? 'Salvando...' : 'Salvar disponibilidade'}
                       </button>
                       {meusSlots.length > 0 && (
-                        <button className="btn" style={{ fontSize: 12 }}
-                          onClick={() => setSelecoes(s => ({ ...s, [id]: [] }))}>
-                          Limpar
+                        <button
+                          className="btn"
+                          style={{ fontSize: 12, color: 'var(--red)', borderColor: 'rgba(224,85,85,0.35)' }}
+                          onClick={() => setSelecoes(s => ({ ...s, [id]: [] }))}
+                          title="Remover todos os slots selecionados"
+                        >
+                          ✕ Limpar seleção
                         </button>
                       )}
                       <button

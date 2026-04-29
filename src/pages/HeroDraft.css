@@ -244,6 +244,32 @@ body:has(.hd-root) {
   color: var(--gold2);
 }
 
+.hd-aviso--aguardando {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: rgba(155,110,232,0.08);
+  border-bottom-color: rgba(155,110,232,0.25);
+  color: var(--purple);
+}
+
+.hd-aviso-pulse {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--purple);
+  box-shadow: 0 0 0 0 rgba(155,110,232,0.6);
+  animation: hdPulse 1.5s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes hdPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(155,110,232,0.6); }
+  70%  { box-shadow: 0 0 0 10px rgba(155,110,232,0); }
+  100% { box-shadow: 0 0 0 0 rgba(155,110,232,0); }
+}
+
 /* ── Pool de heróis ──────────────────────────────────────────────────────── */
 .hd-pool {
   flex: 1;

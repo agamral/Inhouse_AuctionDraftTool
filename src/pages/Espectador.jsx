@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { ref, onValue } from 'firebase/database'
 import { db } from '../firebase/database'
 import { useTranslation } from 'react-i18next'
+import { useModules } from '../hooks/useConfig'
 import EloIcon, { ELO_CONFIG } from '../components/EloIcon'
 import RoleIcon from '../components/RoleIcon'
 import './Espectador.css'
@@ -10,6 +11,7 @@ const DEFAULT_STATE = { status: 'aguardando', turnoAtual: null, turnoExtra: null
 
 export default function Espectador() {
   const { t } = useTranslation()
+  const { privacidadeAtiva } = useModules()
 
   const [captains,    setCaptains]    = useState({})
   const [draftState,  setDraftState]  = useState(DEFAULT_STATE)
@@ -129,7 +131,7 @@ export default function Espectador() {
         {/* Left teams */}
         <div className="espectador-panel">
           {leftTeams.map(([id, team]) => (
-            <SpectatorTeam key={id} team={team} isActive={activeTurnId === id} players={players} />
+            <SpectatorTeam key={id} team={team} isActive={activeTurnId === id} players={players} privacidade={privacidadeAtiva} />
           ))}
         </div>
 
@@ -140,7 +142,7 @@ export default function Espectador() {
 
           <div className="auction-spotlight">
             {lastAction ? (
-              <SpotlightCard action={lastAction} key={lastAction.ts} />
+              <SpotlightCard action={lastAction} key={lastAction.ts} privacidade={privacidadeAtiva} />
             ) : (
               <div className="spotlight-label" style={{ marginTop: '40px' }}>
                 {t('espectador.waiting_pick')}
@@ -159,13 +161,14 @@ export default function Espectador() {
             overrides={overrides}
             playerState={playerState}
             teamCaptainNames={teamCaptainNames}
+            privacidade={privacidadeAtiva}
           />
         </div>
 
         {/* Right teams */}
         <div className="espectador-panel right">
           {rightTeams.map(([id, team]) => (
-            <SpectatorTeam key={id} team={team} isActive={activeTurnId === id} players={players} />
+            <SpectatorTeam key={id} team={team} isActive={activeTurnId === id} players={players} privacidade={privacidadeAtiva} />
           ))}
         </div>
 
@@ -220,17 +223,18 @@ function AnnounceOverlay({ action }) {
 }
 
 // ── Spotlight card (center stage) ─────────────────────────────
-function SpotlightCard({ action }) {
+function SpotlightCard({ action, privacidade }) {
   const { t }    = useTranslation()
   const isSteal  = action.type === 'steal'
   const eloColor = ELO_CONFIG[action.playerElo]?.color ?? 'rgba(255,255,255,0.45)'
+  const nomeExibido = privacidade ? 'Jogador' : action.playerDiscord
 
   return (
     <div style={{ textAlign: 'center', animation: 'spotlightIn 0.4s cubic-bezier(.2,1,.4,1)' }}>
       <div className="spotlight-action-type" style={{ color: isSteal ? 'var(--red)' : 'var(--gold)' }}>
         {isSteal ? `⚔ ${t('espectador.steal_label')}` : `✓ ${t('espectador.buy_label')}`}
       </div>
-      <div className="spotlight-name">{action.playerDiscord}</div>
+      <div className="spotlight-name">{nomeExibido}</div>
       <div className="spotlight-meta">
         <span style={{ color: eloColor }}>{action.playerElo}</span>
         <span style={{ opacity: 0.25 }}>·</span>
@@ -285,7 +289,7 @@ function TurnStrip({ sortedCaptains, activeTurnId, turnoExtra }) {
 }
 
 // ── Player pool ───────────────────────────────────────────────
-function PlayerPool({ players, overrides, playerState, teamCaptainNames }) {
+function PlayerPool({ players, overrides, playerState, teamCaptainNames, privacidade }) {
   const { t }     = useTranslation()
   const visible   = players.filter(p => !overrides[p.id]?.descartado && !teamCaptainNames.has(p.discord))
   const available = visible.filter(p => !playerState[p.id]?.ownedBy).length
@@ -296,7 +300,7 @@ function PlayerPool({ players, overrides, playerState, teamCaptainNames }) {
         {t('espectador.available')}: {available}
       </div>
       <div className="pool-chips">
-        {visible.map(p => {
+        {visible.map((p, idx) => {
           const sold    = !!playerState[p.id]?.ownedBy
           const premium = !!overrides[p.id]?.premium && !sold
           return (
@@ -304,7 +308,7 @@ function PlayerPool({ players, overrides, playerState, teamCaptainNames }) {
               key={p.id}
               className={`pool-chip${sold ? ' sold' : ''}${premium ? ' premium' : ''}`}
             >
-              {p.discord}
+              {privacidade ? `#${idx + 1}` : p.discord}
             </div>
           )
         })}
@@ -314,7 +318,7 @@ function PlayerPool({ players, overrides, playerState, teamCaptainNames }) {
 }
 
 // ── Team card ─────────────────────────────────────────────────
-function SpectatorTeam({ team, isActive, players }) {
+function SpectatorTeam({ team, isActive, players, privacidade }) {
   const { t } = useTranslation()
   const roster     = Object.entries(team.roster ?? {})
   const totalSlots = roster.length + (team.capitaoNome ? 1 : 0)
@@ -352,13 +356,14 @@ function SpectatorTeam({ team, isActive, players }) {
             <span className="spec-cap-tag">CAP</span>
           </div>
         )}
-        {roster.map(([pid, entry]) => {
+        {roster.map(([pid, entry], idx) => {
           const info     = playerByDiscord[entry.discord]
           const eloColor = ELO_CONFIG[info?.elo]?.color ?? 'rgba(255,255,255,0.4)'
+          const nomeExibido = privacidade ? `Jogador #${idx + 1}` : entry.discord
           return (
             <div key={pid} className="spec-roster-entry">
               <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {entry.discord}
+                {nomeExibido}
               </span>
               <div className="spec-roster-right">
                 {info?.elo && (

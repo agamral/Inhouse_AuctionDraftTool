@@ -150,7 +150,20 @@ export default function HeroDraft() {
 
       {/* ── Mensagem de status ───────────────────────────────────────────── */}
       {estado.status === STATUS_DRAFT.AGUARDANDO && (
-        <div className="hd-aviso">Aguardando o admin iniciar o draft...</div>
+        <div className="hd-aviso hd-aviso--aguardando">
+          <div className="hd-aviso-pulse" />
+          <div>
+            <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 18, marginBottom: 4 }}>
+              Aguardando o admin iniciar o draft
+            </div>
+            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 13, opacity: 0.65, letterSpacing: '0.04em' }}>
+              {timeLocal
+                ? `Você está jogando como Time ${timeLocal} · Fique nesta tela`
+                : 'Todos os participantes devem estar com a página aberta'
+              }
+            </div>
+          </div>
+        </div>
       )}
       {estado.status === STATUS_DRAFT.ENCERRADO && (
         <div className="hd-aviso hd-aviso--fim">Draft encerrado!</div>

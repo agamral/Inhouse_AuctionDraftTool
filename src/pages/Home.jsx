@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useConteudo } from '../hooks/useConfig'
 import './Home.css'
 
 const CARDS = [
@@ -25,16 +26,25 @@ const CARDS = [
 
 export default function Home() {
   const { t } = useTranslation()
+  const conteudo = useConteudo()
 
   return (
     <main className="home">
       <section className="home-hero">
-        <div className="home-hero-label">⚡ Season 2 · Heroes of the Storm</div>
+        <div className="home-hero-label">⚡ {conteudo.labelSeason}</div>
         <h1 className="home-hero-title">
-          Inhouse
-          <span>League</span>
+          {conteudo.cupName || 'Copa Inhouse'}
         </h1>
-        <p className="home-hero-subtitle">{t('home.subtitle')}</p>
+        {conteudo.descricaoTorneio
+          ? <p className="home-hero-subtitle">{conteudo.descricaoTorneio}</p>
+          : <p className="home-hero-subtitle">{t('home.subtitle')}</p>
+        }
+        {conteudo.proximoEvento && (
+          <div className="home-proximo-evento">
+            <span className="home-evento-icon">📅</span>
+            {conteudo.proximoEvento}
+          </div>
+        )}
       </section>
 
       <section className="home-cards">

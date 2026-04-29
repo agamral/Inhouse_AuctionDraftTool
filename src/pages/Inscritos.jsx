@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ref, onValue } from 'firebase/database'
 import { db } from '../firebase/database'
+import { useModules } from '../hooks/useConfig'
 import RoleIcon from '../components/RoleIcon'
 import EloIcon, { ELO_CONFIG } from '../components/EloIcon'
 import './Inscritos.css'
@@ -35,6 +36,7 @@ function paisFlag(pais) {
 
 export default function Inscritos() {
   const { t } = useTranslation()
+  const { privacidadeAtiva } = useModules()
   const [players,   setPlayers]   = useState([])
   const [overrides, setOverrides] = useState({})
   const [loading,   setLoading]   = useState(true)
@@ -88,9 +90,10 @@ export default function Inscritos() {
                 </tr>
               </thead>
               <tbody>
-                {players.map((p) => {
+                {players.map((p, idx) => {
                   const ov     = overrides[p.id] ?? {}
                   const eloCfg = ELO_CONFIG[p.elo] ?? {}
+                  const nomeExibido = privacidadeAtiva ? `Jogador #${idx + 1}` : p.discord
 
                   const rowClass = ov.capitao    ? 'inscrito-row inscrito-capitao'
                                  : ov.confirmado ? 'inscrito-row inscrito-confirmado'
@@ -105,8 +108,10 @@ export default function Inscritos() {
                             {ov.capitao && <span className="inscrito-cap-icon" title="Capitão escolhido">⚑</span>}
                           </span>
                           <div>
-                            <div style={{ fontWeight: 600, color: 'var(--text)' }}>{p.discord}</div>
-                            <div style={{ fontSize: '12px', color: 'var(--text2)', marginTop: '2px' }}>{p.battletag}</div>
+                            <div style={{ fontWeight: 600, color: 'var(--text)' }}>{nomeExibido}</div>
+                            {!privacidadeAtiva && (
+                              <div style={{ fontSize: '12px', color: 'var(--text2)', marginTop: '2px' }}>{p.battletag}</div>
+                            )}
                           </div>
                         </div>
                       </td>

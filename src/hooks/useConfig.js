@@ -3,9 +3,12 @@ import { ref, onValue } from 'firebase/database'
 import { db } from '../firebase/database'
 
 const DEFAULT_MODULES = {
-  inscricaoAberta: false,
-  draftAtivo: false,
-  espectadorAtivo: false,
+  inscricaoAberta:  false,
+  draftAtivo:       false,
+  espectadorAtivo:  false,
+  campeonatoAtivo:  false,
+  heroDraftAtivo:   false,
+  privacidadeAtiva: false,
 }
 
 const DEFAULT_DRAFT = {
@@ -26,6 +29,28 @@ export function useModules() {
   }, [])
 
   return modules
+}
+
+export const DEFAULT_CONTEUDO = {
+  cupName:              'Copa Inhouse',
+  labelSeason:          'Season 1 · Heroes of the Storm',
+  descricaoTorneio:     '',
+  proximoEvento:        '',
+  posInscricaoTexto:    '',
+  prazoDisponibilidade: '',
+}
+
+export function useConteudo() {
+  const [conteudo, setConteudo] = useState(DEFAULT_CONTEUDO)
+
+  useEffect(() => {
+    const unsub = onValue(ref(db, '/config/conteudo'), (snap) => {
+      if (snap.exists()) setConteudo({ ...DEFAULT_CONTEUDO, ...snap.val() })
+    })
+    return unsub
+  }, [])
+
+  return conteudo
 }
 
 export function useDraftConfig() {

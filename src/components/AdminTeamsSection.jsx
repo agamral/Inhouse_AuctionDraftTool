@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { ref, onValue, set, remove, push } from 'firebase/database'
 import { db } from '../firebase/database'
+import { FUSOS, FUSO_PADRAO } from '../utils/scheduling'
 
 const ROLES_LISTA = ['Tank', 'Bruiser', 'Melee Assassin', 'Ranged Assassin', 'Healer', 'Support', 'Flex']
 
@@ -10,7 +11,7 @@ const inputStyle = {
   fontSize: 14, outline: 'none', width: '100%', boxSizing: 'border-box',
 }
 
-const FORM_VAZIO = { nome: '', cor: '#4a9eda', modoAdd: 'manual', jogadores: [] }
+const FORM_VAZIO = { nome: '', cor: '#4a9eda', fuso: FUSO_PADRAO, modoAdd: 'manual', jogadores: [] }
 
 // ── Componente principal ─────────────────────────────────────────────────────
 
@@ -125,6 +126,7 @@ export default function AdminTeamsSection() {
       await set(ref(db, `/teams/${id}`), {
         nome:      form.nome.trim(),
         cor:       form.cor,
+        fuso:      form.fuso || FUSO_PADRAO,
         fonte:     form.modoAdd === 'inscritos' ? 'planilha' : 'manual',
         jogadores: form.jogadores.map(j => ({
           nome: j.nome.trim(),
@@ -278,6 +280,20 @@ export default function AdminTeamsSection() {
                   style={{ width: 38, height: 36, border: 'none', borderRadius: 4, cursor: 'pointer', background: 'none' }}
                 />
               </div>
+            </div>
+
+            {/* Fuso horário */}
+            <div>
+              <FieldLabel label="Fuso horário do time" />
+              <select
+                value={form.fuso}
+                onChange={e => setForm(f => ({ ...f, fuso: e.target.value }))}
+                style={{ ...inputStyle }}
+              >
+                {FUSOS.map(f => (
+                  <option key={f.id} value={f.id}>{f.label}</option>
+                ))}
+              </select>
             </div>
 
             {/* Toggle modo */}

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { ref, set, onValue } from 'firebase/database'
 import { db } from '../firebase/database'
 import { useAuth } from '../hooks/useAuth'
+import { DEFAULT_CONTEUDO } from '../hooks/useConfig'
 import SuperAdminSection        from '../components/SuperAdminSection'
 import AdminPlayersSection      from '../components/AdminPlayersSection'
 import AdminCaptainsSection     from '../components/AdminCaptainsSection'
@@ -43,6 +44,8 @@ export default function Admin() {
     rouboAtivo:  true,
   })
 
+  const [conteudo, setConteudo] = useState(DEFAULT_CONTEUDO)
+
   const [loading, setLoading] = useState(true)
   const [saving,  setSaving]  = useState(false)
   const [saved,   setSaved]   = useState(false)
@@ -51,9 +54,13 @@ export default function Admin() {
     let n = 0
     const done = () => { if (++n === 2) setLoading(false) }
     const u1 = onValue(ref(db, '/config/modules'), s => { if (s.exists()) setModules(p => ({ ...p, ...s.val() })); done() }, { onlyOnce: true })
-    const u2 = onValue(ref(db, '/config/draft'),   s => { if (s.exists()) setDraft(p  => ({ ...p, ...s.val() })); done() }, { onlyOnce: true })
-    return () => { u1(); u2() }
+    const u2 = onValue(ref(db, '/config/draft'),   s => { if (s.exists()) setDraft(p   => ({ ...p, ...s.val() })); done() }, { onlyOnce: true })
+    // conteudo carrega independente — não bloqueia o painel
+    const u3 = onValue(ref(db, '/config/conteudo'), s => { if (s.exists()) setConteudo(p => ({ ...p, ...s.val() })) }, { onlyOnce: true })
+    return () => { u1(); u2(); u3() }
   }, [])
+
+  function setConteudoField(key, val) { setConteudo(p => ({ ...p, [key]: val })); setSaved(false) }
 
   function toggleModule(key) { setModules(p => ({ ...p, [key]: !p[key] })); setSaved(false) }
   function toggleDraft(key)  { setDraft(p   => ({ ...p, [key]: !p[key] })); setSaved(false) }
@@ -67,8 +74,9 @@ export default function Admin() {
     setSaving(true)
     try {
       await Promise.all([
-        set(ref(db, '/config/modules'), modules),
-        set(ref(db, '/config/draft'),   draft),
+        set(ref(db, '/config/modules'),  modules),
+        set(ref(db, '/config/draft'),    draft),
+        set(ref(db, '/config/conteudo'), conteudo),
       ])
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
@@ -159,6 +167,24 @@ export default function Admin() {
               </div>
             </section>
 
+            {/* Modo Privacidade */}
+            <section className="admin-section">
+              <div className="admin-section-title">Transmissão</div>
+              <div className="admin-toggles">
+                <ToggleRow
+                  label="Modo Privacidade"
+                  desc="Oculta nomes, BattleTags e dados pessoais em todas as páginas — ideal para live"
+                  checked={modules.privacidadeAtiva}
+                  onChange={() => toggleModule('privacidadeAtiva')}
+                />
+              </div>
+              {modules.privacidadeAtiva && (
+                <div style={{ margin: '0 18px 16px', padding: '10px 14px', borderRadius: 6, background: 'rgba(201,168,76,0.08)', border: '1px solid rgba(201,168,76,0.25)', fontSize: 13, color: 'var(--gold2)' }}>
+                  🔒 Modo Privacidade ativo — nomes de jogadores aparecem como "Jogador #N" em todo o site e no bot.
+                </div>
+              )}
+            </section>
+
             {/* Fase visual do campeonato */}
             <section className="admin-section">
               <div className="admin-section-title">Fase Atual</div>
@@ -186,6 +212,19 @@ export default function Admin() {
             </section>
 
           </div>
+
+          {/* Conteúdo editável */}
+          <section className="admin-section" style={{ maxWidth: '100%' }}>
+            <div className="admin-section-title">Conteúdo do Site</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: '16px 18px' }}>
+              <ContentField label="Nome da copa"        value={conteudo.cupName}           onChange={v => setConteudoField('cupName', v)} />
+              <ContentField label="Label de temporada"  value={conteudo.labelSeason}       onChange={v => setConteudoField('labelSeason', v)}       placeholder="Ex: Season 2 · Heroes of the Storm" />
+              <ContentField label="Descrição do torneio (Home)" value={conteudo.descricaoTorneio} onChange={v => setConteudoField('descricaoTorneio', v)} placeholder="Breve descrição exibida na Home para novos visitantes" />
+              <ContentField label="Próximo evento"      value={conteudo.proximoEvento}     onChange={v => setConteudoField('proximoEvento', v)}     placeholder="Ex: Sábado, 10 de Maio · 20h BRT" />
+              <ContentField label="Texto pós-inscrição" value={conteudo.posInscricaoTexto} onChange={v => setConteudoField('posInscricaoTexto', v)} placeholder="Mensagem exibida após o jogador se inscrever" multiline />
+              <ContentField label="Prazo de disponibilidade" value={conteudo.prazoDisponibilidade} onChange={v => setConteudoField('prazoDisponibilidade', v)} placeholder="Ex: Marque até quinta-feira" />
+            </div>
+          </section>
 
           <SaveBar saving={saving} saved={saved} onSave={handleSave} />
         </div>
@@ -274,6 +313,24 @@ function ToggleRow({ label, desc, checked, onChange }) {
         <div className="admin-toggle-thumb" />
       </div>
     </label>
+  )
+}
+
+function ContentField({ label, value, onChange, placeholder, multiline }) {
+  const style = {
+    width: '100%', boxSizing: 'border-box',
+    background: 'var(--bg)', border: '1px solid var(--border2)', borderRadius: 6,
+    padding: '8px 12px', color: 'var(--text)', fontFamily: "'Barlow', sans-serif",
+    fontSize: 13, outline: 'none', resize: 'vertical',
+  }
+  return (
+    <div>
+      <div className="admin-toggle-label" style={{ marginBottom: 6 }}>{label}</div>
+      {multiline
+        ? <textarea rows={3} style={style} value={value} placeholder={placeholder ?? ''} onChange={e => onChange(e.target.value)} />
+        : <input style={style} value={value} placeholder={placeholder ?? ''} onChange={e => onChange(e.target.value)} />
+      }
+    </div>
   )
 }
 

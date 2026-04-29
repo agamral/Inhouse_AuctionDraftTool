@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react'
 import { ref, onValue } from 'firebase/database'
 import { db } from '../firebase/database'
+import { useModules } from '../hooks/useConfig'
 import { STATUS_CONFRONTO, TIPO_CONFRONTO } from '../utils/scheduling'
 import './Elenco.css'
 
 export default function Elenco() {
+  const { privacidadeAtiva } = useModules()
   const [teams,      setTeams]      = useState({})
   const [confrontos, setConfrontos] = useState({})
+  const [busca,      setBusca]      = useState('')
 
   useEffect(() => onValue(ref(db, '/teams'),      snap => setTeams(snap.val()      ?? {})), [])
   useEffect(() => onValue(ref(db, '/confrontos'), snap => setConfrontos(snap.val() ?? {})), [])
@@ -51,10 +54,43 @@ export default function Elenco() {
       return a.nome.localeCompare(b.nome)
     })
 
+  const buscaLower = busca.toLowerCase().trim()
+  const timesVisiveis = buscaLower
+    ? timesArr.filter(([, team]) =>
+        (team.jogadores ?? []).some(j => j.nome?.toLowerCase().includes(buscaLower))
+      )
+    : timesArr
+
   return (
     <div className="elenco-root page">
       <h1 className="page-title">Elenco dos Times</h1>
       <p className="page-subtitle">Copa Inhouse · Temporada 2025</p>
+
+      {timesArr.length > 0 && !privacidadeAtiva && (
+        <div style={{ marginBottom: '1.5rem', maxWidth: 320 }}>
+          <input
+            type="text"
+            placeholder="🔍 Buscar jogador..."
+            value={busca}
+            onChange={e => setBusca(e.target.value)}
+            style={{
+              width: '100%', boxSizing: 'border-box',
+              background: 'var(--bg2)', border: '1px solid var(--border2)',
+              borderRadius: 8, padding: '9px 14px',
+              color: 'var(--text)', fontFamily: "'Barlow', sans-serif",
+              fontSize: 14, outline: 'none',
+            }}
+          />
+          {buscaLower && (
+            <p style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 12, color: 'var(--text3)', marginTop: 6 }}>
+              {timesVisiveis.length === 0
+                ? 'Nenhum time encontrado com esse jogador.'
+                : `${timesVisiveis.length} time${timesVisiveis.length !== 1 ? 's' : ''} com "${busca}"`
+              }
+            </p>
+          )}
+        </div>
+      )}
 
       {timesArr.length === 0 && (
         <div className="elenco-vazio">
@@ -63,7 +99,7 @@ export default function Elenco() {
       )}
 
       <div className="elenco-grid">
-        {timesArr.map(([id, team]) => {
+        {timesVisiveis.map(([id, team]) => {
           const { v, d } = calcWL(id)
           const jogadores = team.jogadores ?? []
 
@@ -82,15 +118,18 @@ export default function Elenco() {
               {/* Roster */}
               {jogadores.length > 0 ? (
                 <ul className="elenco-roster">
-                  {jogadores.map((j, i) => (
-                    <li key={i} className="elenco-player">
-                      <span className="elenco-player-nome">
-                        {j.isCaptain && <span className="elenco-captain-star">★ </span>}
-                        {j.nome}
-                      </span>
-                      <span className="elenco-player-role">{j.role}</span>
-                    </li>
-                  ))}
+                  {jogadores.map((j, i) => {
+                    const destaque = !privacidadeAtiva && buscaLower && j.nome?.toLowerCase().includes(buscaLower)
+                    return (
+                      <li key={i} className="elenco-player" style={destaque ? { background: 'rgba(201,168,76,0.1)', borderRadius: 4, margin: '1px 0' } : {}}>
+                        <span className="elenco-player-nome" style={destaque ? { color: 'var(--gold2)', fontWeight: 700 } : {}}>
+                          {j.isCaptain && <span className="elenco-captain-star">★ </span>}
+                          {privacidadeAtiva ? `Jogador #${i + 1}` : j.nome}
+                        </span>
+                        <span className="elenco-player-role">{j.role}</span>
+                      </li>
+                    )
+                  })}
                 </ul>
               ) : (
                 <p className="elenco-sem-roster">Roster a definir</p>
