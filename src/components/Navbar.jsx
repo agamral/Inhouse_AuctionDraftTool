@@ -137,6 +137,14 @@ export default function Navbar() {
               <span style={{ color: capitao.cor ?? 'var(--blue)' }}>⚔</span>
             </button>
           </div>
+        ) : user ? (
+          /* Jogador logado (Google, sem papel especial) */
+          <NavLink to="/meu-perfil" className="navbar-avatar" title={user.email}>
+            {user.photoURL
+              ? <img src={user.photoURL} alt={user.displayName} referrerPolicy="no-referrer" />
+              : <span>{user.email[0].toUpperCase()}</span>
+            }
+          </NavLink>
         ) : (
           /* Visitante — link discreto para login capitão */
           <NavLink to="/login-capitao" className="navbar-login-btn" title="Área do Capitão">

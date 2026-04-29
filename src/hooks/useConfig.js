@@ -38,6 +38,13 @@ export const DEFAULT_CONTEUDO = {
   proximoEvento:        '',
   posInscricaoTexto:    '',
   prazoDisponibilidade: '',
+  regrasFormato:        '',
+  stream1Nome:          '',
+  stream1Url:           '',
+  stream2Nome:          '',
+  stream2Url:           '',
+  stream3Nome:          '',
+  stream3Url:           '',
 }
 
 export function useConteudo() {

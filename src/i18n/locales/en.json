@@ -24,14 +24,19 @@
       "espectador_desc": "Follow the auction in real time"
     },
     "next_event": "Next Event",
-    "format": "Format",
-    "format_value": "Auction — 4 to 6 captains, 15 coins each",
-    "roles": "Roles",
-    "roles_value": "Tank · Offlane · DPS · Healer · Flex"
+    "regras_title": "Rules & Format",
+    "regras_desc": "Auction, schedule, conduct and Soft Madness",
+    "stream_watch": "Watch Live on Twitch"
   },
   "form": {
     "title": "Sign Up",
     "subtitle": "Fill in your details to participate",
+    "closed": "Registrations closed",
+    "closed_hint": "Stay tuned to Discord for news about the next edition.",
+    "already_registered": "You're already registered!",
+    "already_registered_hint": "Your registration has been received. Wait for confirmation from the organizers.",
+    "submitting": "Sending...",
+    "select_placeholder": "Select...",
     "fields": {
       "discord": "Discord Nick",
       "battletag": "Battletag",
@@ -41,13 +46,28 @@
       "elo": "Rank",
       "role_primaria": "Primary Role",
       "role_secundaria": "Secondary Role",
+      "titular_reserva": "Registration type",
+      "titular_hint": "Main: committed to play. Reserve: available if needed.",
+      "titular": "Main",
+      "reserva": "Reserve",
       "capitar": "Do you want to be a captain?",
-      "regras": "I have read and accept the Copa Inhouse rules"
+      "cap_sim": "Yes",
+      "cap_sosenecessario": "Only if needed",
+      "cap_nao": "No",
+      "regras": "I have read and accept the <1>Copa Inhouse rules</1>"
+    },
+    "errors": {
+      "required": "Required",
+      "battletag": "Format: Nick#0000",
+      "linguas": "Select at least one",
+      "regras": "You must accept the rules",
+      "submit": "Error submitting. Please try again."
     },
     "submit": "Submit Registration",
     "success": "Registration submitted successfully!",
     "error": "Error submitting. Please try again.",
-    "login_required": "Sign in with Google to register"
+    "login_required": "Sign in with your Google account to register.",
+    "login_button": "Sign in with Google"
   },
   "inscritos": {
     "title": "Players",

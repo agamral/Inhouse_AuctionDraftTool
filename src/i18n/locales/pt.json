@@ -24,14 +24,19 @@
       "espectador_desc": "Acompanhe o leilão em tempo real"
     },
     "next_event": "Próximo Evento",
-    "format": "Formato",
-    "format_value": "Leilão — 4 a 6 capitães, 15 moedas cada",
-    "roles": "Funções",
-    "roles_value": "Tank · Offlane · DPS · Healer · Flex"
+    "regras_title": "Regras e Formato",
+    "regras_desc": "Leilão, cronograma, conduta e Soft Madness",
+    "stream_watch": "Assistir ao Vivo na Twitch"
   },
   "form": {
     "title": "Inscrição",
     "subtitle": "Preencha seus dados para participar",
+    "closed": "Inscrições encerradas",
+    "closed_hint": "Fique atento ao Discord para novidades sobre a próxima edição.",
+    "already_registered": "Você já está inscrito!",
+    "already_registered_hint": "Sua inscrição foi recebida. Aguarde a confirmação dos organizadores.",
+    "submitting": "Enviando...",
+    "select_placeholder": "Selecione...",
     "fields": {
       "discord": "Nick no Discord",
       "battletag": "Battletag",
@@ -41,13 +46,28 @@
       "elo": "Elo",
       "role_primaria": "Função Primária",
       "role_secundaria": "Função Secundária",
+      "titular_reserva": "Inscrição como",
+      "titular_hint": "Titular: compromisso de jogar. Reserva: disponível se necessário.",
+      "titular": "Titular",
+      "reserva": "Reserva",
       "capitar": "Quer ser capitão?",
-      "regras": "Li e aceito as regras da Copa Inhouse"
+      "cap_sim": "Sim",
+      "cap_sosenecessario": "Só se necessário",
+      "cap_nao": "Não",
+      "regras": "Li e aceito as <1>regras da Copa Inhouse</1>"
+    },
+    "errors": {
+      "required": "Obrigatório",
+      "battletag": "Formato: Nick#0000",
+      "linguas": "Selecione pelo menos um",
+      "regras": "Você precisa aceitar as regras",
+      "submit": "Erro ao enviar inscrição. Tente novamente."
     },
     "submit": "Enviar Inscrição",
     "success": "Inscrição enviada com sucesso!",
     "error": "Erro ao enviar. Tente novamente.",
-    "login_required": "Faça login com o Google para se inscrever"
+    "login_required": "Faça login com sua conta Google para se inscrever.",
+    "login_button": "Entrar com Google"
   },
   "inscritos": {
     "title": "Inscritos",

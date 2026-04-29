@@ -223,6 +223,28 @@ export default function Admin() {
               <ContentField label="Próximo evento"      value={conteudo.proximoEvento}     onChange={v => setConteudoField('proximoEvento', v)}     placeholder="Ex: Sábado, 10 de Maio · 20h BRT" />
               <ContentField label="Texto pós-inscrição" value={conteudo.posInscricaoTexto} onChange={v => setConteudoField('posInscricaoTexto', v)} placeholder="Mensagem exibida após o jogador se inscrever" multiline />
               <ContentField label="Prazo de disponibilidade" value={conteudo.prazoDisponibilidade} onChange={v => setConteudoField('prazoDisponibilidade', v)} placeholder="Ex: Marque até quinta-feira" />
+              <ContentField label="Regras e Formato (Home)" value={conteudo.regrasFormato} onChange={v => setConteudoField('regrasFormato', v)} placeholder="Descreva o formato e regras do torneio. Aparece na Home quando preenchido." multiline />
+              <div>
+                <div className="admin-toggle-label" style={{ marginBottom: 8 }}>Canais de Transmissão (Twitch)</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {[1, 2, 3].map(n => (
+                    <div key={n} style={{ display: 'flex', gap: 8 }}>
+                      <input
+                        style={{ flex: '0 0 160px', background: 'var(--bg)', border: '1px solid var(--border2)', borderRadius: 6, padding: '8px 12px', color: 'var(--text)', fontFamily: "'Barlow', sans-serif", fontSize: 13, outline: 'none' }}
+                        placeholder={`Canal ${n} — nome`}
+                        value={conteudo[`stream${n}Nome`]}
+                        onChange={e => setConteudoField(`stream${n}Nome`, e.target.value)}
+                      />
+                      <input
+                        style={{ flex: 1, background: 'var(--bg)', border: '1px solid var(--border2)', borderRadius: 6, padding: '8px 12px', color: 'var(--text)', fontFamily: "'Barlow', sans-serif", fontSize: 13, outline: 'none' }}
+                        placeholder="https://twitch.tv/..."
+                        value={conteudo[`stream${n}Url`]}
+                        onChange={e => setConteudoField(`stream${n}Url`, e.target.value)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </section>
 

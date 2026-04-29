@@ -17,6 +17,8 @@ import Chave from './pages/Chave.jsx'
 import HeroDraft from './pages/HeroDraft.jsx'
 import HeroDraftEspectador from './pages/HeroDraftEspectador.jsx'
 import HeroDraftOverlay from './pages/HeroDraftOverlay.jsx'
+import Regras from './pages/Regras.jsx'
+import Perfil from './pages/Perfil.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
 
 export default function App() {
@@ -35,6 +37,8 @@ export default function App() {
         <Route path="/agendamento"    element={<Agendamento />} />
         <Route path="/login-capitao"  element={<LoginCapitao />} />
         <Route path="/elenco"         element={<Elenco />} />
+        <Route path="/regras" element={<Regras />} />
+        <Route path="/meu-perfil" element={<Perfil />} />
         <Route path="/login" element={<Login />} />
         <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
         <Route path="/hero-draft" element={<HeroDraft />} />
