@@ -129,11 +129,14 @@ export default function Inscricao() {
         inscritoEm: Date.now(),
         origem: 'site',
       })
-      // Envia ao Google Sheets (fonte de verdade dos organizadores)
-      await fetch(import.meta.env.VITE_SHEETS_WEBAPP_URL, {
+      // Envia ao Google Sheets (espelho para os organizadores)
+      // mode: no-cors necessário pois Apps Script não devolve CORS header em POST
+      // O dado já está salvo no Firebase acima — o Sheets é backup/visualização
+      fetch(import.meta.env.VITE_SHEETS_WEBAPP_URL, {
         method: 'POST',
+        mode: 'no-cors',
         body: JSON.stringify(payload),
-      })
+      }).catch(() => {}) // falha silenciosa — Firebase é a fonte primária
       setSubmitted(true)
     } catch (err) {
       setErrors({ submit: 'Erro ao enviar inscrição. Tente novamente.' })
