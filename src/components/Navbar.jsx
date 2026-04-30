@@ -1,7 +1,8 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth'
-import { useModules } from '../hooks/useConfig'
+import { useModules, useConteudo } from '../hooks/useConfig'
 import { logout } from '../firebase/auth'
 import './Navbar.css'
 
@@ -15,7 +16,12 @@ export default function Navbar() {
   const { t, i18n } = useTranslation()
   const { user, isAdmin, capitao } = useAuth()
   const modules = useModules()
+  const conteudo = useConteudo()
   const navigate = useNavigate()
+
+  useEffect(() => {
+    if (conteudo.cupName) document.title = conteudo.cupName
+  }, [conteudo.cupName])
 
   async function handleLogout() {
     await logout()
@@ -27,7 +33,7 @@ export default function Navbar() {
       <div className="navbar-logo">
         <div className="navbar-logo-icon">⚔️</div>
         <div>
-          <div className="navbar-logo-text">Copa Inhouse</div>
+          <div className="navbar-logo-text">{conteudo.cupName || 'Copa Inhouse'}</div>
           <div className="navbar-logo-sub">Heroes of the Storm</div>
         </div>
       </div>
