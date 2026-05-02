@@ -116,18 +116,21 @@ export default function Admin() {
           </span>
         </div>
 
-        {/* Seletor de campeonato (SuperAdmin) */}
-        {isSuperAdmin && campeonatosArr.length > 0 && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <select
-              value={campeonatoId ?? ''}
-              onChange={e => setCampeonatoId(e.target.value)}
-              className="admin-contexto-select"
-            >
-              {campeonatosArr.map(([id, c]) => (
-                <option key={id} value={id}>{c.info?.nome ?? id}</option>
-              ))}
-            </select>
+        {/* Seletor e ações (SuperAdmin) */}
+        {isSuperAdmin && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            {/* Seletor só aparece quando há campeonatos */}
+            {campeonatosArr.length > 0 && (
+              <select
+                value={campeonatoId ?? ''}
+                onChange={e => setCampeonatoId(e.target.value)}
+                className="admin-contexto-select"
+              >
+                {campeonatosArr.map(([id, c]) => (
+                  <option key={id} value={id}>{c.info?.nome ?? id}</option>
+                ))}
+              </select>
+            )}
             {campeonato && !campeonato.info?.principal && (
               <button
                 className="btn"
@@ -138,8 +141,9 @@ export default function Admin() {
                 Tornar principal
               </button>
             )}
-            <Link to="/admin/novo-campeonato" className="btn" style={{ fontSize: 11, padding: '3px 10px', whiteSpace: 'nowrap' }}>
-              + Novo
+            {/* + Novo sempre visível para SuperAdmin */}
+            <Link to="/admin/novo-campeonato" className="btn primary" style={{ fontSize: 12, padding: '5px 14px', whiteSpace: 'nowrap' }}>
+              + Novo campeonato
             </Link>
           </div>
         )}
