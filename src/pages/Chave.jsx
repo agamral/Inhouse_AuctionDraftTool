@@ -39,6 +39,7 @@ export default function Chave() {
   const [times,      setTimes]      = useState({})
   const [erroRead,   setErroRead]   = useState(null)
   const [loading,    setLoading]    = useState(true)
+  const [timeSel,    setTimeSel]    = useState('')
 
   useEffect(() => onValue(
     ref(db, '/confrontos'),
@@ -117,6 +118,27 @@ export default function Chave() {
       <h1 className="page-title">Chave do Campeonato</h1>
       <p className="page-subtitle">Copa Inhouse · Temporada 2025</p>
 
+      {/* Filtro de time */}
+      {Object.keys(times).length > 0 && (
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 24 }}>
+          <button
+            className={`tab-filtro-btn${timeSel === '' ? ' ativo' : ''}`}
+            onClick={() => setTimeSel('')}
+          >
+            Todos
+          </button>
+          {Object.entries(times).sort(([,a],[,b]) => a.nome.localeCompare(b.nome)).map(([id, t]) => (
+            <button key={id}
+              className={`tab-filtro-btn${timeSel === id ? ' ativo' : ''}`}
+              style={timeSel === id ? { color: t.cor, borderColor: t.cor + '88', background: t.cor + '14' } : {}}
+              onClick={() => setTimeSel(timeSel === id ? '' : id)}
+            >
+              {t.nome}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* ── Fase Regular ──────────────────────────────────────────────────── */}
       {temRegular && (
         <div className="chave-secao">
@@ -136,7 +158,7 @@ export default function Chave() {
                   {matches
                     .sort((a, b) => (a.criadoEm ?? 0) - (b.criadoEm ?? 0))
                     .map((m, i) => (
-                      <MatchCard key={i} match={m} times={times} small />
+                      <MatchCard key={i} match={m} times={times} small timeSel={timeSel} />
                     ))
                   }
                 </div>
@@ -154,7 +176,7 @@ export default function Chave() {
           </div>
           <div className="chave-classif-grid">
             {porTipo[TIPO_CONFRONTO.CLASSIFICATORIO].map((m, i) => (
-              <MatchCard key={i} match={m} times={times} />
+              <MatchCard key={i} match={m} times={times} timeSel={timeSel} />
             ))}
           </div>
           <div className="chave-classif-hint">↓ Vencedores avançam para as Quartas de Final</div>
@@ -170,6 +192,7 @@ export default function Chave() {
               rounds={upperRounds.map(t => porTipo[t])}
               labels={upperRounds.map(t => BRACKET_LABELS[t])}
               times={times}
+              timeSel={timeSel}
             />
           </div>
         </div>
@@ -184,6 +207,7 @@ export default function Chave() {
               rounds={lowerRounds.map(t => porTipo[t])}
               labels={lowerRounds.map(t => BRACKET_LABELS[t])}
               times={times}
+              timeSel={timeSel}
             />
           </div>
         </div>
@@ -195,7 +219,7 @@ export default function Chave() {
           <div className="chave-secao-titulo chave-secao-titulo--final">Grande Final</div>
           <div className="chave-grande-final">
             {porTipo[TIPO_CONFRONTO.GRANDE_FINAL].map((m, i) => (
-              <MatchCard key={i} match={m} times={times} destaque />
+              <MatchCard key={i} match={m} times={times} destaque timeSel={timeSel} />
             ))}
           </div>
         </div>
@@ -205,7 +229,7 @@ export default function Chave() {
 }
 
 // ── Bracket Side ──────────────────────────────────────────────────────────────
-function BracketSide({ rounds, labels, times }) {
+function BracketSide({ rounds, labels, times, timeSel }) {
   const positions = calcPositions(rounds)
   const totalH = rounds[0]
     ? (rounds[0].length - 1) * (CARD_H + CARD_GAP) + CARD_H
@@ -257,7 +281,7 @@ function BracketSide({ rounds, labels, times }) {
       {rounds.map((matches, r) =>
         matches.map((match, i) => (
           <div key={`${r}-${i}`} style={{ position: 'absolute', top: (positions[r]?.[i] ?? 0) + LABEL_H, left: r * COL_STEP, width: COL_W }}>
-            <MatchCard match={match} times={times} />
+            <MatchCard match={match} times={times} timeSel={timeSel} />
           </div>
         ))
       )}
@@ -266,10 +290,12 @@ function BracketSide({ rounds, labels, times }) {
 }
 
 // ── Match Card ─────────────────────────────────────────────────────────────────
-function MatchCard({ match: m, times, destaque = false, small = false }) {
+function MatchCard({ match: m, times, destaque = false, small = false, timeSel = '' }) {
   if (!m) return null
   const tA = times[m.timeA]
   const tB = times[m.timeB]
+  const highlighted = timeSel && (m.timeA === timeSel || m.timeB === timeSel)
+  const dimmed      = timeSel && !highlighted
   // EMPATE_PENDENTE também tem resultado registrado (1-1), trata como realizado para exibição
   const realizado  = m.status === STATUS_CONFRONTO.REALIZADO || m.status === STATUS_CONFRONTO.EMPATE_PENDENTE
   const confirmado = m.status === STATUS_CONFRONTO.CONFIRMADO
@@ -279,9 +305,14 @@ function MatchCard({ match: m, times, destaque = false, small = false }) {
     : null
   const tipoRes = m.resultado?.tipo
 
+  const highlightCor = highlighted ? (times[timeSel]?.cor ?? 'var(--blue)') : undefined
   return (
     <div className={['match-card', destaque ? 'match-card--destaque' : '', realizado ? 'match-card--realizado' : '', small ? 'match-card--small' : ''].filter(Boolean).join(' ')}
-      style={small ? {} : { height: CARD_H }}>
+      style={{
+        ...(small ? {} : { height: CARD_H }),
+        ...(highlighted ? { outline: `2px solid ${highlightCor}`, borderColor: highlightCor } : {}),
+        ...(dimmed ? { opacity: 0.35 } : {}),
+      }}>
       <TeamSlot time={tA} placar={realizado ? m.resultado?.timeA : null}
         venceu={vencedorId === m.timeA} perdeu={vencedorId !== null && vencedorId !== m.timeA}
         tipoRes={tipoRes} lado="A" small={small} />

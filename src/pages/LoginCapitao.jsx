@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { ref, update, get } from 'firebase/database'
 import { db } from '../firebase/database'
-import { loginCapitao, atualizarSenha, emailEhSintetico } from '../firebase/auth'
+import { loginCapitao, atualizarSenha, emailEhSintetico, enviarResetSenha } from '../firebase/auth'
 import { useAuth } from '../hooks/useAuth'
 
 const inputCss = {
@@ -18,29 +18,78 @@ function FormLogin({ onSintetico }) {
   const [erro,     setErro]     = useState(null)
   const [entrando, setEntrando] = useState(false)
 
+  const [mostraRec, setMostraRec] = useState(false)
+  const [emailRec,  setEmailRec]  = useState('')
+  const [msgRec,    setMsgRec]    = useState(null)
+  const [enviandoRec, setEnviandoRec] = useState(false)
+
   async function handleLogin(e) {
     e.preventDefault()
     setErro(null)
     setEntrando(true)
     try {
       const cred = await loginCapitao(email.trim(), senha)
-      // Se email sintético → prompt de completar perfil
       if (emailEhSintetico(cred.user.email)) {
         onSintetico(cred.user.email)
       }
-      // Se email real → useAuth redireciona via useEffect no pai
     } catch (e) {
       const msgs = {
-        'auth/user-not-found':   'Acesso não encontrado.',
-        'auth/wrong-password':   'Senha incorreta.',
-        'auth/invalid-email':    'Email ou chave inválida.',
-        'auth/too-many-requests':'Muitas tentativas. Aguarde alguns minutos.',
+        'auth/user-not-found':     'Acesso não encontrado.',
+        'auth/wrong-password':     'Senha incorreta.',
+        'auth/invalid-email':      'Email ou chave inválida.',
+        'auth/too-many-requests':  'Muitas tentativas. Aguarde alguns minutos.',
         'auth/invalid-credential': 'Credenciais inválidas.',
       }
       setErro(msgs[e.code] ?? 'Erro ao entrar. Verifique seus dados.')
     } finally {
       setEntrando(false)
     }
+  }
+
+  async function handleRecuperar(e) {
+    e.preventDefault()
+    const trimmed = emailRec.trim()
+    if (emailEhSintetico(trimmed) || trimmed.endsWith('@copa.inhouse')) {
+      setMsgRec({ tipo: 'info', texto: 'Esta conta usa uma chave de acesso interna. Entre em contato com o admin no Discord para redefinir sua senha.' })
+      return
+    }
+    setEnviandoRec(true)
+    setMsgRec(null)
+    try {
+      await enviarResetSenha(trimmed)
+      setMsgRec({ tipo: 'ok', texto: 'Email de recuperação enviado! Verifique sua caixa de entrada.' })
+    } catch {
+      setMsgRec({ tipo: 'err', texto: 'Erro ao enviar. Verifique se o email está correto.' })
+    } finally {
+      setEnviandoRec(false)
+    }
+  }
+
+  if (mostraRec) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <p style={{ fontSize: 13, color: 'var(--text2)', margin: 0 }}>
+          Informe o email da sua conta para receber o link de recuperação.
+        </p>
+        <form onSubmit={handleRecuperar} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <input type="email" placeholder="Seu email"
+            value={emailRec} onChange={e => setEmailRec(e.target.value)} required style={inputCss} />
+          {msgRec && (
+            <p style={{ fontSize: 13, margin: 0, color: msgRec.tipo === 'ok' ? 'var(--green)' : msgRec.tipo === 'err' ? 'var(--red)' : 'var(--gold2)' }}>
+              {msgRec.texto}
+            </p>
+          )}
+          <button type="submit" className="btn primary" disabled={enviandoRec}
+            style={{ padding: 11, fontSize: 14 }}>
+            {enviandoRec ? 'Enviando...' : 'Enviar link de recuperação'}
+          </button>
+        </form>
+        <button onClick={() => { setMostraRec(false); setMsgRec(null) }}
+          style={{ background: 'none', border: 'none', color: 'var(--text2)', fontSize: 12, cursor: 'pointer', marginTop: 4 }}>
+          ← Voltar ao login
+        </button>
+      </div>
+    )
   }
 
   return (
@@ -53,6 +102,10 @@ function FormLogin({ onSintetico }) {
       <button type="submit" className="btn primary" disabled={entrando}
         style={{ padding: 11, fontSize: 14, marginTop: 4 }}>
         {entrando ? 'Entrando...' : 'Entrar'}
+      </button>
+      <button type="button" onClick={() => setMostraRec(true)}
+        style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 12, cursor: 'pointer', marginTop: 2 }}>
+        Esqueceu a senha?
       </button>
     </form>
   )

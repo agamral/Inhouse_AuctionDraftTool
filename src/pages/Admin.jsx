@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
-import { ref, set, onValue } from 'firebase/database'
+import { ref, set, onValue, update } from 'firebase/database'
+import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { db } from '../firebase/database'
 import { useAuth } from '../hooks/useAuth'
+import { useCampeonato } from '../contexts/CampeonatoContext'
 import { DEFAULT_CONTEUDO } from '../hooks/useConfig'
 import SuperAdminSection        from '../components/SuperAdminSection'
 import AdminPlayersSection      from '../components/AdminPlayersSection'
@@ -25,7 +27,15 @@ const TABS = [
 
 export default function Admin() {
   const { isSuperAdmin } = useAuth()
+  const { campeonatoId, campeonato, campeonatos, setCampeonatoId, setPrincipal } = useCampeonato()
+  const [searchParams] = useSearchParams()
   const [aba, setAba] = useState('geral')
+
+  // Se vier com ?campeonato=id na URL (após wizard), seleciona aquele campeonato
+  useEffect(() => {
+    const paramId = searchParams.get('campeonato')
+    if (paramId && campeonatos[paramId]) setCampeonatoId(paramId)
+  }, [searchParams, campeonatos]) // eslint-disable-line
 
   const [modules, setModules] = useState({
     inscricaoAberta:   false,
@@ -87,8 +97,54 @@ export default function Admin() {
 
   if (loading) return <main className="page"><p style={{ color: 'var(--text2)' }}>Carregando...</p></main>
 
+  const campeonatosArr = Object.entries(campeonatos).sort(([,a],[,b]) => (b.info?.criadoEm ?? 0) - (a.info?.criadoEm ?? 0))
+
   return (
     <main className="page admin-dashboard">
+
+      {/* ── Banner de contexto ────────────────────────────────────────────── */}
+      <div className="admin-contexto-banner">
+        <div className="admin-contexto-info">
+          <span className="admin-contexto-dot" style={{ background: campeonato?.info?.principal ? 'var(--gold)' : 'var(--blue)' }} />
+          <span className="admin-contexto-label">
+            {campeonato
+              ? <>Operando em: <strong style={{ color: 'var(--text)' }}>{campeonato.info?.nome ?? campeonatoId}</strong>
+                  {campeonato.info?.principal && <span className="admin-contexto-badge">principal</span>}
+                </>
+              : <span style={{ color: 'var(--text3)' }}>Nenhum campeonato selecionado</span>
+            }
+          </span>
+        </div>
+
+        {/* Seletor de campeonato (SuperAdmin) */}
+        {isSuperAdmin && campeonatosArr.length > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <select
+              value={campeonatoId ?? ''}
+              onChange={e => setCampeonatoId(e.target.value)}
+              className="admin-contexto-select"
+            >
+              {campeonatosArr.map(([id, c]) => (
+                <option key={id} value={id}>{c.info?.nome ?? id}</option>
+              ))}
+            </select>
+            {campeonato && !campeonato.info?.principal && (
+              <button
+                className="btn"
+                style={{ fontSize: 11, padding: '3px 10px', color: 'var(--gold)', borderColor: 'rgba(201,168,76,0.35)' }}
+                onClick={() => setPrincipal(campeonatoId)}
+                title="Tornar este o campeonato exibido publicamente"
+              >
+                Tornar principal
+              </button>
+            )}
+            <Link to="/admin/novo-campeonato" className="btn" style={{ fontSize: 11, padding: '3px 10px', whiteSpace: 'nowrap' }}>
+              + Novo
+            </Link>
+          </div>
+        )}
+      </div>
+
       <div className="admin-dash-header">
         <div>
           <h1 className="page-title" style={{ marginBottom: 2 }}>Painel Admin</h1>

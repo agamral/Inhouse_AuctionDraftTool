@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { CampeonatoProvider } from './contexts/CampeonatoContext'
 import Navbar from './components/Navbar.jsx'
 import Footer from './components/Footer.jsx'
 import Home from './pages/Home.jsx'
@@ -19,10 +20,12 @@ import HeroDraftEspectador from './pages/HeroDraftEspectador.jsx'
 import HeroDraftOverlay from './pages/HeroDraftOverlay.jsx'
 import Regras from './pages/Regras.jsx'
 import Perfil from './pages/Perfil.jsx'
+import CampeonatoWizard from './pages/CampeonatoWizard.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
 
 export default function App() {
   return (
+    <CampeonatoProvider>
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <Navbar />
       <Routes>
@@ -38,6 +41,7 @@ export default function App() {
         <Route path="/login-capitao"  element={<LoginCapitao />} />
         <Route path="/elenco"         element={<Elenco />} />
         <Route path="/regras" element={<Regras />} />
+        <Route path="/admin/novo-campeonato" element={<ProtectedRoute><CampeonatoWizard /></ProtectedRoute>} />
         <Route path="/meu-perfil" element={<Perfil />} />
         <Route path="/login" element={<Login />} />
         <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
@@ -47,5 +51,6 @@ export default function App() {
       </Routes>
       <Footer />
     </BrowserRouter>
+    </CampeonatoProvider>
   )
 }

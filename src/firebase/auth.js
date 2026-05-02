@@ -1,4 +1,4 @@
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, signInWithEmailAndPassword, updatePassword } from 'firebase/auth'
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, signInWithEmailAndPassword, updatePassword, sendPasswordResetEmail } from 'firebase/auth'
 import { app } from './config'
 
 export const auth = getAuth(app)
@@ -37,6 +37,10 @@ export function gerarEmailSintetico(battletag) {
 
 export function emailEhSintetico(email) {
   return email?.endsWith('@copa.inhouse') ?? false
+}
+
+export function enviarResetSenha(email) {
+  return sendPasswordResetEmail(auth, email)
 }
 
 export function logout() {

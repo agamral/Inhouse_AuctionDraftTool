@@ -13,6 +13,7 @@ export default function Tabela() {
   const [confrontos, setConfrontos] = useState({})
   const [times,      setTimes]      = useState({})
   const [rodadaSel,  setRodadaSel]  = useState('todas')
+  const [timeSel,    setTimeSel]    = useState('')
 
   useEffect(() => onValue(ref(db, '/rodadas'),    snap => setRodadas(snap.val()    ?? {})), [])
   useEffect(() => onValue(ref(db, '/confrontos'), snap => setConfrontos(snap.val() ?? {})), [])
@@ -33,8 +34,9 @@ export default function Tabela() {
   const teamIds = Object.keys(times)
   const classificacao = calcularClassificacao(teamIds, todosConfrontos)
 
-  // Confrontos exibidos na seção de partidas (filtrado pela rodada selecionada)
+  // Confrontos exibidos na seção de partidas (filtrado pela rodada e time selecionados)
   const confrontosExibidos = confrontosArr
+    .filter(c => !timeSel || c.timeA === timeSel || c.timeB === timeSel)
     .filter(c =>
       c.status === STATUS_CONFRONTO.REALIZADO   ||
       c.status === STATUS_CONFRONTO.CONFIRMADO  ||
@@ -77,26 +79,37 @@ export default function Tabela() {
       <h1 className="page-title">Tabela de Classificação</h1>
       <p className="page-subtitle">Fase regular · Copa Inhouse</p>
 
-      {/* Filtro de rodada */}
-      {rodadasArr.length > 0 && (
-        <div className="tab-filtros">
-          <button
-            className={`tab-filtro-btn${rodadaSel === 'todas' ? ' ativo' : ''}`}
-            onClick={() => setRodadaSel('todas')}
-          >
-            Geral
-          </button>
-          {rodadasArr.map(([id, r]) => (
-            <button
-              key={id}
-              className={`tab-filtro-btn${rodadaSel === id ? ' ativo' : ''}`}
-              onClick={() => setRodadaSel(id)}
-            >
-              Rodada {r.numero}
+      {/* Filtros */}
+      <div className="tab-filtros-grupo">
+        {rodadasArr.length > 0 && (
+          <div className="tab-filtros">
+            <button className={`tab-filtro-btn${rodadaSel === 'todas' ? ' ativo' : ''}`} onClick={() => setRodadaSel('todas')}>
+              Geral
             </button>
-          ))}
-        </div>
-      )}
+            {rodadasArr.map(([id, r]) => (
+              <button key={id} className={`tab-filtro-btn${rodadaSel === id ? ' ativo' : ''}`} onClick={() => setRodadaSel(id)}>
+                Rodada {r.numero}
+              </button>
+            ))}
+          </div>
+        )}
+        {Object.keys(times).length > 0 && (
+          <div className="tab-filtros">
+            <button className={`tab-filtro-btn${timeSel === '' ? ' ativo' : ''}`} onClick={() => setTimeSel('')}>
+              Todos os times
+            </button>
+            {Object.entries(times).sort(([,a],[,b]) => a.nome.localeCompare(b.nome)).map(([id, t]) => (
+              <button key={id}
+                className={`tab-filtro-btn${timeSel === id ? ' ativo' : ''}`}
+                style={timeSel === id ? { color: t.cor, borderColor: t.cor + '88', background: t.cor + '14' } : {}}
+                onClick={() => setTimeSel(timeSel === id ? '' : id)}
+              >
+                {t.nome}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Tabela de classificação */}
       {semDados ? (
@@ -124,8 +137,13 @@ export default function Tabela() {
                 const forma = formaDoTime(entry.id)
                 const destaque = idx === 0 ? 'gold' : idx === 1 ? 'silver' : idx === 2 ? 'bronze' : ''
 
+                const selecionado = timeSel === entry.id
                 return (
-                  <tr key={entry.id} className={`tab-tr${destaque ? ` tab-tr--${destaque}` : ''}`}>
+                  <tr key={entry.id}
+                    className={`tab-tr${destaque ? ` tab-tr--${destaque}` : ''}${selecionado ? ' tab-tr--selecionado' : ''}`}
+                    style={selecionado ? { background: (time?.cor ?? 'var(--blue)') + '12', outline: `1px solid ${time?.cor ?? 'var(--blue)'}44` } : {}}
+                    onClick={() => setTimeSel(selecionado ? '' : entry.id)}
+                  >
                     <td className="tab-td tab-td--pos">
                       <span className={`tab-pos${destaque ? ` tab-pos--${destaque}` : ''}`}>
                         {idx + 1}
