@@ -25,28 +25,27 @@ export function useAuth() {
           })
 
           // ── Verificação de superadmin ────────────────────────────────────
-          // Suporta tanto o path novo (/superAdmins) quanto o legado (/config/superAdmins)
+          // Tenta path novo e legado; falha individual não derruba o login
+          const safeGet = async (path) => {
+            try { return await get(ref(db, path)) } catch { return null }
+          }
+
           const [superNew, superLeg] = await Promise.all([
-            get(ref(db, `/superAdmins/${firebaseUser.uid}`)),
-            get(ref(db, `/config/superAdmins/${firebaseUser.uid}`)),
+            safeGet(`/superAdmins/${firebaseUser.uid}`),
+            safeGet(`/config/superAdmins/${firebaseUser.uid}`),
           ])
-          const isSA = (superNew.exists()  && superNew.val()  === true)
-                    || (superLeg.exists() && superLeg.val() === true)
+          const isSA = (superNew?.exists()  && superNew.val()  === true)
+                    || (superLeg?.exists() && superLeg.val() === true)
 
           // ── Verificação de admin ─────────────────────────────────────────
-          // Path legado: /config/admins/{uid}
-          // Path novo:   /campeonatos/{id}/admins/{uid} (qualquer campeonato)
           let isAdm = isSA
           if (!isAdm) {
-            const adminLeg = await get(ref(db, `/config/admins/${firebaseUser.uid}`))
-            if (adminLeg.exists() && adminLeg.val() === true) {
-              isAdm = true
-            }
+            const adminLeg = await safeGet(`/config/admins/${firebaseUser.uid}`)
+            if (adminLeg?.exists() && adminLeg.val() === true) isAdm = true
           }
           if (!isAdm) {
-            // Verifica em todos os campeonatos
-            const campSnap = await get(ref(db, '/campeonatos'))
-            const campeonatos = campSnap.val() ?? {}
+            const campSnap = await safeGet('/campeonatos')
+            const campeonatos = campSnap?.val() ?? {}
             isAdm = Object.keys(campeonatos).some(id =>
               campeonatos[id]?.admins?.[firebaseUser.uid] === true
             )
@@ -56,20 +55,17 @@ export function useAuth() {
           setIsAdmin(isAdm)
 
           // ── Verificação de capitão ───────────────────────────────────────
-          // Só verifica se não é admin
           if (!isAdm) {
-            // Verifica no path legado (/teams)
-            const teamsLeg = await get(ref(db, '/teams'))
-            const teamsOld = teamsLeg.val() ?? {}
+            const teamsLeg = await safeGet('/teams')
+            const teamsOld = teamsLeg?.val() ?? {}
             const legEntry = Object.entries(teamsOld)
               .find(([, t]) => t.capitaoUid === firebaseUser.uid)
 
             if (legEntry) {
               setCapitao({ teamId: legEntry[0], ...legEntry[1] })
             } else {
-              // Verifica em campeonatos ativos
-              const campSnap = await get(ref(db, '/campeonatos'))
-              const campeonatos = campSnap.val() ?? {}
+              const campSnap = await safeGet('/campeonatos')
+              const campeonatos = campSnap?.val() ?? {}
               let found = null
               for (const [cid, camp] of Object.entries(campeonatos)) {
                 if (!camp.info?.principal) continue
