@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { ref, onValue, set, remove, update } from 'firebase/database'
 import { db } from '../firebase/database'
+import { useCampeonato } from '../contexts/CampeonatoContext'
+import { draftSessionPath, playerOverridesPath } from '../utils/campeonatoPaths'
 
 const EMOJIS = ['🔥','⚡','🌊','🌿','💀','👑','🐉','⚔️']
 const CORES  = ['#e05555','#4a9eda','#4caf7d','#f0cc6e','#9b6ee8','#ff9800','#e91e8c','#00bcd4']
@@ -14,6 +16,7 @@ function gerarId() {
 }
 
 export default function AdminCaptainsSection({ draftConfig }) {
+  const { campeonatoId } = useCampeonato()
   const [captains, setCaptains]       = useState({})
   const [players, setPlayers]         = useState([])
   const [overrides, setOverrides]     = useState({})
@@ -27,11 +30,11 @@ export default function AdminCaptainsSection({ draftConfig }) {
   const min = draftConfig?.minCaptains ?? 2
 
   useEffect(() => {
-    const unsub = onValue(ref(db, '/draftSession/captains'), (snap) => {
+    const unsub = onValue(ref(db, `${draftSessionPath(campeonatoId)}/captains`), (snap) => {
       setCaptains(snap.val() ?? {})
     })
     return unsub
-  }, [])
+  }, [campeonatoId])
 
   useEffect(() => {
     fetch(import.meta.env.VITE_SHEETS_WEBAPP_URL)
@@ -41,11 +44,11 @@ export default function AdminCaptainsSection({ draftConfig }) {
   }, [])
 
   useEffect(() => {
-    const unsub = onValue(ref(db, '/playerOverrides'), (snap) => {
+    const unsub = onValue(ref(db, playerOverridesPath(campeonatoId)), (snap) => {
       setOverrides(snap.val() ?? {})
     })
     return unsub
-  }, [])
+  }, [campeonatoId])
 
   const list = Object.entries(captains).sort(([, a], [, b]) => (a.seed ?? 99) - (b.seed ?? 99))
 
@@ -54,7 +57,7 @@ export default function AdminCaptainsSection({ draftConfig }) {
     if (list.length >= max) return flash(`Máximo de ${max} capitães atingido.`)
 
     const id = gerarId()
-    await set(ref(db, `/draftSession/captains/${id}`), {
+    await set(ref(db, `${draftSessionPath(campeonatoId)}/captains/${id}`), {
       nome:        novoNome.trim(),
       capitaoNome: novoCapitao.trim(),
       emoji:       novoEmoji,
@@ -73,12 +76,12 @@ export default function AdminCaptainsSection({ draftConfig }) {
   }
 
   async function removerCapitao(id) {
-    await remove(ref(db, `/draftSession/captains/${id}`))
+    await remove(ref(db, `${draftSessionPath(campeonatoId)}/captains/${id}`))
     flash('Time removido.')
   }
 
   async function regenerarPin(id) {
-    await update(ref(db, `/draftSession/captains/${id}`), { pin: gerarPin() })
+    await update(ref(db, `${draftSessionPath(campeonatoId)}/captains/${id}`), { pin: gerarPin() })
     flash('PIN atualizado!')
   }
 
@@ -89,8 +92,8 @@ export default function AdminCaptainsSection({ draftConfig }) {
     const [trocaId, trocaData] = troca
     const [, myData] = list[idx]
     await Promise.all([
-      update(ref(db, `/draftSession/captains/${id}`),     { seed: trocaData.seed }),
-      update(ref(db, `/draftSession/captains/${trocaId}`), { seed: myData.seed }),
+      update(ref(db, `${draftSessionPath(campeonatoId)}/captains/${id}`),      { seed: trocaData.seed }),
+      update(ref(db, `${draftSessionPath(campeonatoId)}/captains/${trocaId}`), { seed: myData.seed }),
     ])
   }
 
@@ -102,7 +105,7 @@ export default function AdminCaptainsSection({ draftConfig }) {
       [ids[i], ids[j]] = [ids[j], ids[i]]
     }
     const updates = {}
-    ids.forEach((id, i) => { updates[`/draftSession/captains/${id}/seed`] = i + 1 })
+    ids.forEach((id, i) => { updates[`${draftSessionPath(campeonatoId)}/captains/${id}/seed`] = i + 1 })
     await update(ref(db), updates)
     flash('Seeds randomizados!')
   }

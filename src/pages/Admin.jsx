@@ -5,6 +5,7 @@ import { db } from '../firebase/database'
 import { useAuth } from '../hooks/useAuth'
 import { useCampeonato } from '../contexts/CampeonatoContext'
 import { DEFAULT_CONTEUDO } from '../hooks/useConfig'
+import { configModulesPath, configDraftPath, configConteudoPath } from '../utils/campeonatoPaths'
 import SuperAdminSection        from '../components/SuperAdminSection'
 import AdminPlayersSection      from '../components/AdminPlayersSection'
 import AdminCaptainsSection     from '../components/AdminCaptainsSection'
@@ -64,12 +65,11 @@ export default function Admin() {
   useEffect(() => {
     let n = 0
     const done = () => { if (++n === 2) setLoading(false) }
-    const u1 = onValue(ref(db, '/config/modules'), s => { if (s.exists()) setModules(p => ({ ...p, ...s.val() })); done() }, { onlyOnce: true })
-    const u2 = onValue(ref(db, '/config/draft'),   s => { if (s.exists()) setDraft(p   => ({ ...p, ...s.val() })); done() }, { onlyOnce: true })
-    // conteudo carrega independente — não bloqueia o painel
-    const u3 = onValue(ref(db, '/config/conteudo'), s => { if (s.exists()) setConteudo(p => ({ ...p, ...s.val() })) }, { onlyOnce: true })
+    const u1 = onValue(ref(db, configModulesPath(campeonatoId)),  s => { if (s.exists()) setModules(p => ({ ...p, ...s.val() })); done() }, { onlyOnce: true })
+    const u2 = onValue(ref(db, configDraftPath(campeonatoId)),    s => { if (s.exists()) setDraft(p   => ({ ...p, ...s.val() })); done() }, { onlyOnce: true })
+    const u3 = onValue(ref(db, configConteudoPath(campeonatoId)), s => { if (s.exists()) setConteudo(p => ({ ...p, ...s.val() })) }, { onlyOnce: true })
     return () => { u1(); u2(); u3() }
-  }, [])
+  }, [campeonatoId])
 
   function setConteudoField(key, val) { setConteudo(p => ({ ...p, [key]: val })); setSaved(false) }
 
@@ -85,9 +85,9 @@ export default function Admin() {
     setSaving(true)
     try {
       await Promise.all([
-        set(ref(db, '/config/modules'),  modules),
-        set(ref(db, '/config/draft'),    draft),
-        set(ref(db, '/config/conteudo'), conteudo),
+        set(ref(db, configModulesPath(campeonatoId)),  modules),
+        set(ref(db, configDraftPath(campeonatoId)),    draft),
+        set(ref(db, configConteudoPath(campeonatoId)), conteudo),
       ])
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)

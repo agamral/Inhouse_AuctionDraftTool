@@ -2,26 +2,29 @@ import { useState, useEffect } from 'react'
 import { ref, onValue } from 'firebase/database'
 import { db } from '../firebase/database'
 import { useTranslation } from 'react-i18next'
+import { useCampeonato } from '../contexts/CampeonatoContext'
+import { draftSessionPath } from '../utils/campeonatoPaths'
 import EloIcon, { ELO_CONFIG } from '../components/EloIcon'
 import RoleIcon from '../components/RoleIcon'
 import './Resultados.css'
 
 export default function Resultados() {
   const { t } = useTranslation()
+  const { idPublico, campeonatoPublico } = useCampeonato()
   const [captains,   setCaptains]   = useState({})
   const [draftState, setDraftState] = useState(null)
   const [players,    setPlayers]    = useState([])
-  const [cupName,    setCupName]    = useState('Copa Inhouse')
   const [loading,    setLoading]    = useState(true)
+
+  const cupName = campeonatoPublico?.info?.nome ?? campeonatoPublico?.config?.conteudo?.cupName ?? 'Copa Inhouse'
 
   useEffect(() => {
     let n = 0
-    const done = () => { if (++n === 3) setLoading(false) }
-    const u1 = onValue(ref(db, '/draftSession/captains'), s => { setCaptains(s.val() ?? {}); done() })
-    const u2 = onValue(ref(db, '/draftSession/state'),   s => { setDraftState(s.val()); done() })
-    const u3 = onValue(ref(db, '/config/settings/cupName'), s => { if (s.exists()) setCupName(s.val()); done() })
-    return () => { u1(); u2(); u3() }
-  }, [])
+    const done = () => { if (++n === 2) setLoading(false) }
+    const u1 = onValue(ref(db, `${draftSessionPath(idPublico)}/captains`), s => { setCaptains(s.val() ?? {}); done() })
+    const u2 = onValue(ref(db, `${draftSessionPath(idPublico)}/state`),   s => { setDraftState(s.val()); done() })
+    return () => { u1(); u2() }
+  }, [idPublico])
 
   useEffect(() => {
     fetch(import.meta.env.VITE_SHEETS_WEBAPP_URL)

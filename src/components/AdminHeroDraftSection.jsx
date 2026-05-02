@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { ref, onValue, set, update, remove } from 'firebase/database'
 import { db } from '../firebase/database'
+import { useCampeonato } from '../contexts/CampeonatoContext'
+import { teamPath, heroDraftPath } from '../utils/campeonatoPaths'
 import { useHeroDraft } from '../hooks/useHeroDraft'
 import { HEROES } from '../utils/heroPool'
 import { criarEstadoInicial, expandirSequencia, SEQUENCIA_PADRAO } from '../utils/heroDraft'
@@ -46,6 +48,7 @@ const inputStyle = {
 // ── Componente principal ─────────────────────────────────────────────────────
 
 export default function AdminHeroDraftSection() {
+  const { campeonatoId } = useCampeonato()
   const [sessoes, setSessoes]           = useState({})
   const [times, setTimes]               = useState({})
   const [sessaoId, setSessaoId]         = useState('')
@@ -65,7 +68,7 @@ export default function AdminHeroDraftSection() {
   const { estado, loading, iniciar, encerrar, desfazer } =
     useHeroDraft(sessaoId || '__none__', 'admin')
 
-  useEffect(() => onValue(ref(db, '/heroDraft'), snap => setSessoes(snap.val() ?? {})), [])
+  useEffect(() => onValue(ref(db, heroDraftPath(campeonatoId)), snap => setSessoes(snap.val() ?? {})), [campeonatoId])
 
   // Listener com retry automático caso o read falhe por regras desatualizadas
   useEffect(() => {
@@ -74,7 +77,7 @@ export default function AdminHeroDraftSection() {
 
     const conectar = () => {
       unsub = onValue(
-        ref(db, '/teams'),
+        ref(db, teamPath(campeonatoId)),
         snap => { setTimes(snap.val() ?? {}); retryId && clearTimeout(retryId) },
         () => { retryId = setTimeout(conectar, 3000) }, // retry em 3s se negar
       )
@@ -82,7 +85,7 @@ export default function AdminHeroDraftSection() {
 
     conectar()
     return () => { unsub?.(); retryId && clearTimeout(retryId) }
-  }, [])
+  }, [campeonatoId])
 
   // ── feedback ───────────────────────────────────────────────────────────────
 
@@ -125,7 +128,7 @@ export default function AdminHeroDraftSection() {
         globalBans,
         mapaId: mapaId || null,
       })
-      await set(ref(db, `/heroDraft/${novoId.trim()}`), estadoInicial)
+      await set(ref(db, `${heroDraftPath(campeonatoId)}/${novoId.trim()}`), estadoInicial)
       setSessaoId(novoId.trim())
       setMostraCriar(false)
       setForm({ novoId: '', modoTimes: 'manual', nomeA: '', corA: '#4a9eda', timeAId: '', nomeB: '', corB: '#e05555', timeBId: '', globalBans: [], bansPerTeam: 3, mapaId: '' })
@@ -159,7 +162,7 @@ export default function AdminHeroDraftSection() {
   async function handleReabrir() {
     setConfirmAcao(null)
     try {
-      await update(ref(db, `/heroDraft/${sessaoId}`), { status: 'rodando' })
+      await update(ref(db, `${heroDraftPath(campeonatoId)}/${sessaoId}`), { status: 'rodando' })
       flash('ok', 'Draft reaberto.')
     } catch (e) {
       flash('erro', `Erro: ${e.message}`)
@@ -177,7 +180,7 @@ export default function AdminHeroDraftSection() {
         sequencia: seq,
         globalBans: estado.globalBans ?? [],
       })
-      await set(ref(db, `/heroDraft/${sessaoId}`), novo)
+      await set(ref(db, `${heroDraftPath(campeonatoId)}/${sessaoId}`), novo)
       flash('ok', 'Draft resetado para o estado inicial.')
     } catch (e) {
       flash('erro', `Erro: ${e.message}`)
@@ -187,7 +190,7 @@ export default function AdminHeroDraftSection() {
   async function handleDeletar() {
     setConfirmAcao(null)
     try {
-      await remove(ref(db, `/heroDraft/${sessaoId}`))
+      await remove(ref(db, `${heroDraftPath(campeonatoId)}/${sessaoId}`))
       setSessaoId('')
       flash('ok', 'Sessão deletada.')
     } catch (e) {

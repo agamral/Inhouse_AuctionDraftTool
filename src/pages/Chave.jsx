@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { ref, onValue } from 'firebase/database'
 import { db } from '../firebase/database'
+import { useCampeonato } from '../contexts/CampeonatoContext'
+import { teamPath, rodadasPath, confrontosPath } from '../utils/campeonatoPaths'
 import {
   BRACKET_UPPER, BRACKET_LOWER, BRACKET_LABELS,
   STATUS_CONFRONTO, TIPO_CONFRONTO, SLOT_LABEL,
@@ -34,6 +36,7 @@ function calcPositions(rounds) {
 
 // ── Componente principal ───────────────────────────────────────────────────────
 export default function Chave() {
+  const { idPublico } = useCampeonato()
   const [confrontos, setConfrontos] = useState({})
   const [rodadas,    setRodadas]    = useState({})
   const [times,      setTimes]      = useState({})
@@ -42,12 +45,12 @@ export default function Chave() {
   const [timeSel,    setTimeSel]    = useState('')
 
   useEffect(() => onValue(
-    ref(db, '/confrontos'),
+    ref(db, confrontosPath(idPublico)),
     snap => { setConfrontos(snap.val() ?? {}); setLoading(false) },
     err  => { setErroRead(err.message);        setLoading(false) },
-  ), [])
-  useEffect(() => onValue(ref(db, '/rodadas'), snap => setRodadas(snap.val() ?? {})), [])
-  useEffect(() => onValue(ref(db, '/teams'),   snap => setTimes(snap.val()   ?? {})), [])
+  ), [idPublico])
+  useEffect(() => onValue(ref(db, rodadasPath(idPublico)), snap => setRodadas(snap.val() ?? {})), [idPublico])
+  useEffect(() => onValue(ref(db, teamPath(idPublico)),    snap => setTimes(snap.val()   ?? {})), [idPublico])
 
   if (loading) return (
     <div className="chave-root">

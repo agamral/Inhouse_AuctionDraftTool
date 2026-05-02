@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { ref, onValue } from 'firebase/database'
 import { db } from '../firebase/database'
+import { useCampeonato } from '../contexts/CampeonatoContext'
+import { teamPath, rodadasPath, confrontosPath } from '../utils/campeonatoPaths'
 import {
   calcularClassificacao, calcularPontos,
   STATUS_CONFRONTO, TIPO_CONFRONTO,
@@ -9,15 +11,16 @@ import {
 import './Tabela.css'
 
 export default function Tabela() {
+  const { idPublico } = useCampeonato()
   const [rodadas,    setRodadas]    = useState({})
   const [confrontos, setConfrontos] = useState({})
   const [times,      setTimes]      = useState({})
   const [rodadaSel,  setRodadaSel]  = useState('todas')
   const [timeSel,    setTimeSel]    = useState('')
 
-  useEffect(() => onValue(ref(db, '/rodadas'),    snap => setRodadas(snap.val()    ?? {})), [])
-  useEffect(() => onValue(ref(db, '/confrontos'), snap => setConfrontos(snap.val() ?? {})), [])
-  useEffect(() => onValue(ref(db, '/teams'),      snap => setTimes(snap.val()      ?? {})), [])
+  useEffect(() => onValue(ref(db, rodadasPath(idPublico)),    snap => setRodadas(snap.val()    ?? {})), [idPublico])
+  useEffect(() => onValue(ref(db, confrontosPath(idPublico)), snap => setConfrontos(snap.val() ?? {})), [idPublico])
+  useEffect(() => onValue(ref(db, teamPath(idPublico)),       snap => setTimes(snap.val()      ?? {})), [idPublico])
 
   // ── Derivados ──────────────────────────────────────────────────────────────
 

@@ -6,6 +6,8 @@ import { useState, useEffect } from 'react'
 import { ref, onValue, update } from 'firebase/database'
 import { db } from '../firebase/database'
 import { criarContaCapitao, gerarEmailSintetico, emailEhSintetico } from '../firebase/auth'
+import { useCampeonato } from '../contexts/CampeonatoContext'
+import { teamPath } from '../utils/campeonatoPaths'
 
 function gerarSenha() {
   const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
@@ -62,12 +64,13 @@ function detectarIdentificador(team) {
 }
 
 export default function AdminCapitaoAcesso() {
+  const { campeonatoId } = useCampeonato()
   const [teams,    setTeams]    = useState({})
   const [senhas,   setSenhas]   = useState({})
   const [criando,  setCriando]  = useState(null)
   const [feedback, setFeedback] = useState(null)
 
-  useEffect(() => onValue(ref(db, '/teams'), snap => setTeams(snap.val() ?? {})), [])
+  useEffect(() => onValue(ref(db, teamPath(campeonatoId)), snap => setTeams(snap.val() ?? {})), [campeonatoId])
 
   function flash(tipo, msg) {
     setFeedback({ tipo, msg })
@@ -81,7 +84,7 @@ export default function AdminCapitaoAcesso() {
     setCriando(teamId)
     try {
       const uid = await criarContaCapitao(email, senha)
-      await update(ref(db, `/teams/${teamId}`), { capitaoUid: uid, capitaoEmail: email })
+      await update(ref(db, `${teamPath(campeonatoId)}/${teamId}`), { capitaoUid: uid, capitaoEmail: email })
       setSenhas(s => ({ ...s, [teamId]: { email, senha, sintetico } }))
       flash('ok', `Conta criada para ${team.nome}.`)
     } catch (e) {
@@ -90,7 +93,7 @@ export default function AdminCapitaoAcesso() {
         try {
           const emailAlt = gerarEmailSintetico(team.nome + '-' + teamId.slice(-4))
           const uid = await criarContaCapitao(emailAlt, senha)
-          await update(ref(db, `/teams/${teamId}`), { capitaoUid: uid, capitaoEmail: emailAlt })
+          await update(ref(db, `${teamPath(campeonatoId)}/${teamId}`), { capitaoUid: uid, capitaoEmail: emailAlt })
           setSenhas(s => ({ ...s, [teamId]: { email: emailAlt, senha, sintetico: true } }))
           flash('ok', `Conta criada com email alternativo (original já existia).`)
         } catch (e2) {
@@ -105,7 +108,7 @@ export default function AdminCapitaoAcesso() {
   }
 
   async function handleRemoverAcesso(teamId) {
-    await update(ref(db, `/teams/${teamId}`), { capitaoUid: null, capitaoEmail: null })
+    await update(ref(db, `${teamPath(campeonatoId)}/${teamId}`), { capitaoUid: null, capitaoEmail: null })
     setSenhas(s => { const n = { ...s }; delete n[teamId]; return n })
     flash('ok', 'Acesso removido.')
   }

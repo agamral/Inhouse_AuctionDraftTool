@@ -1,16 +1,18 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useContext } from 'react'
 import { ref, onValue } from 'firebase/database'
 import { db } from '../firebase/database'
+import { CampeonatoContext } from '../contexts/CampeonatoContext'
 
-/**
- * Resolve o path base de configuração de um campeonato.
- * Se campeonatoId for fornecido usa o novo namespace.
- * Se não, usa o path legado (/config) para backward compat durante a migração.
- */
 function configPath(campeonatoId, subpath) {
   return campeonatoId
     ? `/campeonatos/${campeonatoId}/config/${subpath}`
     : `/config/${subpath}`
+}
+
+/** Retorna o idPublico do contexto de campeonato (sem lançar erro fora do provider) */
+function useIdPublico() {
+  const ctx = useContext(CampeonatoContext)
+  return ctx?.idPublico ?? null
 }
 
 // ── Defaults ──────────────────────────────────────────────────────────────────
@@ -68,56 +70,66 @@ export const DEFAULT_PONTUACAO = {
 // ── Hooks ─────────────────────────────────────────────────────────────────────
 
 /**
- * Lê os módulos ativos. Aceita campeonatoId para o novo namespace.
- * Sem campeonatoId: lê do path legado /config/modules.
+ * Lê os módulos ativos.
+ * - Sem parâmetro: auto-detecta o campeonato principal via contexto
+ * - Com campeonatoId explícito: usa esse ID (útil no admin para o campeonato selecionado)
+ * - Com null explícito: usa path legado /config/modules
  */
-export function useModules(campeonatoId = null) {
+export function useModules(campeonatoId = undefined) {
+  const idPublico = useIdPublico()
+  const id = campeonatoId === undefined ? idPublico : campeonatoId
   const [modules, setModules] = useState(DEFAULT_MODULES)
 
   useEffect(() => {
-    const path = configPath(campeonatoId, 'modules')
+    const path = configPath(id, 'modules')
     const unsub = onValue(ref(db, path), (snap) => {
       if (snap.exists()) setModules({ ...DEFAULT_MODULES, ...snap.val() })
       else setModules(DEFAULT_MODULES)
     })
     return unsub
-  }, [campeonatoId])
+  }, [id])
 
   return modules
 }
 
 /**
- * Lê o conteúdo editável do site. Aceita campeonatoId para o novo namespace.
+ * Lê o conteúdo editável do site.
+ * Auto-detecta o campeonato principal quando chamado sem parâmetro.
  */
-export function useConteudo(campeonatoId = null) {
+export function useConteudo(campeonatoId = undefined) {
+  const idPublico = useIdPublico()
+  const id = campeonatoId === undefined ? idPublico : campeonatoId
   const [conteudo, setConteudo] = useState(DEFAULT_CONTEUDO)
 
   useEffect(() => {
-    const path = configPath(campeonatoId, 'conteudo')
+    const path = configPath(id, 'conteudo')
     const unsub = onValue(ref(db, path), (snap) => {
       if (snap.exists()) setConteudo({ ...DEFAULT_CONTEUDO, ...snap.val() })
       else setConteudo(DEFAULT_CONTEUDO)
     })
     return unsub
-  }, [campeonatoId])
+  }, [id])
 
   return conteudo
 }
 
 /**
- * Lê as regras do leilão. Aceita campeonatoId para o novo namespace.
+ * Lê as regras do leilão.
+ * Auto-detecta o campeonato principal quando chamado sem parâmetro.
  */
-export function useDraftConfig(campeonatoId = null) {
+export function useDraftConfig(campeonatoId = undefined) {
+  const idPublico = useIdPublico()
+  const id = campeonatoId === undefined ? idPublico : campeonatoId
   const [draftConfig, setDraftConfig] = useState(DEFAULT_DRAFT)
 
   useEffect(() => {
-    const path = configPath(campeonatoId, 'draft')
+    const path = configPath(id, 'draft')
     const unsub = onValue(ref(db, path), (snap) => {
       if (snap.exists()) setDraftConfig({ ...DEFAULT_DRAFT, ...snap.val() })
       else setDraftConfig(DEFAULT_DRAFT)
     })
     return unsub
-  }, [campeonatoId])
+  }, [id])
 
   return draftConfig
 }

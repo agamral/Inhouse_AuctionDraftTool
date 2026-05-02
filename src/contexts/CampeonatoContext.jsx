@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 import { ref, onValue, update, get } from 'firebase/database'
 import { db } from '../firebase/database'
 
-const CampeonatoContext = createContext(null)
+export const CampeonatoContext = createContext(null)
 
 /**
  * Provê o campeonato ativo para todo o app.
