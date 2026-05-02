@@ -14,6 +14,7 @@ import AdminHeroDraftSection    from '../components/AdminHeroDraftSection'
 import AdminTeamsSection        from '../components/AdminTeamsSection'
 import AdminRodadasSection      from '../components/AdminRodadasSection'
 import AdminCapitaoAcesso       from '../components/AdminCapitaoAcesso'
+import AdminMigracaoSection     from '../components/AdminMigracaoSection'
 import './Admin.css'
 
 const TABS = [
@@ -364,6 +365,7 @@ export default function Admin() {
       {aba === 'sistema' && (
         <div className="admin-tab-content">
           {isSuperAdmin && <SuperAdminSection />}
+          {isSuperAdmin && <AdminMigracaoSection />}
         </div>
       )}
 
