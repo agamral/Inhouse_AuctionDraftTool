@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { ref, get, update, remove } from 'firebase/database'
 import { db } from '../firebase/database'
 
@@ -213,14 +214,11 @@ export default function AdminMigracaoSection() {
     return Math.max(0, (contagens[key] ?? 0) - excl.size)
   }
 
-  return (
-    <>
-      {/* ── Modal Inspetor ──────────────────────────────────────────────────── */}
-      {modalKey && modalDef && (
-        <div
-          style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.78)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
-          onClick={e => { if (e.target === e.currentTarget) { setModalKey(null); setDeletando(null) } }}
-        >
+  const modal = modalKey && modalDef && createPortal(
+    <div
+      style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.78)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+      onClick={e => { if (e.target === e.currentTarget) { setModalKey(null); setDeletando(null) } }}
+    >
           <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 10, width: '100%', maxWidth: 700, maxHeight: '88vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
             {/* Header */}
@@ -336,8 +334,13 @@ export default function AdminMigracaoSection() {
               )}
             </div>
           </div>
-        </div>
-      )}
+        </div>,
+    document.body
+  )
+
+  return (
+    <>
+      {modal}
 
       {/* ── Seção principal ─────────────────────────────────────────────────── */}
       <div className="admin-section" style={{ border: '1px solid rgba(155,110,232,0.25)', borderRadius: 8 }}>
