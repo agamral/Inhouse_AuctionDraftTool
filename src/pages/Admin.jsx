@@ -28,10 +28,19 @@ const TABS = [
 ]
 
 export default function Admin() {
-  const { isSuperAdmin } = useAuth()
+  const { isSuperAdmin, isAdmin, adminCampeonatoIds, loading } = useAuth()
   const { campeonatoId, campeonato, campeonatos, setCampeonatoId, setPrincipal } = useCampeonato()
+  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [aba, setAba] = useState('geral')
+
+  // Championship admins don't belong on /admin — redirect to their championship
+  useEffect(() => {
+    if (loading) return
+    if (!isSuperAdmin && isAdmin && adminCampeonatoIds?.length > 0) {
+      navigate(`/campeonatos/${adminCampeonatoIds[0]}/admin`, { replace: true })
+    }
+  }, [loading, isSuperAdmin, isAdmin, adminCampeonatoIds]) // eslint-disable-line
 
   // Se vier com ?campeonato=id na URL (após wizard), seleciona aquele campeonato
   useEffect(() => {

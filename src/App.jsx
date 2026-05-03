@@ -11,6 +11,7 @@ import Draft from './pages/Draft.jsx'
 import Espectador from './pages/Espectador.jsx'
 import Admin from './pages/Admin.jsx'
 import Login from './pages/Login.jsx'
+import LoginAdmin from './pages/LoginAdmin.jsx'
 import Resultados from './pages/Resultados.jsx'
 import Tabela from './pages/Tabela.jsx'
 import Agendamento from './pages/Agendamento.jsx'
@@ -23,7 +24,7 @@ import HeroDraftOverlay from './pages/HeroDraftOverlay.jsx'
 import Regras from './pages/Regras.jsx'
 import Perfil from './pages/Perfil.jsx'
 import CampeonatoWizard from './pages/CampeonatoWizard.jsx'
-import ProtectedRoute from './components/ProtectedRoute.jsx'
+import ProtectedRoute, { CampeonatoAdminRoute } from './components/ProtectedRoute.jsx'
 import { useCampeonato } from './contexts/CampeonatoContext.jsx'
 
 function LoginCapitaoRedirect() {
@@ -58,6 +59,8 @@ export default function App() {
           <Route path="hero-draft/espectador" element={<HeroDraftEspectador />} />
           <Route path="hero-draft/overlay"    element={<HeroDraftOverlay />} />
           <Route path="login-capitao"         element={<LoginCapitao />} />
+          <Route path="login"               element={<LoginAdmin />} />
+          <Route path="admin"               element={<CampeonatoAdminRoute><Admin /></CampeonatoAdminRoute>} />
         </Route>
 
         {/* Legacy flat routes — redirect to master home */}

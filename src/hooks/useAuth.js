@@ -5,11 +5,12 @@ import { auth } from '../firebase/auth'
 import { db } from '../firebase/database'
 
 export function useAuth() {
-  const [user,         setUser]         = useState(undefined)
-  const [isAdmin,      setIsAdmin]      = useState(false)
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
-  const [capitao,      setCapitao]      = useState(null)
-  const [adminChecked, setAdminChecked] = useState(false)
+  const [user,               setUser]               = useState(undefined)
+  const [isAdmin,            setIsAdmin]            = useState(false)
+  const [isSuperAdmin,       setIsSuperAdmin]       = useState(false)
+  const [capitao,            setCapitao]            = useState(null)
+  const [adminCampeonatoIds, setAdminCampeonatoIds] = useState([])
+  const [adminChecked,       setAdminChecked]       = useState(false)
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -46,9 +47,13 @@ export function useAuth() {
           if (!isAdm) {
             const campSnap = await safeGet('/campeonatos')
             const campeonatos = campSnap?.val() ?? {}
-            isAdm = Object.keys(campeonatos).some(id =>
+            const adminIds = Object.keys(campeonatos).filter(id =>
               campeonatos[id]?.admins?.[firebaseUser.uid] === true
             )
+            if (adminIds.length > 0) {
+              isAdm = true
+              setAdminCampeonatoIds(adminIds)
+            }
           }
 
           setIsSuperAdmin(isSA)
@@ -86,11 +91,13 @@ export function useAuth() {
           setIsAdmin(false)
           setIsSuperAdmin(false)
           setCapitao(null)
+          setAdminCampeonatoIds([])
         }
       } else {
         setIsAdmin(false)
         setIsSuperAdmin(false)
         setCapitao(null)
+        setAdminCampeonatoIds([])
       }
       setAdminChecked(true)
     })
@@ -98,5 +105,5 @@ export function useAuth() {
   }, [])
 
   const loading = !adminChecked
-  return { user, isAdmin, isSuperAdmin, capitao, loading }
+  return { user, isAdmin, isSuperAdmin, capitao, adminCampeonatoIds, loading }
 }

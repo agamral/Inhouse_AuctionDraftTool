@@ -223,6 +223,16 @@ export default function AdminCapitaoAcesso() {
                       O capitão será solicitado a definir email real e senha no primeiro acesso.
                     </div>
                   )}
+                  <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>Link:</span>
+                    <code style={{ color: 'var(--text2)', fontSize: 10, flex: 1, wordBreak: 'break-all' }}>
+                      {window.location.origin}/campeonatos/{campeonatoId}/login-capitao
+                    </code>
+                    <button
+                      onClick={() => navigator.clipboard.writeText(`${window.location.origin}/campeonatos/${campeonatoId}/login-capitao`)}
+                      style={{ background: 'none', border: 'none', color: 'var(--gold)', cursor: 'pointer', fontSize: 14, padding: '0 4px', flexShrink: 0 }}
+                      title="Copiar link">⎘</button>
+                  </div>
                   <button onClick={() => setSenhas(s => { const n = { ...s }; delete n[id]; return n })}
                     style={{ marginTop: 8, background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 11, padding: 0 }}>
                     Ocultar
