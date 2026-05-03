@@ -10,6 +10,7 @@ export default function HomeMestre() {
   if (loading) return <main className="page"><p style={{ color: 'var(--text2)' }}>Carregando...</p></main>
 
   const lista = Object.entries(campeonatos)
+    .filter(([, c]) => c.info?.visivel)
     .sort(([, a], [, b]) => (b.info?.criadoEm ?? 0) - (a.info?.criadoEm ?? 0))
 
   if (lista.length === 0) {
