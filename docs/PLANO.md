@@ -2,7 +2,7 @@
 
 > **Branch de desenvolvimento:** `refactor/multi-campeonato`
 > **Branch de produção:** `main`
-> **Última atualização:** 2026-04-28
+> **Última atualização:** 2026-05-03
 
 ---
 
@@ -514,9 +514,30 @@ Após a Season 2 encerrar (ou quando o novo sistema estiver pronto para produç�
 
 ## Parte 3 — Plano de Implementação por Fases
 
-### Status atual
+### Status atual — 2026-05-03
+
 - `main`: sistema funcionando em produção com inscrições ativas
-- `refactor/multi-campeonato`: branch criado, preview URL gerada pelo Vercel
+- `refactor/multi-campeonato`: branch em testes ativos na preview URL do Vercel
+
+**O que foi implementado neste branch até agora:**
+- `campeonatoPaths.js` — helpers de paths Firebase com namespace por campeonato
+- Todas as páginas públicas e componentes admin migrados para paths namespaced
+- `CampeonatoContext` com `idPublico` / `idPublicoOverride` / `campeonatoId`
+- Wizard de criação de campeonato (6 passos)
+- Banner de contexto no admin com seletor de campeonato
+- `AdminMigracaoSection` — ferramenta de migração com inspetor de dados (modal por caminho, toggle por registro, delete do Firebase)
+- Firebase Security Rules atualizadas para `/campeonatos/` e `/system/`
+- URL routing por campeonato: `/campeonatos/:campeonatoId/*`
+- `CampeonatoLayout` — wrapper que pina `idPublico` a partir da URL
+- `HomeMestre` — página raiz (`/`) com cards de campeonatos ativos
+- Controle de visibilidade: `info.visivel` toggle no banner do admin
+- Botão de exclusão de registro de login no SuperAdmin (🗑 com confirmação)
+
+**Pendências operacionais antes do merge:**
+- Semana de testes na preview URL (em andamento)
+- Corrigir Firebase Rule para permitir SuperAdmin deletar `/users/{uid}`
+- Merge para `main`
+- Limpeza dos paths legados após confirmação
 
 ---
 
@@ -530,37 +551,60 @@ Após a Season 2 encerrar (ou quando o novo sistema estiver pronto para produç�
 ### Fase 1 — Foundation
 **Objetivo:** Estrutura de dados, autenticação e wizard de criação.
 
-- [ ] Schema completo do campeonato implementado no Firebase
-- [ ] Security Rules atualizadas para o novo namespace
-- [ ] Hook `useCampeonato()` — resolve campeonato ativo via `principal: boolean`
-- [ ] Hook `useSuperAdmin()` — acesso e permissões
-- [ ] Wizard de criação de campeonato (multi-step)
-- [ ] Seletor de campeonato para SuperAdmin no painel
-- [ ] Auto-roteamento de admins comuns para seu campeonato
-- [ ] Banner persistente no admin: "Operando em: [Nome do Campeonato]"
-- [ ] Lógica de `principal`: ao ativar um, desativa todos os outros
+- [x] Hook `useCampeonato()` — resolve campeonato ativo via `principal: boolean`
+- [x] Wizard de criação de campeonato (multi-step, 6 passos)
+- [x] Seletor de campeonato para SuperAdmin no painel
+- [x] Banner persistente no admin: "Operando em: [Nome do Campeonato]"
+- [x] Lógica de `principal`: ao ativar um, desativa todos os outros
+- [x] `CampeonatoContext` exportado + `idPublicoOverride` para URL routing
+- [ ] Schema completo de datas e formato no wizard (datas, formato partidas, pontuação, slots)
+- [ ] Hook `useSuperAdmin()` dedicado
+- [ ] Auto-roteamento de admins comuns para seu campeonato (sem seletor manual)
 
 ---
 
 ### Fase 2 — Migração
 **Objetivo:** Transferir dados da Season 2 para o novo namespace.
 
-- [ ] Script de migração: flat paths → `/campeonatos/season-2/`
-- [ ] Testes de leitura na preview URL
-- [ ] Semana de convivência paralela
-- [ ] Merge para main após validação
-- [ ] Limpeza dos paths antigos após uma semana
+- [x] `campeonatoPaths.js` — todos os paths namespaced
+- [x] Todas as páginas públicas e componentes admin migrados
+- [x] `AdminMigracaoSection` — ferramenta de migração não-destrutiva com inspetor
+- [x] Firebase Security Rules para `/campeonatos/` e `/system/`
+- [x] Migração da Season 2 executada na preview URL
+- [ ] Semana de convivência paralela — testes na preview (em andamento)
+- [ ] Merge para `main`
+- [ ] Limpeza dos paths legados após confirmação em produção
 
 ---
 
 ### Fase 3 — Páginas públicas e histórico
 **Objetivo:** Todas as telas leem do campeonato ativo; histórico navegável.
 
-- [ ] Todas as páginas públicas (`/tabela`, `/chave`, `/elenco`, `/agendamento`, `/espectador`, `/resultados`) leem via `useCampeonato()`
-- [ ] Home: seção "Últimos campeonatos" (lista com campeão, datas, link para histórico)
-- [ ] Home: seção "Próximos eventos" (data do próximo campeonato configurado)
-- [ ] Rota `/historico` — biblioteca de campeonatos passados
-- [ ] Rota `/historico/{id}` — detalhes de um campeonato: times, partidas, bracket, picks
+- [x] Todas as páginas públicas lendo via `useCampeonato()` e paths namespaced
+- [x] URL routing por campeonato: `/campeonatos/:campeonatoId/*` com `CampeonatoLayout`
+- [x] `HomeMestre` — biblioteca pública de campeonatos em `/`
+- [x] Controle de visibilidade de campeonatos (campo `info.visivel`)
+- [ ] `HomeMestre`: seção "Próximo evento" (data configurada no wizard)
+- [ ] `HomeMestre`: "Último campeão" de cada campeonato encerrado
+- [ ] Rota `/historico` — biblioteca de campeonatos encerrados
+- [ ] Rota `/historico/:id` — times, confrontos, bracket, picks de uma edição
+
+---
+
+### Fase 3.5 — Segurança e redesign de autenticação
+**Objetivo:** Eliminar a exposição do sistema de admin/capitão para visitantes. Acesso por papel sem revelar a existência de outros papéis.
+
+- [ ] Página `/login` unificada — só mostra Google OAuth, sem menção a admin/capitão
+  - Após login: detecta papel e roteia com mensagem contextual
+  - SuperAdmin/Admin → `/admin` + "Bem-vindo, você é admin do campeonato X"
+  - Jogador inscrito → `/campeonatos/{id}` + mensagem de boas-vindas
+  - Desconhecido → "Você não está inscrito. [Inscreva-se →]" ou "Inscrições fechadas"
+- [ ] Login de capitão (`/login-capitao`) removido da UI pública — acessível apenas via link direto enviado pelo admin
+- [ ] Página `/login-capitao` renomeada visualmente para "Acesso de Equipe" (sem revelar "capitão")
+- [ ] Provisionamento de admin pelo SuperAdmin: input de Gmail → marca como admin do campeonato X
+- [ ] `ProtectedRoute` melhorado: acesso não autorizado redireciona para `/` silenciosamente (sem revelar existência do painel)
+- [ ] Navbar: ícone ⚔ de login removido do nav público; acesso a `/login` apenas contextual (ex: ao tentar se inscrever)
+- [ ] Firebase Rule para SuperAdmin deletar `/users/{uid}` (fix pendente)
 
 ---
 
