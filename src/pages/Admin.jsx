@@ -18,6 +18,7 @@ import AdminCapitaoAcesso       from '../components/AdminCapitaoAcesso'
 import AdminMigracaoSection          from '../components/AdminMigracaoSection'
 import AdminProvisionamentoSection   from '../components/AdminProvisionamentoSection'
 import AdminEncerramentoSection      from '../components/AdminEncerramentoSection'
+import AdminBotSetupSection          from '../components/AdminBotSetupSection'
 import './Admin.css'
 
 const ALL_TABS = [
@@ -395,6 +396,7 @@ export default function Admin() {
       {/* SISTEMA */}
       {aba === 'sistema' && isSuperAdmin && (
         <div className="admin-tab-content">
+          <AdminBotSetupSection />
           <AdminProvisionamentoSection />
           <AdminEncerramentoSection />
           <SuperAdminSection />
