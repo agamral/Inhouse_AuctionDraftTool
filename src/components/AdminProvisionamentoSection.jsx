@@ -118,6 +118,17 @@ export default function AdminProvisionamentoSection() {
                     </div>
                     <div className="sa-user-actions">
                       <span className="sa-badge sa-badge-admin">Admin</span>
+                      <button
+                        className="btn"
+                        style={{ fontSize: 11, padding: '3px 8px' }}
+                        title="Copiar link de acesso ao painel"
+                        onClick={() => {
+                          navigator.clipboard.writeText(`${window.location.origin}/campeonatos/${campeonatoId}/login`)
+                          flash('Link copiado!')
+                        }}
+                      >
+                        📋 Link
+                      </button>
                       {confirmRemove === uid ? (
                         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                           <span style={{ fontSize: 11, color: 'var(--text2)' }}>Remover?</span>
