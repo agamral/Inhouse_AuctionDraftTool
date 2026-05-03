@@ -28,7 +28,7 @@ const TABS = [
 ]
 
 export default function Admin() {
-  const { isSuperAdmin, isAdmin, adminCampeonatoIds, loading } = useAuth()
+  const { isSuperAdmin, isAdmin, adminCampeonatoIds, loading: authLoading } = useAuth()
   const { campeonatoId, campeonato, campeonatos, setCampeonatoId, setPrincipal } = useCampeonato()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -36,11 +36,11 @@ export default function Admin() {
 
   // Championship admins don't belong on /admin — redirect to their championship
   useEffect(() => {
-    if (loading) return
+    if (authLoading) return
     if (!isSuperAdmin && isAdmin && adminCampeonatoIds?.length > 0) {
       navigate(`/campeonatos/${adminCampeonatoIds[0]}/admin`, { replace: true })
     }
-  }, [loading, isSuperAdmin, isAdmin, adminCampeonatoIds]) // eslint-disable-line
+  }, [authLoading, isSuperAdmin, isAdmin, adminCampeonatoIds]) // eslint-disable-line
 
   // Se vier com ?campeonato=id na URL (após wizard), seleciona aquele campeonato
   useEffect(() => {
@@ -67,13 +67,13 @@ export default function Admin() {
 
   const [conteudo, setConteudo] = useState(DEFAULT_CONTEUDO)
 
-  const [loading, setLoading] = useState(true)
+  const [configLoading, setConfigLoading] = useState(true)
   const [saving,  setSaving]  = useState(false)
   const [saved,   setSaved]   = useState(false)
 
   useEffect(() => {
     let n = 0
-    const done = () => { if (++n === 2) setLoading(false) }
+    const done = () => { if (++n === 2) setConfigLoading(false) }
     const u1 = onValue(ref(db, configModulesPath(campeonatoId)),  s => { if (s.exists()) setModules(p => ({ ...p, ...s.val() })); done() }, { onlyOnce: true })
     const u2 = onValue(ref(db, configDraftPath(campeonatoId)),    s => { if (s.exists()) setDraft(p   => ({ ...p, ...s.val() })); done() }, { onlyOnce: true })
     const u3 = onValue(ref(db, configConteudoPath(campeonatoId)), s => { if (s.exists()) setConteudo(p => ({ ...p, ...s.val() })) }, { onlyOnce: true })
@@ -105,7 +105,7 @@ export default function Admin() {
     }
   }
 
-  if (loading) return <main className="page"><p style={{ color: 'var(--text2)' }}>Carregando...</p></main>
+  if (authLoading || configLoading) return <main className="page"><p style={{ color: 'var(--text2)' }}>Carregando...</p></main>
 
   const campeonatosArr = Object.entries(campeonatos).sort(([,a],[,b]) => (b.info?.criadoEm ?? 0) - (a.info?.criadoEm ?? 0))
 
