@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import { onAuthStateChanged } from 'firebase/auth'
-import { ref, get, set } from 'firebase/database'
+import { ref, get, set, remove } from 'firebase/database'
 import { auth } from '../firebase/auth'
 import { db } from '../firebase/database'
+
+const sanitizeEmail = (email) => email.toLowerCase().replace(/\./g, ',')
 
 export function useAuth() {
   const [user,               setUser]               = useState(undefined)
@@ -47,12 +49,31 @@ export function useAuth() {
           if (!isAdm) {
             const campSnap = await safeGet('/campeonatos')
             const campeonatos = campSnap?.val() ?? {}
+
+            // Admins confirmados por UID
             const adminIds = Object.keys(campeonatos).filter(id =>
               campeonatos[id]?.admins?.[firebaseUser.uid] === true
             )
-            if (adminIds.length > 0) {
+
+            // Convites pendentes por email — promove automaticamente
+            const sanitized = sanitizeEmail(firebaseUser.email ?? '')
+            const promotedIds = []
+            for (const [cid, camp] of Object.entries(campeonatos)) {
+              if (camp?.adminsPendentes?.[sanitized]) {
+                try {
+                  await set(ref(db,    `/campeonatos/${cid}/admins/${firebaseUser.uid}`), true)
+                  await remove(ref(db, `/campeonatos/${cid}/adminsPendentes/${sanitized}`))
+                  promotedIds.push(cid)
+                } catch {
+                  promotedIds.push(cid) // sem permissão de escrita, mas concede acesso UI
+                }
+              }
+            }
+
+            const allIds = [...new Set([...adminIds, ...promotedIds])]
+            if (allIds.length > 0) {
               isAdm = true
-              setAdminCampeonatoIds(adminIds)
+              setAdminCampeonatoIds(allIds)
             }
           }
 
