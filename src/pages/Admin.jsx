@@ -145,11 +145,11 @@ export default function Admin() {
             {campeonato && (
               <button
                 className="btn"
-                style={{ fontSize: 11, padding: '3px 10px', color: campeonato.info?.visivel ? 'var(--green)' : 'var(--text2)', borderColor: campeonato.info?.visivel ? 'rgba(76,175,125,0.35)' : 'var(--border)' }}
-                onClick={() => update(ref(db, `/campeonatos/${campeonatoId}/info`), { visivel: !campeonato.info?.visivel })}
-                title={campeonato.info?.visivel ? 'Ocultar da Home Mestre' : 'Exibir na Home Mestre'}
+                style={{ fontSize: 11, padding: '3px 10px', color: campeonato.info?.visivel !== false ? 'var(--green)' : 'var(--text2)', borderColor: campeonato.info?.visivel !== false ? 'rgba(76,175,125,0.35)' : 'var(--border)' }}
+                onClick={() => update(ref(db, `/campeonatos/${campeonatoId}/info`), { visivel: campeonato.info?.visivel === false ? true : false })}
+                title={campeonato.info?.visivel !== false ? 'Ocultar da Home Mestre' : 'Exibir na Home Mestre'}
               >
-                {campeonato.info?.visivel ? '👁 Visível na home' : '🚫 Oculto da home'}
+                {campeonato.info?.visivel !== false ? '👁 Visível na home' : '🚫 Oculto da home'}
               </button>
             )}
             {/* + Novo sempre visível para SuperAdmin */}
