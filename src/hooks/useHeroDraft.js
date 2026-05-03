@@ -13,18 +13,19 @@ import {
 const DRAFT_PATH = 'heroDraft'
 
 // Retorna o estado do draft de heróis em tempo real via Firebase.
-// sessionId: ID da sessão ativa (ex: 'semifinal-1')
-// timeLocal:  'A' | 'B' | 'admin' — quem está usando este hook
-export function useHeroDraft(sessionId, timeLocal = null) {
+// sessionId:    ID da sessão ativa (ex: 'semifinal-1')
+// timeLocal:    'A' | 'B' | 'admin' — quem está usando este hook
+// pathOverride: caminho Firebase completo; se fornecido, ignora sessionId para o path
+export function useHeroDraft(sessionId, timeLocal = null, pathOverride = null) {
   const [estado, setEstado]   = useState(null)
   const [loading, setLoading] = useState(true)
   const [erro, setErro]       = useState(null)
 
-  const path = `${DRAFT_PATH}/${sessionId}`
+  const path = pathOverride ?? `${DRAFT_PATH}/${sessionId}`
 
   // ── Listener Firebase ──────────────────────────────────────────────────────
   useEffect(() => {
-    if (!sessionId) return
+    if (!sessionId && !pathOverride) return
 
     const draftRef = ref(db, path)
     const unsub = onValue(
@@ -55,7 +56,7 @@ export function useHeroDraft(sessionId, timeLocal = null) {
     )
 
     return () => unsub()
-  }, [sessionId])
+  }, [sessionId, pathOverride])
 
   // ── É a vez deste time agir? ───────────────────────────────────────────────
   const ehMinhaTez = useCallback(() => {

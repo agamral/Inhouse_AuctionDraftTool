@@ -25,6 +25,9 @@ import Regras from './pages/Regras.jsx'
 import Perfil from './pages/Perfil.jsx'
 import CampeonatoWizard from './pages/CampeonatoWizard.jsx'
 import ProtectedRoute, { CampeonatoAdminRoute } from './components/ProtectedRoute.jsx'
+import ShowmatchAdmin    from './pages/ShowmatchAdmin.jsx'
+import ShowmatchCapitao  from './pages/ShowmatchCapitao.jsx'
+import ShowmatchEspectador from './pages/ShowmatchEspectador.jsx'
 import { useCampeonato } from './contexts/CampeonatoContext.jsx'
 
 function LoginCapitaoRedirect() {
@@ -62,6 +65,11 @@ export default function App() {
           <Route path="login"               element={<LoginAdmin />} />
           <Route path="admin"               element={<CampeonatoAdminRoute><Admin /></CampeonatoAdminRoute>} />
         </Route>
+
+        {/* Showmatch */}
+        <Route path="/showmatch" element={<ProtectedRoute><ShowmatchAdmin /></ProtectedRoute>} />
+        <Route path="/showmatch/espectador" element={<ShowmatchEspectador />} />
+        <Route path="/showmatch/draft" element={<ShowmatchCapitao />} />
 
         {/* Legacy flat routes — redirect to master home */}
         <Route path="/draft"       element={<Navigate to="/" replace />} />
