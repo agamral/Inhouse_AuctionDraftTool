@@ -1,3 +1,6 @@
+import { useState, useEffect } from 'react'
+import { ref, onValue } from 'firebase/database'
+import { db } from '../firebase/database'
 import { useCampeonato } from '../contexts/CampeonatoContext'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -6,6 +9,15 @@ import './HomeMestre.css'
 export default function HomeMestre() {
   const { campeonatos, loading } = useCampeonato()
   const { t } = useTranslation()
+  const [temHistorico, setTemHistorico] = useState(false)
+
+  // Verifica se existe histórico sem carregar tudo
+  useEffect(() => {
+    const unsub = onValue(ref(db, '/historico'), snap => {
+      setTemHistorico(snap.exists() && Object.keys(snap.val() ?? {}).length > 0)
+    }, { onlyOnce: true })
+    return unsub
+  }, [])
 
   if (loading) return <main className="page"><p style={{ color: 'var(--text2)' }}>Carregando...</p></main>
 
@@ -13,11 +25,18 @@ export default function HomeMestre() {
     .filter(([, c]) => c.info?.visivel !== false)
     .sort(([, a], [, b]) => (b.info?.criadoEm ?? 0) - (a.info?.criadoEm ?? 0))
 
+  // Próximo evento do campeonato principal
+  const principal = Object.values(campeonatos).find(c => c.info?.principal)
+  const proximoEvento = principal?.config?.conteudo?.proximoEvento
+
   if (lista.length === 0) {
     return (
       <main className="page">
         <h1 className="page-title">Copa Inhouse</h1>
         <p style={{ color: 'var(--text2)', fontSize: 14 }}>Nenhum campeonato disponível ainda.</p>
+        {temHistorico && (
+          <Link to="/historico" className="hm-historico-link">📚 Ver edições anteriores →</Link>
+        )}
       </main>
     )
   }
@@ -32,31 +51,56 @@ export default function HomeMestre() {
         </div>
       </div>
 
+      {/* Próximo evento */}
+      {proximoEvento && (
+        <div className="hm-proximo-evento">
+          <span className="hm-proximo-label">Próximo evento</span>
+          <span className="hm-proximo-data">{proximoEvento}</span>
+        </div>
+      )}
+
       <div className="hm-grid">
         {lista.map(([id, camp]) => {
-          const info = camp.info ?? {}
+          const info       = camp.info ?? {}
           const isPrincipal = info.principal
-          const status = camp.config?.modules?.campeonatoAtivo ? 'Em andamento'
-                       : camp.config?.modules?.draftAtivo      ? 'Leilão'
-                       : camp.config?.modules?.inscricaoAberta ? 'Inscrições abertas'
-                       : 'Encerrado'
-          const statusColor = camp.config?.modules?.campeonatoAtivo ? 'var(--green)'
-                            : camp.config?.modules?.draftAtivo      ? 'var(--gold)'
-                            : camp.config?.modules?.inscricaoAberta ? 'var(--blue)'
-                            : 'var(--text3)'
+          const encerrado  = info.status === 'encerrado'
+          const status = encerrado
+            ? 'Encerrado'
+            : camp.config?.modules?.campeonatoAtivo ? 'Em andamento'
+            : camp.config?.modules?.draftAtivo      ? 'Leilão'
+            : camp.config?.modules?.inscricaoAberta ? 'Inscrições abertas'
+            : 'Aguardando'
+          const statusColor = encerrado
+            ? 'var(--text3)'
+            : camp.config?.modules?.campeonatoAtivo ? 'var(--green)'
+            : camp.config?.modules?.draftAtivo      ? 'var(--gold)'
+            : camp.config?.modules?.inscricaoAberta ? 'var(--blue)'
+            : 'var(--text3)'
+
+          // Encerrados com histórico linkam para /historico/:id
+          const linkTo = encerrado ? `/historico/${id}` : `/campeonatos/${id}`
+
           return (
-            <Link key={id} to={`/campeonatos/${id}`} className={`hm-card${isPrincipal ? ' principal' : ''}`}>
+            <Link key={id} to={linkTo} className={`hm-card${isPrincipal ? ' principal' : ''}${encerrado ? ' encerrado' : ''}`}>
               <div className="hm-card-top">
                 <div className="hm-card-nome">{info.nome ?? id}</div>
                 {isPrincipal && <span className="hm-badge">principal</span>}
+                {encerrado   && <span className="hm-badge-enc">encerrado</span>}
               </div>
               {info.labelSeason && <div className="hm-card-label">{info.labelSeason}</div>}
               <div className="hm-card-status" style={{ color: statusColor }}>● {status}</div>
-              <div className="hm-card-cta">Ver campeonato →</div>
+              <div className="hm-card-cta">{encerrado ? 'Ver histórico →' : 'Ver campeonato →'}</div>
             </Link>
           )
         })}
       </div>
+
+      {/* Link para histórico completo */}
+      {temHistorico && (
+        <div style={{ marginTop: 28, textAlign: 'center' }}>
+          <Link to="/historico" className="hm-historico-link">📚 Ver todas as edições anteriores →</Link>
+        </div>
+      )}
     </main>
   )
 }
