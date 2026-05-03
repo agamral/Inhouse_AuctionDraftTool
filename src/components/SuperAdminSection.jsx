@@ -3,36 +3,20 @@ import { ref, get, set, remove, onValue } from 'firebase/database'
 import { db } from '../firebase/database'
 
 export default function SuperAdminSection() {
-  const [cupName, setCupName] = useState('')
-  const [cupNameInput, setCupNameInput] = useState('')
-  const [users, setUsers] = useState({})
-  const [admins, setAdmins] = useState({})
+  const [users,      setUsers]      = useState({})
+  const [admins,     setAdmins]     = useState({})
   const [superAdmins, setSuperAdmins] = useState({})
-  const [saving, setSaving] = useState(false)
-  const [savedMsg, setSavedMsg] = useState('')
+  const [savedMsg,   setSavedMsg]   = useState('')
   const [confirmDelete, setConfirmDelete] = useState(null)
 
   useEffect(() => {
     const unsubs = [
-      onValue(ref(db, '/config/settings/cupName'), (snap) => {
-        const val = snap.val() ?? 'Copa Inhouse'
-        setCupName(val)
-        setCupNameInput(val)
-      }),
-      onValue(ref(db, '/users'), (snap) => setUsers(snap.val() ?? {})),
-      onValue(ref(db, '/config/admins'), (snap) => setAdmins(snap.val() ?? {})),
+      onValue(ref(db, '/users'),              (snap) => setUsers(snap.val() ?? {})),
+      onValue(ref(db, '/config/admins'),      (snap) => setAdmins(snap.val() ?? {})),
       onValue(ref(db, '/config/superAdmins'), (snap) => setSuperAdmins(snap.val() ?? {})),
     ]
     return () => unsubs.forEach((u) => u())
   }, [])
-
-  async function saveCupName() {
-    if (!cupNameInput.trim()) return
-    setSaving(true)
-    await set(ref(db, '/config/settings/cupName'), cupNameInput.trim())
-    setSaving(false)
-    flash('Nome salvo!')
-  }
 
   async function promoteAdmin(uid) {
     await set(ref(db, `/config/admins/${uid}`), true)
@@ -63,24 +47,6 @@ export default function SuperAdminSection() {
     <div className="admin-section superadmin-section">
       <div className="admin-section-title superadmin-title">
         ★ Super Admin
-      </div>
-
-      {/* Cup Name */}
-      <div className="sa-block">
-        <div className="admin-toggle-label">Nome da Copa</div>
-        <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-          <input
-            className="sa-input"
-            value={cupNameInput}
-            onChange={(e) => setCupNameInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && saveCupName()}
-            placeholder="Ex: Copa Inhouse #3"
-          />
-          <button className="btn primary" style={{ whiteSpace: 'nowrap', padding: '8px 16px', fontSize: '13px' }}
-            onClick={saveCupName} disabled={saving || cupNameInput === cupName}>
-            Salvar
-          </button>
-        </div>
       </div>
 
       {/* Admins */}

@@ -20,13 +20,13 @@ import AdminProvisionamentoSection   from '../components/AdminProvisionamentoSec
 import AdminEncerramentoSection      from '../components/AdminEncerramentoSection'
 import './Admin.css'
 
-const TABS = [
+const ALL_TABS = [
   { id: 'geral',      label: 'Geral'      },
   { id: 'inscricoes', label: 'Inscrições' },
   { id: 'leilao',     label: 'Leilão'     },
   { id: 'times',      label: 'Times'      },
   { id: 'campeonato', label: 'Campeonato' },
-  { id: 'sistema',    label: 'Sistema'    },
+  { id: 'sistema',    label: 'Sistema',   superAdminOnly: true },
 ]
 
 export default function Admin() {
@@ -72,6 +72,9 @@ export default function Admin() {
   const [configLoading, setConfigLoading] = useState(true)
   const [saving,  setSaving]  = useState(false)
   const [saved,   setSaved]   = useState(false)
+  const [showMigracao, setShowMigracao] = useState(false)
+
+  const tabs = ALL_TABS.filter(t => !t.superAdminOnly || isSuperAdmin)
 
   useEffect(() => {
     let n = 0
@@ -163,6 +166,9 @@ export default function Admin() {
                 {campeonato.info?.visivel !== false ? '👁 Visível na home' : '🚫 Oculto da home'}
               </button>
             )}
+            <Link to="/showmatch" className="btn" style={{ fontSize: 12, padding: '5px 14px', whiteSpace: 'nowrap', color: 'var(--red)', borderColor: 'rgba(224,85,85,0.35)' }}>
+              ⚡ Showmatch
+            </Link>
             {/* + Novo sempre visível para SuperAdmin */}
             <Link to="/admin/novo-campeonato" className="btn primary" style={{ fontSize: 12, padding: '5px 14px', whiteSpace: 'nowrap' }}>
               + Novo campeonato
@@ -173,8 +179,12 @@ export default function Admin() {
 
       <div className="admin-dash-header">
         <div>
-          <h1 className="page-title" style={{ marginBottom: 2 }}>Painel Admin</h1>
-          <p className="page-subtitle" style={{ margin: 0 }}>Copa Inhouse</p>
+          <h1 className="page-title" style={{ marginBottom: 2 }}>
+            {isSuperAdmin ? 'Painel SuperAdmin' : `${campeonato?.info?.nome ?? 'Painel Admin'}`}
+          </h1>
+          <p className="page-subtitle" style={{ margin: 0 }}>
+            {isSuperAdmin ? 'Administração global · Copa Inhouse' : 'Administração do campeonato'}
+          </p>
         </div>
         {/* Status rápido dos módulos */}
         <div className="admin-dash-status">
@@ -194,7 +204,7 @@ export default function Admin() {
 
       {/* ── Abas ──────────────────────────────────────────────────────────────── */}
       <div className="admin-tabs">
-        {TABS.map(t => (
+        {tabs.map(t => (
           <button
             key={t.id}
             className={`admin-tab${aba === t.id ? ' admin-tab--ativo' : ''}`}
@@ -383,12 +393,24 @@ export default function Admin() {
       )}
 
       {/* SISTEMA */}
-      {aba === 'sistema' && (
+      {aba === 'sistema' && isSuperAdmin && (
         <div className="admin-tab-content">
-          {isSuperAdmin && <AdminProvisionamentoSection />}
-          {isSuperAdmin && <AdminEncerramentoSection />}
-          {isSuperAdmin && <SuperAdminSection />}
-          {isSuperAdmin && <AdminMigracaoSection />}
+          <AdminProvisionamentoSection />
+          <AdminEncerramentoSection />
+          <SuperAdminSection />
+
+          {/* Migração — colapsada por ser de uso único */}
+          <div className="admin-section" style={{ border: '1px solid var(--border)', borderRadius: 8 }}>
+            <button
+              className="admin-section-title"
+              style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--text2)' }}
+              onClick={() => setShowMigracao(v => !v)}
+            >
+              <span>🔄 Ferramenta de Migração</span>
+              <span style={{ fontSize: 11, opacity: 0.6 }}>{showMigracao ? '▲ recolher' : '▼ expandir'}</span>
+            </button>
+            {showMigracao && <AdminMigracaoSection />}
+          </div>
         </div>
       )}
 
