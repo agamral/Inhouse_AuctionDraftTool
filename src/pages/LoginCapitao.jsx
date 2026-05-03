@@ -206,10 +206,10 @@ export default function LoginCapitao() {
 
   if (loading) return null
 
-  const titulo = etapa === 'completar' ? 'Complete seu perfil' : 'Área do Capitão'
+  const titulo = etapa === 'completar' ? 'Complete seu perfil' : 'Acesso de Equipe'
   const subtitulo = etapa === 'completar'
     ? 'Defina uma senha pessoal para os próximos acessos'
-    : 'Use a chave e a senha fornecidas pelo admin.'
+    : 'Use a chave de acesso fornecida pelo organizador.'
 
   return (
     <main className="page" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>

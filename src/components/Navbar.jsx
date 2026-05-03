@@ -152,11 +152,7 @@ export default function Navbar() {
               : <span>{user.email[0].toUpperCase()}</span>
             }
           </NavLink>
-        ) : (
-          <NavLink to="/login-capitao" className="navbar-login-btn" title="Área do Capitão">
-            ⚔
-          </NavLink>
-        )}
+        ) : null}
       </div>
     </header>
   )
