@@ -153,6 +153,7 @@ export default function CampeonatoWizard() {
           tipo:         'campeonato',
           status:       'configurando',
           principal:    false,
+          visivel:      false,
           criadoEm:     Date.now(),
         },
         datas: {

@@ -14,7 +14,7 @@ const LANGUAGES = [
 
 export default function Navbar() {
   const { t, i18n } = useTranslation()
-  const { user, isAdmin, capitao } = useAuth()
+  const { user, isAdmin, isSuperAdmin, adminCampeonatoIds, capitao } = useAuth()
   const modules = useModules()
   const conteudo = useConteudo()
   const navigate = useNavigate()
@@ -125,7 +125,10 @@ export default function Navbar() {
 
         {isAdmin ? (
           <div className="navbar-admin-area">
-            <NavLink to="/admin" className={({ isActive }) => `nav-link admin-link ${isActive ? 'active' : ''}`}>
+            <NavLink
+              to={isSuperAdmin ? '/admin' : inCampeonato ? `${base}/admin` : `/campeonatos/${adminCampeonatoIds?.[0]}/admin`}
+              className={({ isActive }) => `nav-link admin-link ${isActive ? 'active' : ''}`}
+            >
               ⚙ Admin
             </NavLink>
             <button className="navbar-avatar" onClick={handleLogout} title={`Sair (${user.email})`}>
