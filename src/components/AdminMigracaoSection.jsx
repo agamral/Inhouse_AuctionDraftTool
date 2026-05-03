@@ -392,44 +392,40 @@ export default function AdminMigracaoSection() {
                 </div>
               </div>
 
-              {/* Lista de caminhos — clicável */}
+              {/* Lista de caminhos */}
+              <style>{`
+                .migracao-row { display:flex; align-items:center; gap:10px; width:100%; padding:7px 10px; border-radius:5px; font-size:12px; text-align:left; background:transparent; border:1px solid transparent; color:var(--text3); cursor:default; }
+                .migracao-row.tem-dados { background:var(--bg3); border-color:var(--border); color:var(--text2); cursor:pointer; }
+                .migracao-row.tem-dados:hover { background:var(--bg); border-color:var(--border2); color:var(--text); }
+                .migracao-row.tem-dados:hover .migracao-row-arrow { color:var(--gold2); }
+                .migracao-row.tem-dados:hover .migracao-row-label { color:var(--text); }
+              `}</style>
               <div style={{ marginBottom: 20 }}>
                 <div className="admin-toggle-label" style={{ marginBottom: 8 }}>
                   O que será migrado
-                  <span style={{ fontWeight: 400, color: 'var(--text3)', fontSize: 11, marginLeft: 8 }}>clique em um item para inspecionar os dados</span>
+                  <span style={{ fontWeight: 400, color: 'var(--text3)', fontSize: 11, marginLeft: 8 }}>— clique para inspecionar</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                   {PATHS_LEGADOS.map(({ key, label, path, tipo }) => {
                     const total    = contagens[key] ?? 0
                     const temDados = total > 0
-                    const clicavel = temDados
                     const isObjeto = tipo === 'objeto'
                     const exclRoot = excluidos[key]?.has('__root__')
                     const inclCount = isObjeto ? null : incluidos(key)
                     const exclCount = isObjeto ? (exclRoot ? 1 : 0) : (excluidos[key]?.size ?? 0)
                     return (
-                      <div
+                      <button
                         key={key}
-                        onClick={() => clicavel && setModalKey(key)}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: 10,
-                          padding: '6px 10px', borderRadius: 5,
-                          background: clicavel ? 'var(--bg3)' : 'transparent',
-                          border: `1px solid ${clicavel ? 'var(--border)' : 'transparent'}`,
-                          cursor: clicavel ? 'pointer' : 'default',
-                          transition: 'background 0.15s',
-                          fontSize: 12,
-                          color: temDados ? 'var(--text2)' : 'var(--text3)',
-                        }}
-                        onMouseEnter={e => { if (clicavel) e.currentTarget.style.background = 'var(--bg2)' }}
-                        onMouseLeave={e => { if (clicavel) e.currentTarget.style.background = 'var(--bg3)' }}
+                        className={`migracao-row${temDados ? ' tem-dados' : ''}`}
+                        onClick={() => temDados && setModalKey(key)}
+                        disabled={!temDados}
                       >
-                        <span style={{ width: 14, textAlign: 'center', flexShrink: 0 }}>
+                        <span style={{ width: 14, textAlign: 'center', flexShrink: 0, color: temDados ? (exclCount === 0 ? 'var(--green)' : 'var(--gold)') : 'var(--text3)' }}>
                           {temDados ? (exclCount === 0 ? '✓' : (isObjeto ? '○' : inclCount > 0 ? '◐' : '○')) : '—'}
                         </span>
-                        <span style={{ flex: 1 }}>{label}</span>
+                        <span className="migracao-row-label" style={{ flex: 1 }}>{label}</span>
                         <code style={{ color: 'var(--text3)', fontSize: 10 }}>{path}</code>
-                        <span style={{ minWidth: 60, textAlign: 'right', display: 'flex', gap: 5, justifyContent: 'flex-end', flexShrink: 0 }}>
+                        <span style={{ minWidth: 70, textAlign: 'right', display: 'flex', gap: 5, justifyContent: 'flex-end', flexShrink: 0 }}>
                           {temDados && isObjeto && exclCount === 0 && <span style={{ color: 'var(--green)' }}>incluído</span>}
                           {temDados && isObjeto && exclCount > 0  && <span style={{ color: 'var(--red)' }}>excluído</span>}
                           {temDados && !isObjeto && (
@@ -440,8 +436,8 @@ export default function AdminMigracaoSection() {
                           )}
                           {!temDados && <span style={{ color: 'var(--text3)' }}>vazio</span>}
                         </span>
-                        {clicavel && <span style={{ color: 'var(--text3)', fontSize: 11, flexShrink: 0 }}>›</span>}
-                      </div>
+                        {temDados && <span className="migracao-row-arrow" style={{ color: 'var(--text3)', fontSize: 13, flexShrink: 0, transition: 'color 0.15s' }}>›</span>}
+                      </button>
                     )
                   })}
                 </div>
