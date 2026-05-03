@@ -10,6 +10,7 @@ export default function SuperAdminSection() {
   const [superAdmins, setSuperAdmins] = useState({})
   const [saving, setSaving] = useState(false)
   const [savedMsg, setSavedMsg] = useState('')
+  const [confirmDelete, setConfirmDelete] = useState(null)
 
   useEffect(() => {
     const unsubs = [
@@ -41,6 +42,12 @@ export default function SuperAdminSection() {
   async function demoteAdmin(uid) {
     await remove(ref(db, `/config/admins/${uid}`))
     flash('Admin removido!')
+  }
+
+  async function deleteUserRecord(uid) {
+    await remove(ref(db, `/users/${uid}`))
+    setConfirmDelete(null)
+    flash('Registro removido.')
   }
 
   function flash(msg) {
@@ -107,6 +114,22 @@ export default function SuperAdminSection() {
                       isAdm
                         ? <button className="btn sa-btn-remove" onClick={() => demoteAdmin(uid)}>Remover</button>
                         : <button className="btn primary sa-btn-add" onClick={() => promoteAdmin(uid)}>+ Admin</button>
+                    )}
+                    {!isSA && (
+                      confirmDelete === uid ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontSize: 11, color: 'var(--text2)' }}>Excluir registro?</span>
+                          <button className="btn" style={{ fontSize: 11, padding: '2px 8px', color: 'var(--red)', borderColor: 'rgba(224,85,85,0.4)' }}
+                            onClick={() => deleteUserRecord(uid)}>Sim</button>
+                          <button className="btn" style={{ fontSize: 11, padding: '2px 8px' }}
+                            onClick={() => setConfirmDelete(null)}>Não</button>
+                        </div>
+                      ) : (
+                        <button className="btn" style={{ fontSize: 11, padding: '3px 8px', color: 'var(--red)', borderColor: 'rgba(224,85,85,0.25)' }}
+                          onClick={() => setConfirmDelete(uid)} title="Excluir registro de login">
+                          🗑
+                        </button>
+                      )
                     )}
                   </div>
                 </div>
