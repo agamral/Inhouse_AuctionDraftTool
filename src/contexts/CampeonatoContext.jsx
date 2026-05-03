@@ -33,8 +33,10 @@ export function CampeonatoProvider({ children }) {
     return unsub
   }, [])
 
-  // Campeonato exibido nas rotas públicas (principal: true)
-  const idPublico = Object.entries(campeonatos).find(([, c]) => c.info?.principal)?.[0] ?? null
+  // Campeonato exibido nas rotas públicas (principal: true, ou override via URL)
+  const [idPublicoOverride, setIdPublicoOverride] = useState(null)
+  const idPrincipal = Object.entries(campeonatos).find(([, c]) => c.info?.principal)?.[0] ?? null
+  const idPublico = idPublicoOverride ?? idPrincipal
 
   // Ao setar principal em um campeonato, remove dos demais
   const setPrincipal = useCallback(async (campeonatoId) => {
@@ -58,6 +60,7 @@ export function CampeonatoProvider({ children }) {
     // Ações
     setCampeonatoId: setIdSelecionado,
     setPrincipal,
+    setIdPublicoOverride,
 
     loading,
   }

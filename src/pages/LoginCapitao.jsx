@@ -4,6 +4,7 @@ import { ref, update, get } from 'firebase/database'
 import { db } from '../firebase/database'
 import { loginCapitao, atualizarSenha, emailEhSintetico, enviarResetSenha } from '../firebase/auth'
 import { useAuth } from '../hooks/useAuth'
+import { useCampeonato } from '../contexts/CampeonatoContext'
 
 const inputCss = {
   background: 'var(--bg)', border: '1px solid var(--border2)', borderRadius: 6,
@@ -179,6 +180,7 @@ function FormCompletarPerfil({ chaveAtual, onConcluido }) {
 // ── Componente principal ───────────────────────────────────────────────────────
 export default function LoginCapitao() {
   const { user, capitao, isAdmin, loading } = useAuth()
+  const { idPublico } = useCampeonato()
   const navigate = useNavigate()
 
   const [etapa,        setEtapa]        = useState('login')   // 'login' | 'completar' | 'concluido'
@@ -188,7 +190,7 @@ export default function LoginCapitao() {
   useEffect(() => {
     if (loading) return
     if (isAdmin)  { navigate('/admin',       { replace: true }); return }
-    if (capitao && etapa === 'login') navigate('/agendamento', { replace: true })
+    if (capitao && etapa === 'login') navigate(idPublico ? `/campeonatos/${idPublico}/agendamento` : '/', { replace: true })
   }, [loading, isAdmin, capitao, etapa, navigate])
 
   function handleSintetico(chave) {
@@ -199,7 +201,7 @@ export default function LoginCapitao() {
   function handleConcluido() {
     setEtapa('concluido')
     // Redireciona direto após um breve delay para mostrar o feedback
-    setTimeout(() => navigate('/agendamento', { replace: true }), 1200)
+    setTimeout(() => navigate(idPublico ? `/campeonatos/${idPublico}/agendamento` : '/', { replace: true }), 1200)
   }
 
   if (loading) return null

@@ -1,7 +1,9 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { CampeonatoProvider } from './contexts/CampeonatoContext'
 import Navbar from './components/Navbar.jsx'
 import Footer from './components/Footer.jsx'
+import CampeonatoLayout from './components/CampeonatoLayout.jsx'
+import HomeMestre from './pages/HomeMestre.jsx'
 import Home from './pages/Home.jsx'
 import Inscritos from './pages/Inscritos.jsx'
 import Inscricao from './pages/Inscricao.jsx'
@@ -29,25 +31,47 @@ export default function App() {
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <Navbar />
       <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/inscritos" element={<Inscritos />} />
-        <Route path="/inscricao" element={<Inscricao />} />
-        <Route path="/draft" element={<Draft />} />
-        <Route path="/espectador" element={<Espectador />} />
-        <Route path="/resultados" element={<Resultados />} />
-        <Route path="/tabela" element={<Tabela />} />
-        <Route path="/chave" element={<Chave />} />
-        <Route path="/agendamento"    element={<Agendamento />} />
+        {/* Master home */}
+        <Route path="/" element={<HomeMestre />} />
+
+        {/* Championship-scoped routes */}
+        <Route path="/campeonatos/:campeonatoId" element={<CampeonatoLayout />}>
+          <Route index element={<Home />} />
+          <Route path="inscricao"           element={<Inscricao />} />
+          <Route path="inscritos"           element={<Inscritos />} />
+          <Route path="draft"               element={<Draft />} />
+          <Route path="espectador"          element={<Espectador />} />
+          <Route path="resultados"          element={<Resultados />} />
+          <Route path="elenco"              element={<Elenco />} />
+          <Route path="tabela"              element={<Tabela />} />
+          <Route path="chave"               element={<Chave />} />
+          <Route path="agendamento"         element={<Agendamento />} />
+          <Route path="regras"              element={<Regras />} />
+          <Route path="hero-draft"          element={<HeroDraft />} />
+          <Route path="hero-draft/espectador" element={<HeroDraftEspectador />} />
+          <Route path="hero-draft/overlay"  element={<HeroDraftOverlay />} />
+        </Route>
+
+        {/* Legacy flat routes — redirect to master home */}
+        <Route path="/draft"       element={<Navigate to="/" replace />} />
+        <Route path="/espectador"  element={<Navigate to="/" replace />} />
+        <Route path="/resultados"  element={<Navigate to="/" replace />} />
+        <Route path="/inscritos"   element={<Navigate to="/" replace />} />
+        <Route path="/inscricao"   element={<Navigate to="/" replace />} />
+        <Route path="/elenco"      element={<Navigate to="/" replace />} />
+        <Route path="/tabela"      element={<Navigate to="/" replace />} />
+        <Route path="/chave"       element={<Navigate to="/" replace />} />
+        <Route path="/agendamento" element={<Navigate to="/" replace />} />
+        <Route path="/regras"      element={<Navigate to="/" replace />} />
+
+        {/* Auth & profile */}
+        <Route path="/login"          element={<Login />} />
         <Route path="/login-capitao"  element={<LoginCapitao />} />
-        <Route path="/elenco"         element={<Elenco />} />
-        <Route path="/regras" element={<Regras />} />
+        <Route path="/meu-perfil"     element={<Perfil />} />
+
+        {/* Admin */}
         <Route path="/admin/novo-campeonato" element={<ProtectedRoute><CampeonatoWizard /></ProtectedRoute>} />
-        <Route path="/meu-perfil" element={<Perfil />} />
-        <Route path="/login" element={<Login />} />
         <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
-        <Route path="/hero-draft" element={<HeroDraft />} />
-        <Route path="/hero-draft/espectador" element={<HeroDraftEspectador />} />
-        <Route path="/hero-draft/overlay" element={<HeroDraftOverlay />} />
       </Routes>
       <Footer />
     </BrowserRouter>
