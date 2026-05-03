@@ -24,6 +24,13 @@ import Regras from './pages/Regras.jsx'
 import Perfil from './pages/Perfil.jsx'
 import CampeonatoWizard from './pages/CampeonatoWizard.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
+import { useCampeonato } from './contexts/CampeonatoContext.jsx'
+
+function LoginCapitaoRedirect() {
+  const { idPublico, loading } = useCampeonato()
+  if (loading) return null
+  return <Navigate to={idPublico ? `/campeonatos/${idPublico}/login-capitao` : '/'} replace />
+}
 
 export default function App() {
   return (
@@ -47,9 +54,10 @@ export default function App() {
           <Route path="chave"               element={<Chave />} />
           <Route path="agendamento"         element={<Agendamento />} />
           <Route path="regras"              element={<Regras />} />
-          <Route path="hero-draft"          element={<HeroDraft />} />
+          <Route path="hero-draft"            element={<HeroDraft />} />
           <Route path="hero-draft/espectador" element={<HeroDraftEspectador />} />
-          <Route path="hero-draft/overlay"  element={<HeroDraftOverlay />} />
+          <Route path="hero-draft/overlay"    element={<HeroDraftOverlay />} />
+          <Route path="login-capitao"         element={<LoginCapitao />} />
         </Route>
 
         {/* Legacy flat routes — redirect to master home */}
@@ -65,9 +73,9 @@ export default function App() {
         <Route path="/regras"      element={<Navigate to="/" replace />} />
 
         {/* Auth & profile */}
-        <Route path="/login"          element={<Login />} />
-        <Route path="/login-capitao"  element={<LoginCapitao />} />
-        <Route path="/meu-perfil"     element={<Perfil />} />
+        <Route path="/login"         element={<Login />} />
+        <Route path="/login-capitao" element={<LoginCapitaoRedirect />} />
+        <Route path="/meu-perfil"    element={<Perfil />} />
 
         {/* Admin */}
         <Route path="/admin/novo-campeonato" element={<ProtectedRoute><CampeonatoWizard /></ProtectedRoute>} />
