@@ -709,11 +709,19 @@ body:has(.hde-root) {
 .hde-ban-overlay {
   position: fixed;
   inset: 0;
-  z-index: 300;
+  z-index: 9999;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: #000;
   animation: hde-ban-entrada 0.25s ease-out both;
+}
+
+/* Esconde o centro do draft enquanto o ban está ativo */
+.hde-root:has(.hde-ban-overlay) .hde-centro,
+.hde-root:has(.hde-ban-overlay) .hde-timer-circular {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .hde-ban-overlay--saindo {
