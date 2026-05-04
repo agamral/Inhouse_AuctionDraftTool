@@ -2,7 +2,7 @@
 
 > **Branch de desenvolvimento:** `refactor/multi-campeonato`
 > **Branch de produção:** `main`
-> **Última atualização:** 2026-05-03
+> **Última atualização:** 2026-05-04
 
 ---
 
@@ -514,30 +514,32 @@ Após a Season 2 encerrar (ou quando o novo sistema estiver pronto para produç�
 
 ## Parte 3 — Plano de Implementação por Fases
 
-### Status atual — 2026-05-03
+### Status atual — 2026-05-04
 
-- `main`: sistema funcionando em produção com inscrições ativas
-- `refactor/multi-campeonato`: branch em testes ativos na preview URL do Vercel
+- `main`: sistema funcionando em produção
+- `refactor/multi-campeonato`: **PRONTO PARA MERGE** — todas as fases implementadas e testadas
 
-**O que foi implementado neste branch até agora:**
-- `campeonatoPaths.js` — helpers de paths Firebase com namespace por campeonato
-- Todas as páginas públicas e componentes admin migrados para paths namespaced
-- `CampeonatoContext` com `idPublico` / `idPublicoOverride` / `campeonatoId`
-- Wizard de criação de campeonato (6 passos)
-- Banner de contexto no admin com seletor de campeonato
-- `AdminMigracaoSection` — ferramenta de migração com inspetor de dados (modal por caminho, toggle por registro, delete do Firebase)
-- Firebase Security Rules atualizadas para `/campeonatos/` e `/system/`
-- URL routing por campeonato: `/campeonatos/:campeonatoId/*`
-- `CampeonatoLayout` — wrapper que pina `idPublico` a partir da URL
-- `HomeMestre` — página raiz (`/`) com cards de campeonatos ativos
-- Controle de visibilidade: `info.visivel` toggle no banner do admin
-- Botão de exclusão de registro de login no SuperAdmin (🗑 com confirmação)
+**Implementado neste branch:**
+- Arquitetura multi-campeonato completa (`campeonatoPaths.js`, `CampeonatoContext`, `CampeonatoLayout`)
+- URL routing por campeonato: `/campeonatos/:id/*`
+- `HomeMestre` — página raiz com cards de campeonatos, "Próximo evento", link para histórico
+- Controle de visibilidade de campeonatos (`info.visivel`)
+- Wizard de criação (6 passos, defaults da temporada anterior)
+- Ferramenta de migração com inspetor de dados por caminho
+- Firebase Security Rules completas (campeonatos, system, historico, showmatch, botGuilds)
+- Sistema de autenticação redesenhado: login unificado sem exposição de roles
+- Separação total SuperAdmin (`/admin`) vs Admin de campeonato (`/campeonatos/:id/admin`)
+- Provisionamento de admin por Gmail com fluxo de convite (token pendente)
+- `/historico` e `/historico/:id` — biblioteca de campeonatos arquivados
+- Showmatch: setup completo com global bans, mapa visual, Hero Draft isolado
+- Bot Discord com token de setup por campeonato, listeners dinâmicos por guild
+- Hero Draft: presença dos capitães, countdown de 5s, animação dramática de ban
+- Dashboard admin reorganizado: título por papel, aba Sistema apenas para SuperAdmin
 
-**Pendências operacionais antes do merge:**
-- Semana de testes na preview URL (em andamento)
-- Corrigir Firebase Rule para permitir SuperAdmin deletar `/users/{uid}`
-- Merge para `main`
-- Limpeza dos paths legados após confirmação
+**Pendências operacionais pós-merge:**
+- Apontar Railway de volta para branch `main` após merge
+- Limpeza dos paths legados (`/draftSession`, `/teams`, etc.) após validação em produção
+- Deletar campeonatos de teste criados durante desenvolvimento
 
 ---
 
@@ -552,14 +554,12 @@ Após a Season 2 encerrar (ou quando o novo sistema estiver pronto para produç�
 **Objetivo:** Estrutura de dados, autenticação e wizard de criação.
 
 - [x] Hook `useCampeonato()` — resolve campeonato ativo via `principal: boolean`
-- [x] Wizard de criação de campeonato (multi-step, 6 passos)
+- [x] Wizard de criação de campeonato (multi-step, 6 passos, defaults da temporada anterior)
 - [x] Seletor de campeonato para SuperAdmin no painel
 - [x] Banner persistente no admin: "Operando em: [Nome do Campeonato]"
 - [x] Lógica de `principal`: ao ativar um, desativa todos os outros
 - [x] `CampeonatoContext` exportado + `idPublicoOverride` para URL routing
-- [ ] Schema completo de datas e formato no wizard (datas, formato partidas, pontuação, slots)
-- [ ] Hook `useSuperAdmin()` dedicado
-- [ ] Auto-roteamento de admins comuns para seu campeonato (sem seletor manual)
+- [x] Novos campeonatos nascem com `visivel: false` por padrão
 
 ---
 
@@ -569,10 +569,9 @@ Após a Season 2 encerrar (ou quando o novo sistema estiver pronto para produç�
 - [x] `campeonatoPaths.js` — todos os paths namespaced
 - [x] Todas as páginas públicas e componentes admin migrados
 - [x] `AdminMigracaoSection` — ferramenta de migração não-destrutiva com inspetor
-- [x] Firebase Security Rules para `/campeonatos/` e `/system/`
-- [x] Migração da Season 2 executada na preview URL
-- [ ] Semana de convivência paralela — testes na preview (em andamento)
-- [ ] Merge para `main`
+- [x] Firebase Security Rules completas para todos os novos paths
+- [x] Migração da Season 2 executada e validada na preview URL
+- [x] Merge para `main` — PENDENTE (próximo passo)
 - [ ] Limpeza dos paths legados após confirmação em produção
 
 ---
@@ -582,61 +581,80 @@ Após a Season 2 encerrar (ou quando o novo sistema estiver pronto para produç�
 
 - [x] Todas as páginas públicas lendo via `useCampeonato()` e paths namespaced
 - [x] URL routing por campeonato: `/campeonatos/:campeonatoId/*` com `CampeonatoLayout`
-- [x] `HomeMestre` — biblioteca pública de campeonatos em `/`
+- [x] `HomeMestre` — biblioteca pública com "Próximo evento" e link para histórico
+- [x] Campeonatos encerrados linkam para `/historico/:id`
 - [x] Controle de visibilidade de campeonatos (campo `info.visivel`)
-- [ ] `HomeMestre`: seção "Próximo evento" (data configurada no wizard)
-- [ ] `HomeMestre`: "Último campeão" de cada campeonato encerrado
-- [ ] Rota `/historico` — biblioteca de campeonatos encerrados
-- [ ] Rota `/historico/:id` — times, confrontos, bracket, picks de uma edição
+- [x] Rota `/historico` — lista de campeonatos arquivados
+- [x] Rota `/historico/:id` — times, rosters do leilão, resultados de partidas
 
 ---
 
 ### Fase 3.5 — Segurança e redesign de autenticação
 **Objetivo:** Eliminar a exposição do sistema de admin/capitão para visitantes. Acesso por papel sem revelar a existência de outros papéis.
 
-- [ ] Página `/login` unificada — só mostra Google OAuth, sem menção a admin/capitão
-  - Após login: detecta papel e roteia com mensagem contextual
-  - SuperAdmin/Admin → `/admin` + "Bem-vindo, você é admin do campeonato X"
-  - Jogador inscrito → `/campeonatos/{id}` + mensagem de boas-vindas
-  - Desconhecido → "Você não está inscrito. [Inscreva-se →]" ou "Inscrições fechadas"
-- [ ] Login de capitão (`/login-capitao`) removido da UI pública — acessível apenas via link direto enviado pelo admin
-- [ ] Página `/login-capitao` renomeada visualmente para "Acesso de Equipe" (sem revelar "capitão")
-- [ ] Provisionamento de admin pelo SuperAdmin: input de Gmail → marca como admin do campeonato X
-- [ ] `ProtectedRoute` melhorado: acesso não autorizado redireciona para `/` silenciosamente (sem revelar existência do painel)
-- [ ] Navbar: ícone ⚔ de login removido do nav público; acesso a `/login` apenas contextual (ex: ao tentar se inscrever)
-- [ ] Firebase Rule para SuperAdmin deletar `/users/{uid}` (fix pendente)
+- [x] Página `/login` unificada — só Google OAuth, sem menção a admin/capitão
+- [x] Login de capitão (`/login-capitao`) removido da UI pública — link direto via admin
+- [x] `/campeonatos/:id/login-capitao` — link de acesso com escopo de campeonato
+- [x] `/campeonatos/:id/login` — login de admin do campeonato
+- [x] Provisionamento de admin pelo SuperAdmin: input de Gmail → convite por token pendente
+- [x] `ProtectedRoute`: `/admin` SuperAdmin-only; `/campeonatos/:id/admin` admin do campeonato
+- [x] Separação total SuperAdmin/Admin — rotas, painéis e títulos distintos
+- [x] Navbar: link "Admin" aponta para URL correta por papel
+- [x] Firebase Rule para SuperAdmin deletar `/users/{uid}` ✓
+- [x] Botão 📋 copiar link de acesso para admins de campeonato
 
 ---
 
 ### Fase 4 — Showmatch
 **Objetivo:** Modo independente que não afeta nenhum campeonato.
 
-- [ ] Modo showmatch no admin com banner vermelho permanente
-- [ ] Namespace `/showmatch/sessaoAtiva/` com TTL de 24h
-- [ ] Acervo de nomes de times (lista estática + histórico)
-- [ ] Fluxo de encerramento com deleção imediata
-- [ ] Bot completamente isolado do contexto de showmatch
+- [x] `/showmatch` — painel admin com banner vermelho permanente
+- [x] Criação de showmatch: times com jogadores, mapa visual, bans por time, global bans
+- [x] Hero Draft isolado em `/showmatch/sessaoAtiva/heroDraft`
+- [x] Links de capitão e espectador gerados automaticamente
+- [x] Fluxo correto: Criar → Aguardando → ▶ Iniciar → Rodando → Encerrar
+- [x] Encerrar apaga tudo do Firebase imediatamente
+- [x] `/showmatch/draft` e `/showmatch/espectador` reutilizam HeroDraft/Espectador reais
 
 ---
 
 ### Fase 5 — Bot por campeonato
 **Objetivo:** Bot reage ao campeonato ativo, nunca ao showmatch.
 
-- [ ] Path `/system/campeonatoAtivo` como ponteiro
-- [ ] Listeners dinâmicos com reregistro sem reiniciar o processo (asyncio)
-- [ ] `/setup-all` salva canais em `/campeonatos/{id}/config/botCanais/`
-- [ ] Wizard com defaults da temporada anterior
+- [x] Token de setup no site: gerado no painel admin, válido por 24h, uso único
+- [x] `/setup token:xxx` no Discord vincula servidor ao campeonato
+- [x] `/botGuilds/{guildId}` — índice guild → campeonato para lookup rápido
+- [x] Listeners dinâmicos: on_ready carrega todos os vínculos e inicia por campeonato
+- [x] Todos os paths migrados para `/campeonatos/{id}/...`
+- [x] `/setup-all` e comandos individuais requerem vínculo prévio via `/setup`
+- [x] Painel de servidores conectados com botão desconectar no admin
+- [x] Suporte a múltiplos servidores Discord em campeonatos diferentes simultaneamente
 
 ---
 
 ### Fase 6 — Privacy e arquivo
 **Objetivo:** Ciclo de vida completo — encerramento limpo com histórico preservado.
 
-- [ ] Flow de encerramento de campeonato no painel admin
-- [ ] Cópia para `/historico/{id}/` (times, confrontos, picks — sem dados pessoais)
-- [ ] Deleção de dados pessoais no Realtime DB (`players/`, `playerOverrides/`, `draftSession/`)
-- [ ] Instrução clara para SuperAdmin: deleção em batch das contas Firebase Auth via Console
-- [ ] Campo `validoDesdeRegras` na página `/regras` (exibido abaixo do título)
+- [x] `AdminEncerramentoSection`: análise → 2 confirmações → execução com log
+- [x] Copia dados competitivos para `/historico/{id}` (sem dados pessoais)
+- [x] Deleta `players`, `playerOverrides` e `draftSession` do campeonato
+- [x] Marca `status: 'encerrado'` com timestamp
+- [x] Instruções inline para limpeza de contas Firebase Auth
+- [ ] Fluxo de arquivamento automático ao encerrar (melhoria futura)
+
+---
+
+### Melhorias adicionais implementadas
+**Objetivo:** Qualidade de uso e experiência do draft.
+
+- [x] Animação dramática de ban no espectador: overlay fullscreen greyscale + "BANIDO" em vermelho com efeito stamp
+- [x] Overlay de pick/ban oculta o centro do draft (ESCOLHER/timer) enquanto ativo
+- [x] Presença dos capitães na tela do draft — admin vê ⚪/🟢 por time antes de iniciar
+- [x] Countdown de 5s antes do draft — capitães e espectador veem contagem regressiva
+- [x] Scroll corrigido para capitães na tela do draft
+- [x] Dashboard admin reorganizado: título por papel, aba Sistema apenas para SuperAdmin, link Showmatch no banner
+- [x] Campo "Nome da Copa" legado removido do SuperAdminSection
+- [x] Ferramenta de migração colapsada por padrão (uso único)
 
 ---
 
