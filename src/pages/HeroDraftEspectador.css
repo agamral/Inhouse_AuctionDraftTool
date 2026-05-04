@@ -725,9 +725,11 @@ body:has(.hde-root) > * {
   animation: hde-ban-entrada 0.25s ease-out both;
 }
 
-/* Esconde o centro do draft enquanto o ban está ativo */
+/* Esconde o centro do draft enquanto ban ou pick overlay estão ativos */
 .hde-root:has(.hde-ban-overlay) .hde-centro,
-.hde-root:has(.hde-ban-overlay) .hde-timer-circular {
+.hde-root:has(.hde-ban-overlay) .hde-timer-circular,
+.hde-root:has(.hde-anuncio) .hde-centro,
+.hde-root:has(.hde-anuncio) .hde-timer-circular {
   opacity: 0;
   pointer-events: none;
 }
