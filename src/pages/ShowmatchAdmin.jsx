@@ -4,6 +4,7 @@ import { db } from '../firebase/database'
 import { useHeroDraft } from '../hooks/useHeroDraft'
 import { criarEstadoInicial, SEQUENCIA_PADRAO } from '../utils/heroDraft'
 import { MAPAS } from '../utils/mapPool'
+import { HEROES } from '../utils/heroPool'
 
 const SHOWMATCH_PATH = 'showmatch/sessaoAtiva'
 const HERO_DRAFT_PATH = 'showmatch/sessaoAtiva/heroDraft'
@@ -51,8 +52,10 @@ export default function ShowmatchAdmin() {
   const [jogadoresB, setJogadoresB] = useState('')
 
   // Hero Draft config
-  const [mapaId,   setMapaId]   = useState(MAPAS[0]?.id ?? '')
-  const [numBans,  setNumBans]  = useState(2)
+  const [mapaId,      setMapaId]      = useState('')
+  const [numBans,     setNumBans]     = useState(2)
+  const [globalBans,  setGlobalBans]  = useState([])
+  const [buscaBan,    setBuscaBan]    = useState('')
   const [draftCriado, setDraftCriado] = useState(false)
 
   // Hero Draft hook — uses showmatch path via pathOverride
@@ -99,14 +102,21 @@ export default function ShowmatchAdmin() {
     if (!sessao) return
     const sequencia = SEQUENCIAS[numBans] ?? SEQUENCIAS[2]
     const estado = criarEstadoInicial({
-      timeA:    { nome: sessao.timeA?.nome ?? 'Time A' },
-      timeB:    { nome: sessao.timeB?.nome ?? 'Time B' },
+      timeA:      { nome: sessao.timeA?.nome ?? 'Time A' },
+      timeB:      { nome: sessao.timeB?.nome ?? 'Time B' },
       sequencia,
-      mapaId:   mapaId || null,
+      globalBans,
+      mapaId:     mapaId || null,
     })
     await set(ref(db, HERO_DRAFT_PATH), estado)
     await update(ref(db, SHOWMATCH_PATH), { status: 'heroDraft' })
     flash('Hero Draft criado — clique em Iniciar para começar.')
+  }
+
+  function toggleGlobalBan(heroId) {
+    setGlobalBans(prev =>
+      prev.includes(heroId) ? prev.filter(id => id !== heroId) : [...prev, heroId]
+    )
   }
 
   async function handleIniciar() {
@@ -258,25 +268,88 @@ export default function ShowmatchAdmin() {
           {/* Hero Draft */}
           <div className="admin-section" style={{ maxWidth: 700 }}>
             <div className="admin-section-title">Hero Draft</div>
-            <div style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 16 }}>
               {!draftCriado ? (
                 <>
-                  <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                    <div style={{ flex: 1, minWidth: 160 }}>
-                      <div className="admin-toggle-label" style={{ marginBottom: 5 }}>Mapa</div>
-                      <select style={{ ...inputStyle }} value={mapaId} onChange={e => setMapaId(e.target.value)}>
-                        {MAPAS.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
-                      </select>
-                    </div>
-                    <div style={{ flex: 1, minWidth: 140 }}>
-                      <div className="admin-toggle-label" style={{ marginBottom: 5 }}>Bans por time</div>
-                      <select style={{ ...inputStyle }} value={numBans} onChange={e => setNumBans(Number(e.target.value))}>
-                        <option value={0}>0 bans</option>
-                        <option value={2}>2 bans</option>
-                        <option value={3}>3 bans</option>
-                      </select>
+                  {/* Bans por time */}
+                  <div>
+                    <div className="admin-toggle-label" style={{ marginBottom: 8 }}>Bans por time</div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      {[0, 2, 3].map(n => (
+                        <button key={n} onClick={() => setNumBans(n)} style={{
+                          padding: '6px 16px', borderRadius: 6, fontSize: 13, cursor: 'pointer',
+                          fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700,
+                          border: `1px solid ${numBans === n ? 'var(--blue)' : 'var(--border2)'}`,
+                          background: numBans === n ? 'rgba(74,158,218,0.12)' : 'var(--bg2)',
+                          color: numBans === n ? 'var(--blue)' : 'var(--text2)',
+                        }}>
+                          {n === 0 ? 'Sem bans' : `${n} por time`}
+                        </button>
+                      ))}
                     </div>
                   </div>
+
+                  {/* Mapa */}
+                  <div>
+                    <div className="admin-toggle-label" style={{ marginBottom: 8 }}>Mapa <span style={{ color: 'var(--text3)', fontWeight: 400 }}>(opcional)</span></div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 6, maxHeight: 180, overflowY: 'auto', padding: 8, background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 6 }}>
+                      <button onClick={() => setMapaId('')} style={{
+                        padding: '6px 8px', borderRadius: 4, cursor: 'pointer', fontSize: 12,
+                        fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600,
+                        border: `1px solid ${!mapaId ? 'var(--blue)' : 'var(--border)'}`,
+                        background: !mapaId ? 'rgba(74,158,218,0.12)' : 'var(--bg3)',
+                        color: !mapaId ? 'var(--blue)' : 'var(--text2)',
+                      }}>
+                        — Sem mapa
+                      </button>
+                      {MAPAS.map(m => (
+                        <button key={m.id} onClick={() => setMapaId(m.id)} style={{
+                          padding: 0, borderRadius: 4, cursor: 'pointer', overflow: 'hidden',
+                          border: `1px solid ${mapaId === m.id ? 'var(--gold)' : 'var(--border)'}`,
+                          background: 'var(--bg3)',
+                          boxShadow: mapaId === m.id ? '0 0 8px rgba(201,168,76,0.4)' : 'none',
+                        }}>
+                          <img src={m.splashUrl} alt={m.nome} onError={e => { e.target.style.display = 'none' }}
+                            style={{ width: '100%', height: 46, objectFit: 'cover', display: 'block' }} />
+                          <div style={{ padding: '3px 6px', fontSize: 10, textAlign: 'center', fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, color: mapaId === m.id ? 'var(--gold)' : 'var(--text2)', lineHeight: 1.2 }}>
+                            {m.nome}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Global Bans */}
+                  <div>
+                    <div className="admin-toggle-label" style={{ marginBottom: 8 }}>
+                      Global Bans{globalBans.length > 0 && <span style={{ color: 'var(--red)', marginLeft: 6 }}>({globalBans.length} selecionados)</span>}
+                      <span style={{ color: 'var(--text3)', fontWeight: 400, marginLeft: 6 }}>bloqueados antes do draft</span>
+                    </div>
+                    <input value={buscaBan} onChange={e => setBuscaBan(e.target.value)}
+                      placeholder="Buscar herói..." style={{ ...inputStyle, marginBottom: 8 }} />
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, maxHeight: 160, overflowY: 'auto', padding: 8, background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 6 }}>
+                      {HEROES
+                        .filter(h => !buscaBan || h.nome.toLowerCase().includes(buscaBan.toLowerCase()))
+                        .map(h => {
+                          const sel = globalBans.includes(h.id)
+                          return (
+                            <button key={h.id} onClick={() => toggleGlobalBan(h.id)} style={{
+                              display: 'flex', alignItems: 'center', gap: 4,
+                              background: sel ? 'rgba(224,85,85,0.18)' : 'var(--bg3)',
+                              border: `1px solid ${sel ? 'var(--red)' : 'var(--border)'}`,
+                              color: sel ? 'var(--red)' : 'var(--text2)',
+                              borderRadius: 4, padding: '3px 8px', fontSize: 12,
+                              fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600, cursor: 'pointer',
+                            }}>
+                              <img src={h.iconeUrl} alt="" style={{ width: 16, height: 16, borderRadius: 2, objectFit: 'cover' }}
+                                onError={e => { e.target.style.display = 'none' }} />
+                              {h.nome}{sel && ' ✕'}
+                            </button>
+                          )
+                        })}
+                    </div>
+                  </div>
+
                   <button className="btn primary" style={{ fontSize: 13, padding: '9px 20px', alignSelf: 'flex-start' }} onClick={criarHeroDraft}>
                     Criar Hero Draft
                   </button>
