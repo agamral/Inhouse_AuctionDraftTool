@@ -703,3 +703,133 @@ body:has(.hde-root) {
   text-shadow: 0 1px 6px rgba(0,0,0,0.8);
   text-align: center;
 }
+
+/* ── Overlay de ban ──────────────────────────────────────────────────────── */
+
+.hde-ban-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: hde-ban-entrada 0.25s ease-out both;
+}
+
+.hde-ban-overlay--saindo {
+  animation: hde-ban-saida 0.4s ease-in both;
+}
+
+@keyframes hde-ban-entrada {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes hde-ban-saida {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+/* Mídia de fundo em preto e branco */
+.hde-ban-midia {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.hde-ban-video,
+.hde-ban-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  filter: grayscale(100%) brightness(0.4) contrast(1.2);
+}
+
+.hde-ban-img--icon {
+  object-fit: contain;
+  filter: grayscale(100%) brightness(0.3);
+}
+
+/* Ruído / grain overlay */
+.hde-ban-noise {
+  position: absolute;
+  inset: 0;
+  background-image:
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E");
+  background-size: 150px;
+  opacity: 0.25;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+
+/* Vinheta escura nas bordas */
+.hde-ban-vinheta {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.75) 100%);
+  pointer-events: none;
+}
+
+/* Conteúdo central */
+.hde-ban-conteudo {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.hde-ban-nome-heroi {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: clamp(1.2rem, 3vw, 2rem);
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+  text-shadow: 0 2px 12px rgba(0,0,0,0.9);
+}
+
+/* O texto "BANIDO" — o destaque principal */
+.hde-ban-stamp {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: clamp(5rem, 16vw, 11rem);
+  font-weight: 900;
+  line-height: 0.9;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #ff1a1a;
+  -webkit-text-stroke: 2px #8b0000;
+  text-shadow:
+    0 0 40px rgba(255, 0, 0, 0.8),
+    0 0 80px rgba(255, 0, 0, 0.4),
+    0 4px 20px rgba(0, 0, 0, 1);
+  transform: rotate(-4deg);
+  animation: hde-ban-stamp 0.2s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
+@keyframes hde-ban-stamp {
+  from {
+    transform: rotate(-4deg) scale(1.6);
+    opacity: 0;
+    text-shadow: none;
+  }
+  to {
+    transform: rotate(-4deg) scale(1);
+    opacity: 1;
+  }
+}
+
+.hde-ban-sub {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: clamp(0.85rem, 2vw, 1.1rem);
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(255, 80, 80, 0.7);
+  text-shadow: 0 2px 8px rgba(0,0,0,0.9);
+  margin-top: 4px;
+}
