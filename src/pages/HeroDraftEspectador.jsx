@@ -1,19 +1,25 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useHeroDraft } from '../hooks/useHeroDraft'
+import { useCampeonato } from '../contexts/CampeonatoContext'
+import { heroDraftPath } from '../utils/campeonatoPaths'
 import { HEROES } from '../utils/heroPool'
 import { getHeroVideoUrl, getHeroImageUrl } from '../utils/heroVideos'
 import { passoAtual, ACOES, STATUS_DRAFT } from '../utils/heroDraft'
 import { getMapaById } from '../utils/mapPool'
 import './HeroDraftEspectador.css'
 
-const TEMPO_TURNO = 30 // segundos por ação/turno
+const TEMPO_TURNO = 30
 
-// URL: /hero-draft/espectador?sessao=semifinal-1
+// URL: /campeonatos/:id/hero-draft/espectador?sessao=semifinal-1
 export default function HeroDraftEspectador() {
   const [params]  = useSearchParams()
   const sessaoId  = params.get('sessao') ?? 'default'
-  const { estado, loading, erro } = useHeroDraft(sessaoId)
+  const { idPublico } = useCampeonato()
+  const { estado, loading, erro } = useHeroDraft(
+    sessaoId, null,
+    idPublico ? `${heroDraftPath(idPublico)}/${sessaoId}` : null
+  )
 
   // ── Anúncio de picks (suporta múltiplos picks do mesmo turno) ─────────────
   const [anuncioPicks, setAnuncioPicks] = useState([]) // [{heroi, timeSide}]

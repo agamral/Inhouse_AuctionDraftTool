@@ -65,8 +65,9 @@ export default function AdminHeroDraftSection() {
   const [buscaBan, setBuscaBan] = useState('')
   const [salvando, setSalvando] = useState(false)
 
+  const draftPathOverride = sessaoId ? `${heroDraftPath(campeonatoId)}/${sessaoId}` : null
   const { estado, loading, iniciar, encerrar, desfazer } =
-    useHeroDraft(sessaoId || '__none__', 'admin')
+    useHeroDraft(sessaoId || null, 'admin', draftPathOverride)
 
   useEffect(() => onValue(ref(db, heroDraftPath(campeonatoId)), snap => setSessoes(snap.val() ?? {})), [campeonatoId])
 

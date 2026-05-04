@@ -1,18 +1,24 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useHeroDraft } from '../hooks/useHeroDraft'
+import { useCampeonato } from '../contexts/CampeonatoContext'
+import { heroDraftPath } from '../utils/campeonatoPaths'
 import { HEROES, getHeroesByRole, ROLES } from '../utils/heroPool'
 import { passoAtual, heroiBloqueado, ACOES, STATUS_DRAFT } from '../utils/heroDraft'
 import { getMapaById } from '../utils/mapPool'
 import './HeroDraft.css'
 
-// URL: /hero-draft?sessao=semifinal-1&time=A
+// URL: /campeonatos/:id/hero-draft?sessao=semifinal-1&time=A
 export default function HeroDraft() {
   const [params]      = useSearchParams()
   const sessaoId      = params.get('sessao') ?? 'default'
-  const timeLocal     = params.get('time')   ?? null   // 'A' | 'B' | null (espectador)
+  const timeLocal     = params.get('time')   ?? null
+  const { idPublico } = useCampeonato()
 
-  const { estado, loading, erro, ehMinhaTez, agir } = useHeroDraft(sessaoId, timeLocal)
+  const { estado, loading, erro, ehMinhaTez, agir } = useHeroDraft(
+    sessaoId, timeLocal,
+    idPublico ? `${heroDraftPath(idPublico)}/${sessaoId}` : null
+  )
 
   const [filtroRole, setFiltroRole]     = useState('todos')
   const [busca, setBusca]               = useState('')
