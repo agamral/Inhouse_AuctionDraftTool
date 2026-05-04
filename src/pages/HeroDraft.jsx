@@ -6,18 +6,27 @@ import { heroDraftPath } from '../utils/campeonatoPaths'
 import { HEROES, getHeroesByRole, ROLES } from '../utils/heroPool'
 import { passoAtual, heroiBloqueado, ACOES, STATUS_DRAFT } from '../utils/heroDraft'
 import { getMapaById } from '../utils/mapPool'
+import { useLocation } from 'react-router-dom'
 import './HeroDraft.css'
 
+const SHOWMATCH_DRAFT_PATH = 'showmatch/sessaoAtiva/heroDraft'
+
 // URL: /campeonatos/:id/hero-draft?sessao=semifinal-1&time=A
+// URL: /showmatch/draft?time=A  (reutiliza este componente)
 export default function HeroDraft() {
   const [params]      = useSearchParams()
   const sessaoId      = params.get('sessao') ?? 'default'
   const timeLocal     = params.get('time')   ?? null
   const { idPublico } = useCampeonato()
+  const location      = useLocation()
+  const isShowmatch   = location.pathname.startsWith('/showmatch')
+
+  const pathOverride = isShowmatch
+    ? SHOWMATCH_DRAFT_PATH
+    : (idPublico ? `${heroDraftPath(idPublico)}/${sessaoId}` : null)
 
   const { estado, loading, erro, ehMinhaTez, agir } = useHeroDraft(
-    sessaoId, timeLocal,
-    idPublico ? `${heroDraftPath(idPublico)}/${sessaoId}` : null
+    isShowmatch ? null : sessaoId, timeLocal, pathOverride
   )
 
   const [filtroRole, setFiltroRole]     = useState('todos')

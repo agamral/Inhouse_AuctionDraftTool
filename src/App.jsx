@@ -73,9 +73,9 @@ export default function App() {
         <Route path="/historico/:historicId" element={<HistoricoDetalhe />} />
 
         {/* Showmatch */}
-        <Route path="/showmatch" element={<ProtectedRoute><ShowmatchAdmin /></ProtectedRoute>} />
-        <Route path="/showmatch/espectador" element={<ShowmatchEspectador />} />
-        <Route path="/showmatch/draft" element={<ShowmatchCapitao />} />
+        <Route path="/showmatch"            element={<ProtectedRoute><ShowmatchAdmin /></ProtectedRoute>} />
+        <Route path="/showmatch/espectador" element={<HeroDraftEspectador />} />
+        <Route path="/showmatch/draft"      element={<HeroDraft />} />
 
         {/* Legacy flat routes — redirect to master home */}
         <Route path="/draft"       element={<Navigate to="/" replace />} />

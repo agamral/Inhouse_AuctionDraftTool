@@ -7,18 +7,27 @@ import { HEROES } from '../utils/heroPool'
 import { getHeroVideoUrl, getHeroImageUrl } from '../utils/heroVideos'
 import { passoAtual, ACOES, STATUS_DRAFT } from '../utils/heroDraft'
 import { getMapaById } from '../utils/mapPool'
+import { useLocation } from 'react-router-dom'
 import './HeroDraftEspectador.css'
 
 const TEMPO_TURNO = 30
+const SHOWMATCH_DRAFT_PATH = 'showmatch/sessaoAtiva/heroDraft'
 
 // URL: /campeonatos/:id/hero-draft/espectador?sessao=semifinal-1
+// URL: /showmatch/espectador  (reutiliza este componente)
 export default function HeroDraftEspectador() {
   const [params]  = useSearchParams()
   const sessaoId  = params.get('sessao') ?? 'default'
   const { idPublico } = useCampeonato()
+  const location      = useLocation()
+  const isShowmatch   = location.pathname.startsWith('/showmatch')
+
+  const pathOverride = isShowmatch
+    ? SHOWMATCH_DRAFT_PATH
+    : (idPublico ? `${heroDraftPath(idPublico)}/${sessaoId}` : null)
+
   const { estado, loading, erro } = useHeroDraft(
-    sessaoId, null,
-    idPublico ? `${heroDraftPath(idPublico)}/${sessaoId}` : null
+    isShowmatch ? null : sessaoId, null, pathOverride
   )
 
   // ── Anúncio de picks (suporta múltiplos picks do mesmo turno) ─────────────

@@ -56,7 +56,7 @@ export default function ShowmatchAdmin() {
   const [draftCriado, setDraftCriado] = useState(false)
 
   // Hero Draft hook — uses showmatch path via pathOverride
-  const { estado: draftEstado, loading: draftLoading, agir } = useHeroDraft(
+  const { estado: draftEstado, iniciar: iniciarDraft, encerrar: encerrarDraft, desfazer: desfazerDraft } = useHeroDraft(
     null, 'admin', HERO_DRAFT_PATH
   )
 
@@ -95,34 +95,33 @@ export default function ShowmatchAdmin() {
     flash('Showmatch criado!')
   }
 
-  async function iniciarHeroDraft() {
+  async function criarHeroDraft() {
     if (!sessao) return
-    const mapa = MAPAS.find(m => m.id === mapaId) ?? MAPAS[0]
     const sequencia = SEQUENCIAS[numBans] ?? SEQUENCIAS[2]
     const estado = criarEstadoInicial({
-      timeA:     { nome: sessao.timeA?.nome ?? 'Time A' },
-      timeB:     { nome: sessao.timeB?.nome ?? 'Time B' },
+      timeA:    { nome: sessao.timeA?.nome ?? 'Time A' },
+      timeB:    { nome: sessao.timeB?.nome ?? 'Time B' },
       sequencia,
-      mapaId:    mapa.id,
+      mapaId:   mapaId || null,
     })
     await set(ref(db, HERO_DRAFT_PATH), estado)
     await update(ref(db, SHOWMATCH_PATH), { status: 'heroDraft' })
-    flash('Hero Draft iniciado!')
+    flash('Hero Draft criado — clique em Iniciar para começar.')
   }
 
-  async function desfazer() {
-    if (!draftEstado?.historico?.length) return
-    const hist = [...draftEstado.historico]
-    hist.pop()
-    await update(ref(db, HERO_DRAFT_PATH), {
-      passoAtual: Math.max(0, (draftEstado.passoAtual ?? 1) - 1),
-      historico: hist,
-    })
+  async function handleIniciar() {
+    const r = await iniciarDraft()
+    r?.ok ? flash('Draft iniciado!') : flash(`Erro: ${r?.erro}`, 'err')
   }
 
-  async function encerrarHeroDraft() {
-    await update(ref(db, HERO_DRAFT_PATH), { status: 'encerrado' })
-    flash('Hero Draft encerrado.')
+  async function handleDesfazer() {
+    const r = await desfazerDraft()
+    if (!r?.ok) flash(`Erro: ${r?.erro}`, 'err')
+  }
+
+  async function handleEncerrar() {
+    const r = await encerrarDraft()
+    r?.ok ? flash('Draft encerrado.') : flash(`Erro: ${r?.erro}`, 'err')
   }
 
   async function encerrarShowmatch() {
@@ -223,7 +222,7 @@ export default function ShowmatchAdmin() {
             <div className="admin-section-title">Links dos Capitães</div>
             <div style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
               {['A', 'B'].map(t => {
-                const url = `${baseUrl}/showmatch/draft?time=${t}`
+                const url = `${baseUrl}/showmatch/draft?time=${t}&sessao=showmatch`
                 return (
                   <div key={t}>
                     <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 4 }}>
@@ -278,24 +277,33 @@ export default function ShowmatchAdmin() {
                       </select>
                     </div>
                   </div>
-                  <button className="btn primary" style={{ fontSize: 13, padding: '9px 20px', alignSelf: 'flex-start' }} onClick={iniciarHeroDraft}>
-                    &#x25B6; Iniciar Hero Draft
+                  <button className="btn primary" style={{ fontSize: 13, padding: '9px 20px', alignSelf: 'flex-start' }} onClick={criarHeroDraft}>
+                    Criar Hero Draft
                   </button>
                 </>
               ) : (
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <div style={{ fontSize: 13, color: draftEstado?.status === 'encerrado' ? 'var(--text2)' : 'var(--green)' }}>
-                    {draftEstado?.status === 'encerrado' ? '&#x2713; Hero Draft encerrado' : '&#x25CF; Hero Draft em andamento'}
-                  </div>
-                  {draftEstado?.status !== 'encerrado' && (
+                  {draftEstado?.status === 'encerrado' && (
+                    <span style={{ fontSize: 13, color: 'var(--text2)' }}>✓ Encerrado</span>
+                  )}
+                  {draftEstado?.status === 'aguardando' && (
                     <>
-                      <button className="btn" style={{ fontSize: 12, padding: '6px 12px' }} onClick={desfazer}
+                      <span style={{ fontSize: 13, color: 'var(--gold)' }}>⏳ Aguardando início</span>
+                      <button className="btn primary" style={{ fontSize: 12, padding: '6px 14px' }} onClick={handleIniciar}>
+                        ▶ Iniciar Draft
+                      </button>
+                    </>
+                  )}
+                  {draftEstado?.status === 'rodando' && (
+                    <>
+                      <span style={{ fontSize: 13, color: 'var(--green)' }}>● Em andamento</span>
+                      <button className="btn" style={{ fontSize: 12, padding: '6px 12px' }} onClick={handleDesfazer}
                         disabled={!draftEstado?.historico?.length}>
-                        &#x21A9; Desfazer
+                        ↩ Desfazer
                       </button>
                       <button className="btn" style={{ fontSize: 12, padding: '6px 12px', color: 'var(--red)', borderColor: 'rgba(224,85,85,0.3)' }}
-                        onClick={encerrarHeroDraft}>
-                        &#x23F9; Encerrar Draft
+                        onClick={handleEncerrar}>
+                        ⏹ Encerrar Draft
                       </button>
                     </>
                   )}
