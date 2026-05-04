@@ -20,6 +20,7 @@ export const TIMES = {
 
 export const STATUS_DRAFT = {
   AGUARDANDO: 'aguardando',
+  COUNTDOWN:  'countdown',
   RODANDO:    'rodando',
   ENCERRADO:  'encerrado',
 }
@@ -204,10 +205,12 @@ export function encerrarDraft(estado) {
 // ── Iniciar draft ────────────────────────────────────────────────────────────
 
 export function iniciarDraft(estado) {
-  if (estado.status !== STATUS_DRAFT.AGUARDANDO) {
+  if (estado.status !== STATUS_DRAFT.AGUARDANDO && estado.status !== STATUS_DRAFT.COUNTDOWN) {
     return { ok: false, erro: 'Draft não está em modo de espera' }
   }
-  return { ok: true, estado: { ...deepClone(estado), status: STATUS_DRAFT.RODANDO, turnoIniciadoEm: Date.now() } }
+  const clone = deepClone(estado)
+  delete clone.countdownEndsAt
+  return { ok: true, estado: { ...clone, status: STATUS_DRAFT.RODANDO, turnoIniciadoEm: Date.now() } }
 }
 
 // ── Validação de configuração (usada pelo admin antes de salvar no Firebase) ─

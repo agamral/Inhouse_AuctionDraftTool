@@ -59,9 +59,17 @@ export default function ShowmatchAdmin() {
   const [draftCriado, setDraftCriado] = useState(false)
 
   // Hero Draft hook — uses showmatch path via pathOverride
-  const { estado: draftEstado, iniciar: iniciarDraft, encerrar: encerrarDraft, desfazer: desfazerDraft } = useHeroDraft(
+  const { estado: draftEstado, iniciar: _iniciarDraft, iniciarComContagem, encerrar: encerrarDraft, desfazer: desfazerDraft } = useHeroDraft(
     null, 'admin', HERO_DRAFT_PATH
   )
+
+  // Auto-transição countdown → rodando
+  useEffect(() => {
+    if (draftEstado?.status !== 'countdown' || !draftEstado?.countdownEndsAt) return
+    const remaining = Math.max(0, draftEstado.countdownEndsAt - Date.now())
+    const t = setTimeout(() => _iniciarDraft(), remaining + 100)
+    return () => clearTimeout(t)
+  }, [draftEstado?.status, draftEstado?.countdownEndsAt]) // eslint-disable-line
 
   useEffect(() => {
     const unsub = onValue(ref(db, SHOWMATCH_PATH), (snap) => {
@@ -120,8 +128,8 @@ export default function ShowmatchAdmin() {
   }
 
   async function handleIniciar() {
-    const r = await iniciarDraft()
-    r?.ok ? flash('Draft iniciado!') : flash(`Erro: ${r?.erro}`, 'err')
+    const r = await iniciarComContagem(5)
+    r?.ok ? flash('Contagem iniciada!') : flash(`Erro: ${r?.erro}`, 'err')
   }
 
   async function handleDesfazer() {
@@ -361,11 +369,28 @@ export default function ShowmatchAdmin() {
                   )}
                   {draftEstado?.status === 'aguardando' && (
                     <>
-                      <span style={{ fontSize: 13, color: 'var(--gold)' }}>⏳ Aguardando início</span>
+                      {/* Presença dos capitães */}
+                      <div style={{ display: 'flex', gap: 16, marginBottom: 8, padding: '8px 12px', background: 'var(--bg2)', borderRadius: 6, border: '1px solid var(--border)' }}>
+                        {['A', 'B'].map(t => {
+                          const online = !!(draftEstado.presence?.[t]?.onlineEm)
+                          const nome = t === 'A' ? sessao?.timeA?.nome : sessao?.timeB?.nome
+                          return (
+                            <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+                              <div style={{ width: 7, height: 7, borderRadius: '50%', background: online ? 'var(--green)' : 'var(--text3)', boxShadow: online ? '0 0 5px var(--green)' : 'none' }} />
+                              <span style={{ color: online ? 'var(--text)' : 'var(--text3)', fontFamily: "'Barlow Condensed'" }}>
+                                {nome ?? `Time ${t}`}: {online ? 'na sala' : 'aguardando...'}
+                              </span>
+                            </div>
+                          )
+                        })}
+                      </div>
                       <button className="btn primary" style={{ fontSize: 12, padding: '6px 14px' }} onClick={handleIniciar}>
                         ▶ Iniciar Draft
                       </button>
                     </>
+                  )}
+                  {draftEstado?.status === 'countdown' && (
+                    <span style={{ fontSize: 13, color: 'var(--gold2)', fontFamily: "'Barlow Condensed'" }}>⏳ Contagem regressiva...</span>
                   )}
                   {draftEstado?.status === 'rodando' && (
                     <>

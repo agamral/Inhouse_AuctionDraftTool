@@ -8,6 +8,7 @@ import {
   encerrarDraft,
   iniciarDraft,
   SEQUENCIA_PADRAO,
+  STATUS_DRAFT,
 } from '../utils/heroDraft'
 
 const DRAFT_PATH = 'heroDraft'
@@ -111,6 +112,19 @@ export function useHeroDraft(sessionId, timeLocal = null, pathOverride = null) {
     }
   }, [estado, path])
 
+  // ── Iniciar com contagem regressiva (admin) ───────────────────────────────
+  const iniciarComContagem = useCallback(async (secs = 5) => {
+    try {
+      await update(ref(db, path), {
+        status:          STATUS_DRAFT.COUNTDOWN,
+        countdownEndsAt: Date.now() + secs * 1000,
+      })
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, erro: e.message }
+    }
+  }, [path])
+
   // ── Encerrar draft (admin) ─────────────────────────────────────────────────
   const encerrar = useCallback(async () => {
     if (!estado) return { ok: false, erro: 'Estado não carregado' }
@@ -160,6 +174,7 @@ export function useHeroDraft(sessionId, timeLocal = null, pathOverride = null) {
     agir,
     desfazer,
     iniciar,
+    iniciarComContagem,
     encerrar,
     criarSessao,
     atualizarGlobalBans,

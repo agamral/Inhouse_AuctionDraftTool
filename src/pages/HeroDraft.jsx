@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { ref, set, remove } from 'firebase/database'
+import { db } from '../firebase/database'
 import { useHeroDraft } from '../hooks/useHeroDraft'
 import { useCampeonato } from '../contexts/CampeonatoContext'
 import { heroDraftPath } from '../utils/campeonatoPaths'
@@ -28,6 +30,35 @@ export default function HeroDraft() {
   const { estado, loading, erro, ehMinhaTez, agir } = useHeroDraft(
     isShowmatch ? null : sessaoId, timeLocal, pathOverride
   )
+
+  // ── Presença do capitão ────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!pathOverride || !timeLocal || timeLocal === 'admin') return
+    const presRef = ref(db, `${pathOverride}/presence/${timeLocal}`)
+    set(presRef, { onlineEm: Date.now() })
+    const handleUnload = () => remove(presRef)
+    window.addEventListener('beforeunload', handleUnload)
+    return () => {
+      remove(presRef)
+      window.removeEventListener('beforeunload', handleUnload)
+    }
+  }, [pathOverride, timeLocal]) // eslint-disable-line
+
+  // ── Countdown ────────────────────────────────────────────────────────────
+  const [countdown, setCountdown] = useState(null)
+  useEffect(() => {
+    if (estado?.status !== STATUS_DRAFT.COUNTDOWN || !estado?.countdownEndsAt) {
+      setCountdown(null)
+      return
+    }
+    const tick = () => {
+      const secs = Math.max(0, Math.ceil((estado.countdownEndsAt - Date.now()) / 1000))
+      setCountdown(secs)
+    }
+    tick()
+    const id = setInterval(tick, 200)
+    return () => clearInterval(id)
+  }, [estado?.status, estado?.countdownEndsAt])
 
   const [filtroRole, setFiltroRole]     = useState('todos')
   const [busca, setBusca]               = useState('')
@@ -140,6 +171,37 @@ export default function HeroDraft() {
   if (loading) return <div className="hd-loading">Carregando draft...</div>
   if (erro)    return <div className="hd-erro">Erro: {erro}</div>
   if (!estado) return <div className="hd-loading">Sessão não encontrada.</div>
+
+  // ── Overlay de countdown ──────────────────────────────────────────────────
+  if (estado.status === STATUS_DRAFT.COUNTDOWN && countdown !== null) {
+    return (
+      <main className="hero-draft-page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#050612' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 14, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)', marginBottom: 16 }}>
+            DRAFT INICIANDO EM
+          </div>
+          <div key={countdown} style={{
+            fontFamily: "'Rajdhani', sans-serif", fontWeight: 900,
+            fontSize: 'clamp(8rem, 22vw, 15rem)', lineHeight: 1,
+            color: countdown <= 2 ? '#ff4444' : 'var(--gold2)',
+            textShadow: `0 0 60px ${countdown <= 2 ? 'rgba(255,60,60,0.7)' : 'rgba(201,168,76,0.6)'}`,
+            animation: 'hd-countdown-pulse 0.15s ease-out',
+          }}>
+            {countdown || '!'}
+          </div>
+          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 13, letterSpacing: '0.15em', color: 'rgba(255,255,255,0.3)', marginTop: 16 }}>
+            {estado.timeA?.nome} × {estado.timeB?.nome}
+          </div>
+        </div>
+        <style>{`
+          @keyframes hd-countdown-pulse {
+            from { transform: scale(1.25); opacity: 0.6; }
+            to   { transform: scale(1);    opacity: 1;   }
+          }
+        `}</style>
+      </main>
+    )
+  }
 
   const mapa    = getMapaById(estado.mapaId)
   const passo   = passoAtual(estado)

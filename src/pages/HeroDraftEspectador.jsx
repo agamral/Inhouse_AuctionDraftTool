@@ -165,10 +165,54 @@ export default function HeroDraftEspectador() {
     return () => clearInterval(tick)
   }, [turnoIniciadoEm, estado?.status])
 
+  // ── Countdown ─────────────────────────────────────────────────────────────
+  const [countdown, setCountdown] = useState(null)
+  useEffect(() => {
+    if (estado?.status !== STATUS_DRAFT.COUNTDOWN || !estado?.countdownEndsAt) {
+      setCountdown(null); return
+    }
+    const tick = () => setCountdown(Math.max(0, Math.ceil((estado.countdownEndsAt - Date.now()) / 1000)))
+    tick()
+    const id = setInterval(tick, 200)
+    return () => clearInterval(id)
+  }, [estado?.status, estado?.countdownEndsAt])
+
   // ── Guards ────────────────────────────────────────────────────────────────
   if (loading) return <div className="hde-loading">Conectando ao draft...</div>
   if (erro)    return <div className="hde-loading">Erro: {erro}</div>
   if (!estado) return <div className="hde-loading">Nenhum draft ativo.</div>
+
+  // Countdown overlay para o espectador
+  if (estado.status === STATUS_DRAFT.COUNTDOWN && countdown !== null) {
+    return (
+      <div className="hde-root" style={{ alignItems: 'center', justifyContent: 'center' }}>
+        <div className="hde-bg-grid" />
+        <div style={{ textAlign: 'center', position: 'relative', zIndex: 1 }}>
+          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 16, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)', marginBottom: 16 }}>
+            DRAFT INICIANDO EM
+          </div>
+          <div key={countdown} style={{
+            fontFamily: "'Rajdhani', sans-serif", fontWeight: 900,
+            fontSize: 'clamp(10rem, 28vw, 20rem)', lineHeight: 1,
+            color: countdown <= 2 ? '#ff4444' : 'var(--gold2)',
+            textShadow: `0 0 80px ${countdown <= 2 ? 'rgba(255,60,60,0.8)' : 'rgba(201,168,76,0.7)'}`,
+            animation: 'hde-countdown-pulse 0.15s ease-out',
+          }}>
+            {countdown || '!'}
+          </div>
+          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 14, letterSpacing: '0.15em', color: 'rgba(255,255,255,0.3)', marginTop: 16, textTransform: 'uppercase' }}>
+            {estado.timeA?.nome} <span style={{ color: 'var(--gold)', opacity: 0.6 }}>×</span> {estado.timeB?.nome}
+          </div>
+        </div>
+        <style>{`
+          @keyframes hde-countdown-pulse {
+            from { transform: scale(1.3); opacity: 0.5; }
+            to   { transform: scale(1);   opacity: 1;   }
+          }
+        `}</style>
+      </div>
+    )
+  }
 
   const mapa  = getMapaById(estado.mapaId)
   const passo = passoAtual(estado)

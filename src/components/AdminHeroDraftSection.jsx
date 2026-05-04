@@ -66,8 +66,16 @@ export default function AdminHeroDraftSection() {
   const [salvando, setSalvando] = useState(false)
 
   const draftPathOverride = sessaoId ? `${heroDraftPath(campeonatoId)}/${sessaoId}` : null
-  const { estado, loading, iniciar, encerrar, desfazer } =
+  const { estado, loading, iniciar, iniciarComContagem, encerrar, desfazer } =
     useHeroDraft(sessaoId || null, 'admin', draftPathOverride)
+
+  // ── Auto-transição: countdown → rodando ─────────────────────────────────
+  useEffect(() => {
+    if (estado?.status !== 'countdown' || !estado?.countdownEndsAt) return
+    const remaining = Math.max(0, estado.countdownEndsAt - Date.now())
+    const t = setTimeout(() => iniciar(), remaining + 100) // +100ms margem
+    return () => clearTimeout(t)
+  }, [estado?.status, estado?.countdownEndsAt]) // eslint-disable-line
 
   useEffect(() => onValue(ref(db, heroDraftPath(campeonatoId)), snap => setSessoes(snap.val() ?? {})), [campeonatoId])
 
@@ -145,8 +153,8 @@ export default function AdminHeroDraftSection() {
   // ── ações de controle ─────────────────────────────────────────────────────
 
   async function handleIniciar() {
-    const r = await iniciar()
-    r.ok ? flash('ok', 'Draft iniciado!') : flash('erro', r.erro)
+    const r = await iniciarComContagem(5)
+    r.ok ? flash('ok', 'Contagem iniciada!') : flash('erro', r.erro)
   }
 
   async function handleDesfazer() {
@@ -552,9 +560,34 @@ export default function AdminHeroDraftSection() {
                   </div>
                 )}
 
+                {/* Indicadores de presença */}
+                {estado.status === 'aguardando' && (
+                  <div style={{ display: 'flex', gap: 16, marginBottom: 12, padding: '10px 14px', background: 'var(--bg3)', borderRadius: 6, border: '1px solid var(--border)' }}>
+                    {['A', 'B'].map(t => {
+                      const online = !!(estado.presence?.[t]?.onlineEm)
+                      const nome   = t === 'A' ? estado.timeA?.nome : estado.timeB?.nome
+                      return (
+                        <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12 }}>
+                          <div style={{ width: 7, height: 7, borderRadius: '50%', background: online ? 'var(--green)' : 'var(--text3)', boxShadow: online ? '0 0 5px var(--green)' : 'none', flexShrink: 0 }} />
+                          <span style={{ color: online ? 'var(--text)' : 'var(--text3)', fontFamily: "'Barlow Condensed', sans-serif" }}>
+                            {nome ?? `Time ${t}`}: {online ? 'na sala' : 'aguardando...'}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+
+                {/* Countdown em andamento */}
+                {estado.status === 'countdown' && estado.countdownEndsAt && (
+                  <div style={{ marginBottom: 12, padding: '8px 14px', background: 'rgba(201,168,76,0.08)', border: '1px solid rgba(201,168,76,0.3)', borderRadius: 6, fontSize: 13, color: 'var(--gold2)', fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.05em' }}>
+                    ⏳ Contagem regressiva em andamento...
+                  </div>
+                )}
+
                 {/* botões de controle */}
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                  {estado.status === 'aguardando' && (
+                  {(estado.status === 'aguardando') && (
                     <button className="btn primary" style={{ fontSize: 13, padding: '7px 16px' }} onClick={handleIniciar}>
                       ▶ Iniciar
                     </button>
