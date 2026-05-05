@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react'
 import { ref, onValue } from 'firebase/database'
 import { db } from '../firebase/database'
 import { useParams, Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 
 export default function HistoricoDetalhe() {
+  const { t } = useTranslation()
   const { historicId } = useParams()
   const [data,    setData]    = useState(null)
   const [loading, setLoading] = useState(true)
@@ -20,8 +22,8 @@ export default function HistoricoDetalhe() {
 
   if (!data) return (
     <main className="page">
-      <Link to="/historico" style={{ fontSize: 12, color: 'var(--text3)', textDecoration: 'none' }}>← Histórico</Link>
-      <h1 className="page-title" style={{ marginTop: 16 }}>Edição não encontrada</h1>
+      <Link to="/historico" style={{ fontSize: 12, color: 'var(--text3)', textDecoration: 'none' }}>{t('historico.back')}</Link>
+      <h1 className="page-title" style={{ marginTop: 16 }}>{t('historico.not_found')}</h1>
     </main>
   )
 
@@ -46,7 +48,7 @@ export default function HistoricoDetalhe() {
 
   return (
     <main className="page">
-      <Link to="/historico" style={{ fontSize: 12, color: 'var(--text3)', textDecoration: 'none' }}>← Histórico</Link>
+      <Link to="/historico" style={{ fontSize: 12, color: 'var(--text3)', textDecoration: 'none' }}>{t('historico.back')}</Link>
 
       {/* Header */}
       <div style={{ margin: '20px 0 32px' }}>
@@ -59,7 +61,7 @@ export default function HistoricoDetalhe() {
           </p>
         )}
         {encerrado && (
-          <p style={{ fontSize: 12, color: 'var(--text3)', margin: 0 }}>Encerrado em {encerrado}</p>
+          <p style={{ fontSize: 12, color: 'var(--text3)', margin: 0 }}>{t('historico.closed_on')} {encerrado}</p>
         )}
       </div>
 
@@ -69,7 +71,7 @@ export default function HistoricoDetalhe() {
         {times.length > 0 && (
           <section>
             <h2 style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: 20, fontWeight: 700, color: 'var(--text)', marginBottom: 14, borderBottom: '1px solid var(--border)', paddingBottom: 8 }}>
-              Times
+              {t('historico.section_teams')}
             </h2>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 12 }}>
               {times.map(([id, time]) => {
@@ -93,7 +95,7 @@ export default function HistoricoDetalhe() {
                       {time.capitaoNome && (
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
                           <span style={{ color: 'var(--text2)' }}>{time.capitaoNome}</span>
-                          <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 10, color: time.cor ?? 'var(--gold)', background: `${time.cor ?? 'var(--gold)'}18`, border: `1px solid ${time.cor ?? 'var(--gold)'}33`, borderRadius: 3, padding: '1px 5px' }}>CAP</span>
+                          <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 10, color: time.cor ?? 'var(--gold)', background: `${time.cor ?? 'var(--gold)'}18`, border: `1px solid ${time.cor ?? 'var(--gold)'}33`, borderRadius: 3, padding: '1px 5px' }}>{t('historico.cap_badge')}</span>
                         </div>
                       )}
                       {/* Roster */}
@@ -108,7 +110,7 @@ export default function HistoricoDetalhe() {
                         </div>
                       ))}
                       {roster.length === 0 && !time.capitaoNome && (
-                        <div style={{ fontSize: 12, color: 'var(--text3)' }}>Sem roster registrado.</div>
+                        <div style={{ fontSize: 12, color: 'var(--text3)' }}>{t('historico.no_roster')}</div>
                       )}
                     </div>
                   </div>
@@ -122,13 +124,13 @@ export default function HistoricoDetalhe() {
         {Object.keys(confrontos).length > 0 && (
           <section>
             <h2 style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: 20, fontWeight: 700, color: 'var(--text)', marginBottom: 14, borderBottom: '1px solid var(--border)', paddingBottom: 8 }}>
-              Partidas
+              {t('historico.section_matches')}
             </h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
               {rodadasArr.length > 0 ? rodadasArr.map(([rid, rodada]) => (
                 <div key={rid}>
                   <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 12, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
-                    Rodada {rodada.numero ?? rid}
+                    {t('historico.round_label')} {rodada.numero ?? rid}
                   </div>
                   <ConfrontosLista confrontos={confPorRodada[rid] ?? []} />
                 </div>
@@ -141,7 +143,7 @@ export default function HistoricoDetalhe() {
 
         {/* Sem dados */}
         {times.length === 0 && Object.keys(confrontos).length === 0 && (
-          <p style={{ color: 'var(--text2)', fontSize: 14 }}>Sem dados detalhados para esta edição.</p>
+          <p style={{ color: 'var(--text2)', fontSize: 14 }}>{t('historico.no_data')}</p>
         )}
 
       </div>

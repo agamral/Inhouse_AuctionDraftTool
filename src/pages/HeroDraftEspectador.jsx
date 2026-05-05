@@ -8,6 +8,7 @@ import { getHeroVideoUrl, getHeroImageUrl } from '../utils/heroVideos'
 import { passoAtual, ACOES, STATUS_DRAFT } from '../utils/heroDraft'
 import { getMapaById } from '../utils/mapPool'
 import { useLocation } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import './HeroDraftEspectador.css'
 
 const TEMPO_TURNO = 30
@@ -16,6 +17,7 @@ const SHOWMATCH_DRAFT_PATH = 'showmatch/sessaoAtiva/heroDraft'
 // URL: /campeonatos/:id/hero-draft/espectador?sessao=semifinal-1
 // URL: /showmatch/espectador  (reutiliza este componente)
 export default function HeroDraftEspectador() {
+  const { t } = useTranslation()
   const [params]  = useSearchParams()
   const sessaoId  = params.get('sessao') ?? 'default'
   const { idPublico } = useCampeonato()
@@ -178,9 +180,9 @@ export default function HeroDraftEspectador() {
   }, [estado?.status, estado?.countdownEndsAt])
 
   // ── Guards ────────────────────────────────────────────────────────────────
-  if (loading) return <div className="hde-loading">Conectando ao draft...</div>
+  if (loading) return <div className="hde-loading">{t('hero_espectador.connecting')}</div>
   if (erro)    return <div className="hde-loading">Erro: {erro}</div>
-  if (!estado) return <div className="hde-loading">Nenhum draft ativo.</div>
+  if (!estado) return <div className="hde-loading">{t('hero_espectador.no_draft')}</div>
 
   // Countdown overlay para o espectador
   if (estado.status === STATUS_DRAFT.COUNTDOWN && countdown !== null) {
@@ -189,7 +191,7 @@ export default function HeroDraftEspectador() {
         <div className="hde-bg-grid" />
         <div style={{ textAlign: 'center', position: 'relative', zIndex: 1 }}>
           <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 16, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)', marginBottom: 16 }}>
-            DRAFT INICIANDO EM
+            {t('hero_espectador.countdown_label')}
           </div>
           <div key={countdown} style={{
             fontFamily: "'Rajdhani', sans-serif", fontWeight: 900,
@@ -322,7 +324,7 @@ export default function HeroDraftEspectador() {
           {isRunning && passo ? (
             <>
               <div className={`hde-centro-acao hde-centro-acao--${passo.acao}`}>
-                {passo.acao === ACOES.BAN ? 'BANIR' : 'ESCOLHER'}
+                {passo.acao === ACOES.BAN ? t('hero_espectador.action_ban') : t('hero_espectador.action_pick')}
               </div>
               <div
                 className="hde-centro-time"
@@ -334,7 +336,7 @@ export default function HeroDraftEspectador() {
           ) : estado.status === STATUS_DRAFT.AGUARDANDO ? (
             <div className="hde-centro-emblema">⚔</div>
           ) : (
-            <div className="hde-centro-fim">DRAFT<br />ENCERRADO</div>
+            <div className="hde-centro-fim">{t('hero_espectador.draft_ended')}</div>
           )}
         </div>
 

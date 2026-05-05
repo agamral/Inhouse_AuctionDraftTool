@@ -9,6 +9,7 @@ import { HEROES, getHeroesByRole, ROLES } from '../utils/heroPool'
 import { passoAtual, heroiBloqueado, ACOES, STATUS_DRAFT } from '../utils/heroDraft'
 import { getMapaById } from '../utils/mapPool'
 import { useLocation } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import './HeroDraft.css'
 
 const SHOWMATCH_DRAFT_PATH = 'showmatch/sessaoAtiva/heroDraft'
@@ -16,6 +17,7 @@ const SHOWMATCH_DRAFT_PATH = 'showmatch/sessaoAtiva/heroDraft'
 // URL: /campeonatos/:id/hero-draft?sessao=semifinal-1&time=A
 // URL: /showmatch/draft?time=A  (reutiliza este componente)
 export default function HeroDraft() {
+  const { t } = useTranslation()
   const [params]      = useSearchParams()
   const sessaoId      = params.get('sessao') ?? 'default'
   const timeLocal     = params.get('time')   ?? null
@@ -168,9 +170,9 @@ export default function HeroDraft() {
   }, [filtroRole, busca])
 
   // ── Guards ────────────────────────────────────────────────────────────────
-  if (loading) return <div className="hd-loading">Carregando draft...</div>
+  if (loading) return <div className="hd-loading">{t('hero_draft.loading')}</div>
   if (erro)    return <div className="hd-erro">Erro: {erro}</div>
-  if (!estado) return <div className="hd-loading">Sessão não encontrada.</div>
+  if (!estado) return <div className="hd-loading">{t('hero_draft.not_found')}</div>
 
   // ── Overlay de countdown ──────────────────────────────────────────────────
   if (estado.status === STATUS_DRAFT.COUNTDOWN && countdown !== null) {
@@ -178,7 +180,7 @@ export default function HeroDraft() {
       <main className="hero-draft-page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#050612' }}>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 14, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)', marginBottom: 16 }}>
-            DRAFT INICIANDO EM
+            {t('hero_draft.countdown_label')}
           </div>
           <div key={countdown} style={{
             fontFamily: "'Rajdhani', sans-serif", fontWeight: 900,
@@ -231,7 +233,7 @@ export default function HeroDraft() {
           <div className="hd-aviso-pulse" />
           <div>
             <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 18, marginBottom: 4 }}>
-              Aguardando o admin iniciar o draft
+              {t('hero_draft.waiting_admin')}
             </div>
             <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 13, opacity: 0.65, letterSpacing: '0.04em' }}>
               {timeLocal
@@ -243,7 +245,7 @@ export default function HeroDraft() {
         </div>
       )}
       {estado.status === STATUS_DRAFT.ENCERRADO && (
-        <div className="hd-aviso hd-aviso--fim">Draft encerrado!</div>
+        <div className="hd-aviso hd-aviso--fim">{t('hero_draft.draft_ended')}</div>
       )}
 
       {/* ── Confirmação de escolha ───────────────────────────────────────── */}
@@ -429,10 +431,11 @@ function HeroCard({ heroi, bloqueado, selecionado, clicavel, estado, onClick }) 
 }
 
 function ConfirmacaoOverlay({ heroiId, acao, onConfirmar, onCancelar }) {
+  const { t } = useTranslation()
   const heroi = HEROES.find((h) => h.id === heroiId)
   if (!heroi) return null
 
-  const acaoLabel = acao === ACOES.BAN ? 'BANIR' : 'ESCOLHER'
+  const acaoLabel = acao === ACOES.BAN ? t('hero_draft.turn_ban') : t('hero_draft.turn_pick')
   const acaoClass = acao === ACOES.BAN ? 'ban' : 'pick'
 
   return (
@@ -442,10 +445,10 @@ function ConfirmacaoOverlay({ heroiId, acao, onConfirmar, onCancelar }) {
           onError={(e) => { e.target.src = '/heroes/placeholder.png' }} />
         <h3 className="hd-confirmar-nome">{heroi.nome}</h3>
         <p className="hd-confirmar-acao" data-acao={acaoClass}>
-          Confirmar {acaoLabel}?
+          {acaoLabel}?
         </p>
         <div className="hd-confirmar-btns">
-          <button className="hd-btn hd-btn--confirmar" onClick={onConfirmar}>Confirmar</button>
+          <button className="hd-btn hd-btn--confirmar" onClick={onConfirmar}>{t('hero_draft.confirm')}</button>
           <button className="hd-btn hd-btn--cancelar"  onClick={onCancelar}>Cancelar</button>
         </div>
       </div>

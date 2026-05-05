@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react'
 import { ref, onValue } from 'firebase/database'
 import { db } from '../firebase/database'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 
 export default function Historico() {
+  const { t } = useTranslation()
   const [historico, setHistorico] = useState(null)
   const [loading,   setLoading]   = useState(true)
 
@@ -23,8 +25,8 @@ export default function Historico() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
           <Link to="/" style={{ fontSize: 12, color: 'var(--text3)', textDecoration: 'none' }}>← Início</Link>
         </div>
-        <h1 className="page-title">Histórico</h1>
-        <p style={{ color: 'var(--text2)', fontSize: 14 }}>Nenhuma edição arquivada ainda.</p>
+        <h1 className="page-title">{t('historico.title')}</h1>
+        <p style={{ color: 'var(--text2)', fontSize: 14 }}>{t('historico.empty')}</p>
       </main>
     )
   }
@@ -38,9 +40,9 @@ export default function Historico() {
         <Link to="/" style={{ fontSize: 12, color: 'var(--text3)', textDecoration: 'none' }}>← Início</Link>
       </div>
 
-      <h1 className="page-title" style={{ marginBottom: 4 }}>Histórico</h1>
+      <h1 className="page-title" style={{ marginBottom: 4 }}>{t('historico.title')}</h1>
       <p style={{ color: 'var(--text2)', fontSize: 13, marginBottom: 28 }}>
-        Todas as edições da Copa Inhouse.
+        {t('historico.subtitle')}
       </p>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
@@ -74,12 +76,12 @@ export default function Historico() {
                 </div>
               )}
               <div style={{ display: 'flex', gap: 12, fontSize: 12, color: 'var(--text3)', fontFamily: "'Barlow Condensed', sans-serif" }}>
-                {numTimes > 0 && <span>{numTimes} times</span>}
-                {numConf  > 0 && <span>{numConf} partidas</span>}
+                {numTimes > 0 && <span>{numTimes} {t('historico.teams')}</span>}
+                {numConf  > 0 && <span>{numConf} {t('historico.matches')}</span>}
                 {encerrado && <span>· {encerrado}</span>}
               </div>
               <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>
-                Ver detalhes →
+                {t('historico.view_details')}
               </div>
             </Link>
           )

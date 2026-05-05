@@ -33,9 +33,9 @@ export default function HomeMestre() {
     return (
       <main className="page">
         <h1 className="page-title">Copa Inhouse</h1>
-        <p style={{ color: 'var(--text2)', fontSize: 14 }}>Nenhum campeonato disponível ainda.</p>
+        <p style={{ color: 'var(--text2)', fontSize: 14 }}>{t('home_mestre.empty')}</p>
         {temHistorico && (
-          <Link to="/historico" className="hm-historico-link">📚 Ver edições anteriores →</Link>
+          <Link to="/historico" className="hm-historico-link">📚 {t('home_mestre.history_link')}</Link>
         )}
       </main>
     )
@@ -47,14 +47,14 @@ export default function HomeMestre() {
         <div className="hm-trophy">⚔️</div>
         <div>
           <h1 className="hm-title">Copa Inhouse</h1>
-          <p className="hm-sub">Heroes of the Storm</p>
+          <p className="hm-sub">{t('home_mestre.subtitle')}</p>
         </div>
       </div>
 
       {/* Próximo evento */}
       {proximoEvento && (
         <div className="hm-proximo-evento">
-          <span className="hm-proximo-label">Próximo evento</span>
+          <span className="hm-proximo-label">{t('home_mestre.next_event')}</span>
           <span className="hm-proximo-data">{proximoEvento}</span>
         </div>
       )}
@@ -65,11 +65,11 @@ export default function HomeMestre() {
           const isPrincipal = info.principal
           const encerrado  = info.status === 'encerrado'
           const status = encerrado
-            ? 'Encerrado'
-            : camp.config?.modules?.campeonatoAtivo ? 'Em andamento'
-            : camp.config?.modules?.draftAtivo      ? 'Leilão'
-            : camp.config?.modules?.inscricaoAberta ? 'Inscrições abertas'
-            : 'Aguardando'
+            ? t('home_mestre.status_ended')
+            : camp.config?.modules?.campeonatoAtivo ? t('home_mestre.status_running')
+            : camp.config?.modules?.draftAtivo      ? t('home_mestre.status_draft')
+            : camp.config?.modules?.inscricaoAberta ? t('home_mestre.status_open')
+            : t('home_mestre.status_waiting')
           const statusColor = encerrado
             ? 'var(--text3)'
             : camp.config?.modules?.campeonatoAtivo ? 'var(--green)'
@@ -89,7 +89,7 @@ export default function HomeMestre() {
               </div>
               {info.labelSeason && <div className="hm-card-label">{info.labelSeason}</div>}
               <div className="hm-card-status" style={{ color: statusColor }}>● {status}</div>
-              <div className="hm-card-cta">{encerrado ? 'Ver histórico →' : 'Ver campeonato →'}</div>
+              <div className="hm-card-cta">{encerrado ? t('home_mestre.cta_history') : t('home_mestre.cta_view')}</div>
             </Link>
           )
         })}
@@ -98,7 +98,7 @@ export default function HomeMestre() {
       {/* Link para histórico completo */}
       {temHistorico && (
         <div style={{ marginTop: 28, textAlign: 'center' }}>
-          <Link to="/historico" className="hm-historico-link">📚 Ver todas as edições anteriores →</Link>
+          <Link to="/historico" className="hm-historico-link">📚 {t('home_mestre.history_link')}</Link>
         </div>
       )}
     </main>

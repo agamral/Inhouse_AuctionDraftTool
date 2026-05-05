@@ -5,6 +5,7 @@ import { db } from '../firebase/database'
 import { loginCapitao, atualizarSenha, emailEhSintetico, enviarResetSenha } from '../firebase/auth'
 import { useAuth } from '../hooks/useAuth'
 import { useCampeonato } from '../contexts/CampeonatoContext'
+import { useTranslation } from 'react-i18next'
 
 const inputCss = {
   background: 'var(--bg)', border: '1px solid var(--border2)', borderRadius: 6,
@@ -14,6 +15,7 @@ const inputCss = {
 
 // ── Etapa 1: Login ─────────────────────────────────────────────────────────────
 function FormLogin({ onSintetico }) {
+  const { t } = useTranslation()
   const [email,    setEmail]    = useState('')
   const [senha,    setSenha]    = useState('')
   const [erro,     setErro]     = useState(null)
@@ -95,14 +97,14 @@ function FormLogin({ onSintetico }) {
 
   return (
     <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <input type="email" placeholder="Email ou chave de acesso"
+      <input type="email" placeholder={t('captainLogin.email_label')}
         value={email} onChange={e => setEmail(e.target.value)} required style={inputCss} />
-      <input type="password" placeholder="Senha"
+      <input type="password" placeholder={t('captainLogin.password_label')}
         value={senha} onChange={e => setSenha(e.target.value)} required style={inputCss} />
       {erro && <p style={{ color: 'var(--red)', fontSize: 13, margin: 0 }}>{erro}</p>}
       <button type="submit" className="btn primary" disabled={entrando}
         style={{ padding: 11, fontSize: 14, marginTop: 4 }}>
-        {entrando ? 'Entrando...' : 'Entrar'}
+        {entrando ? t('captainLogin.logging_in') : t('captainLogin.login_btn')}
       </button>
       <button type="button" onClick={() => setMostraRec(true)}
         style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 12, cursor: 'pointer', marginTop: 2 }}>
@@ -179,6 +181,7 @@ function FormCompletarPerfil({ chaveAtual, onConcluido }) {
 
 // ── Componente principal ───────────────────────────────────────────────────────
 export default function LoginCapitao() {
+  const { t } = useTranslation()
   const { user, capitao, isAdmin, loading } = useAuth()
   const { idPublico } = useCampeonato()
   const navigate = useNavigate()
@@ -206,10 +209,10 @@ export default function LoginCapitao() {
 
   if (loading) return null
 
-  const titulo = etapa === 'completar' ? 'Complete seu perfil' : 'Acesso de Equipe'
+  const titulo = etapa === 'completar' ? t('captainLogin.complete_title') : t('captainLogin.title')
   const subtitulo = etapa === 'completar'
-    ? 'Defina uma senha pessoal para os próximos acessos'
-    : 'Use a chave de acesso fornecida pelo organizador.'
+    ? t('captainLogin.complete_subtitle')
+    : t('captainLogin.subtitle')
 
   return (
     <main className="page" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
@@ -236,7 +239,7 @@ export default function LoginCapitao() {
 
         {etapa === 'concluido' && (
           <div style={{ color: 'var(--green)', fontSize: 14, padding: '16px 0' }}>
-            ✓ Perfil atualizado! Redirecionando...
+            ✓ Perfil atualizado! {t('captainLogin.redirecting')}
           </div>
         )}
 
