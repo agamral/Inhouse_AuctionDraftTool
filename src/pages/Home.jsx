@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, useMatch } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useConteudo, useModules } from '../hooks/useConfig'
 import './Home.css'
@@ -7,6 +7,8 @@ export default function Home() {
   const { t } = useTranslation()
   const conteudo = useConteudo()
   const { inscricaoAberta } = useModules()
+  const inCampeonato = useMatch('/campeonatos/:campeonatoId/*')
+  const base = inCampeonato ? `/campeonatos/${inCampeonato.params.campeonatoId}` : ''
 
   const streams = [1, 2, 3]
     .map(n => ({ nome: conteudo[`stream${n}Nome`], url: conteudo[`stream${n}Url`] }))
@@ -35,7 +37,7 @@ export default function Home() {
 
       <section className="home-cards">
         {inscricaoAberta && (
-          <Link to="/inscricao" className="home-card home-card--gold">
+          <Link to={`${base}/inscricao`} className="home-card home-card--gold">
             <div className="home-card-icon">📝</div>
             <div className="home-card-body">
               <div className="home-card-title">{t('home.cards.inscricao')}</div>
@@ -54,7 +56,7 @@ export default function Home() {
             <div className="home-card-arrow">↗</div>
           </a>
         ))}
-        <Link to="/regras" className="home-card home-card--blue">
+        <Link to={`${base}/regras`} className="home-card home-card--blue">
           <div className="home-card-icon">📋</div>
           <div className="home-card-body">
             <div className="home-card-title">{t('home.regras_title')}</div>
