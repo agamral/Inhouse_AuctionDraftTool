@@ -4,6 +4,8 @@ import { db } from '../firebase/database'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../hooks/useAuth'
 import { useConteudo } from '../hooks/useConfig'
+import { useCampeonato } from '../contexts/CampeonatoContext'
+import { draftSessionPath, playerOverridesPath } from '../utils/campeonatoPaths'
 import RoleIcon from '../components/RoleIcon'
 import EloIcon, { ELO_CONFIG } from '../components/EloIcon'
 import CaptainLogin from '../components/CaptainLogin'
@@ -16,6 +18,7 @@ export default function Draft() {
   const { t } = useTranslation()
   const { isAdmin, capitao } = useAuth()
   const conteudo = useConteudo()
+  const { idPublico } = useCampeonato()
 
   const [captainSession, setCaptainSession] = useState(() => {
     try { return JSON.parse(sessionStorage.getItem('captainSession')) } catch { return null }
@@ -36,14 +39,14 @@ export default function Draft() {
     let n = 0
     const done = () => { if (++n === 4) setLoading(false) }
 
-    const u1 = onValue(ref(db, '/draftSession/captains'),   s => { setCaptains(s.val() ?? {}); done() })
-    const u2 = onValue(ref(db, '/draftSession/state'),      s => { setDraftState(s.exists() ? { ...DEFAULT_STATE, ...s.val() } : DEFAULT_STATE); done() })
-    const u3 = onValue(ref(db, '/draftSession/playerState'),s => { setPlayerState(s.val() ?? {}); done() })
-    const u4 = onValue(ref(db, '/playerOverrides'),         s => { setOverrides(s.val() ?? {}); done() })
-    const u5 = onValue(ref(db, '/config/draft'),            s => { if (s.exists()) setDraftConfig(c => ({ ...c, ...s.val() })) })
+    const u1 = onValue(ref(db, `${draftSessionPath(idPublico)}/captains`),    s => { setCaptains(s.val() ?? {}); done() })
+    const u2 = onValue(ref(db, `${draftSessionPath(idPublico)}/state`),       s => { setDraftState(s.exists() ? { ...DEFAULT_STATE, ...s.val() } : DEFAULT_STATE); done() })
+    const u3 = onValue(ref(db, `${draftSessionPath(idPublico)}/playerState`), s => { setPlayerState(s.val() ?? {}); done() })
+    const u4 = onValue(ref(db, playerOverridesPath(idPublico)),               s => { setOverrides(s.val() ?? {}); done() })
+    const u5 = onValue(ref(db, '/config/draft'),                              s => { if (s.exists()) setDraftConfig(c => ({ ...c, ...s.val() })) })
 
     return () => { u1(); u2(); u3(); u4(); u5() }
-  }, [])
+  }, [idPublico])
 
   useEffect(() => {
     fetch(import.meta.env.VITE_SHEETS_WEBAPP_URL)

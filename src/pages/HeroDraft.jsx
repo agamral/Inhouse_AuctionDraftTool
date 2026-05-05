@@ -1,18 +1,66 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { ref, set, remove } from 'firebase/database'
+import { db } from '../firebase/database'
 import { useHeroDraft } from '../hooks/useHeroDraft'
+import { useCampeonato } from '../contexts/CampeonatoContext'
+import { heroDraftPath } from '../utils/campeonatoPaths'
 import { HEROES, getHeroesByRole, ROLES } from '../utils/heroPool'
 import { passoAtual, heroiBloqueado, ACOES, STATUS_DRAFT } from '../utils/heroDraft'
 import { getMapaById } from '../utils/mapPool'
+import { useLocation } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import './HeroDraft.css'
 
-// URL: /hero-draft?sessao=semifinal-1&time=A
+const SHOWMATCH_DRAFT_PATH = 'showmatch/sessaoAtiva/heroDraft'
+
+// URL: /campeonatos/:id/hero-draft?sessao=semifinal-1&time=A
+// URL: /showmatch/draft?time=A  (reutiliza este componente)
 export default function HeroDraft() {
+  const { t } = useTranslation()
   const [params]      = useSearchParams()
   const sessaoId      = params.get('sessao') ?? 'default'
-  const timeLocal     = params.get('time')   ?? null   // 'A' | 'B' | null (espectador)
+  const timeLocal     = params.get('time')   ?? null
+  const { idPublico } = useCampeonato()
+  const location      = useLocation()
+  const isShowmatch   = location.pathname.startsWith('/showmatch')
 
-  const { estado, loading, erro, ehMinhaTez, agir } = useHeroDraft(sessaoId, timeLocal)
+  const pathOverride = isShowmatch
+    ? SHOWMATCH_DRAFT_PATH
+    : (idPublico ? `${heroDraftPath(idPublico)}/${sessaoId}` : null)
+
+  const { estado, loading, erro, ehMinhaTez, agir } = useHeroDraft(
+    isShowmatch ? null : sessaoId, timeLocal, pathOverride
+  )
+
+  // ── Presença do capitão ────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!pathOverride || !timeLocal || timeLocal === 'admin') return
+    const presRef = ref(db, `${pathOverride}/presence/${timeLocal}`)
+    set(presRef, { onlineEm: Date.now() })
+    const handleUnload = () => remove(presRef)
+    window.addEventListener('beforeunload', handleUnload)
+    return () => {
+      remove(presRef)
+      window.removeEventListener('beforeunload', handleUnload)
+    }
+  }, [pathOverride, timeLocal]) // eslint-disable-line
+
+  // ── Countdown ────────────────────────────────────────────────────────────
+  const [countdown, setCountdown] = useState(null)
+  useEffect(() => {
+    if (estado?.status !== STATUS_DRAFT.COUNTDOWN || !estado?.countdownEndsAt) {
+      setCountdown(null)
+      return
+    }
+    const tick = () => {
+      const secs = Math.max(0, Math.ceil((estado.countdownEndsAt - Date.now()) / 1000))
+      setCountdown(secs)
+    }
+    tick()
+    const id = setInterval(tick, 200)
+    return () => clearInterval(id)
+  }, [estado?.status, estado?.countdownEndsAt])
 
   const [filtroRole, setFiltroRole]     = useState('todos')
   const [busca, setBusca]               = useState('')
@@ -122,9 +170,40 @@ export default function HeroDraft() {
   }, [filtroRole, busca])
 
   // ── Guards ────────────────────────────────────────────────────────────────
-  if (loading) return <div className="hd-loading">Carregando draft...</div>
+  if (loading) return <div className="hd-loading">{t('hero_draft.loading')}</div>
   if (erro)    return <div className="hd-erro">Erro: {erro}</div>
-  if (!estado) return <div className="hd-loading">Sessão não encontrada.</div>
+  if (!estado) return <div className="hd-loading">{t('hero_draft.not_found')}</div>
+
+  // ── Overlay de countdown ──────────────────────────────────────────────────
+  if (estado.status === STATUS_DRAFT.COUNTDOWN && countdown !== null) {
+    return (
+      <main className="hero-draft-page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#050612' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 14, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)', marginBottom: 16 }}>
+            {t('hero_draft.countdown_label')}
+          </div>
+          <div key={countdown} style={{
+            fontFamily: "'Rajdhani', sans-serif", fontWeight: 900,
+            fontSize: 'clamp(8rem, 22vw, 15rem)', lineHeight: 1,
+            color: countdown <= 2 ? '#ff4444' : 'var(--gold2)',
+            textShadow: `0 0 60px ${countdown <= 2 ? 'rgba(255,60,60,0.7)' : 'rgba(201,168,76,0.6)'}`,
+            animation: 'hd-countdown-pulse 0.15s ease-out',
+          }}>
+            {countdown || '!'}
+          </div>
+          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 13, letterSpacing: '0.15em', color: 'rgba(255,255,255,0.3)', marginTop: 16 }}>
+            {estado.timeA?.nome} × {estado.timeB?.nome}
+          </div>
+        </div>
+        <style>{`
+          @keyframes hd-countdown-pulse {
+            from { transform: scale(1.25); opacity: 0.6; }
+            to   { transform: scale(1);    opacity: 1;   }
+          }
+        `}</style>
+      </main>
+    )
+  }
 
   const mapa    = getMapaById(estado.mapaId)
   const passo   = passoAtual(estado)
@@ -154,7 +233,7 @@ export default function HeroDraft() {
           <div className="hd-aviso-pulse" />
           <div>
             <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 18, marginBottom: 4 }}>
-              Aguardando o admin iniciar o draft
+              {t('hero_draft.waiting_admin')}
             </div>
             <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 13, opacity: 0.65, letterSpacing: '0.04em' }}>
               {timeLocal
@@ -166,7 +245,7 @@ export default function HeroDraft() {
         </div>
       )}
       {estado.status === STATUS_DRAFT.ENCERRADO && (
-        <div className="hd-aviso hd-aviso--fim">Draft encerrado!</div>
+        <div className="hd-aviso hd-aviso--fim">{t('hero_draft.draft_ended')}</div>
       )}
 
       {/* ── Confirmação de escolha ───────────────────────────────────────── */}
@@ -352,10 +431,11 @@ function HeroCard({ heroi, bloqueado, selecionado, clicavel, estado, onClick }) 
 }
 
 function ConfirmacaoOverlay({ heroiId, acao, onConfirmar, onCancelar }) {
+  const { t } = useTranslation()
   const heroi = HEROES.find((h) => h.id === heroiId)
   if (!heroi) return null
 
-  const acaoLabel = acao === ACOES.BAN ? 'BANIR' : 'ESCOLHER'
+  const acaoLabel = acao === ACOES.BAN ? t('hero_draft.turn_ban') : t('hero_draft.turn_pick')
   const acaoClass = acao === ACOES.BAN ? 'ban' : 'pick'
 
   return (
@@ -365,10 +445,10 @@ function ConfirmacaoOverlay({ heroiId, acao, onConfirmar, onCancelar }) {
           onError={(e) => { e.target.src = '/heroes/placeholder.png' }} />
         <h3 className="hd-confirmar-nome">{heroi.nome}</h3>
         <p className="hd-confirmar-acao" data-acao={acaoClass}>
-          Confirmar {acaoLabel}?
+          {acaoLabel}?
         </p>
         <div className="hd-confirmar-btns">
-          <button className="hd-btn hd-btn--confirmar" onClick={onConfirmar}>Confirmar</button>
+          <button className="hd-btn hd-btn--confirmar" onClick={onConfirmar}>{t('hero_draft.confirm')}</button>
           <button className="hd-btn hd-btn--cancelar"  onClick={onCancelar}>Cancelar</button>
         </div>
       </div>

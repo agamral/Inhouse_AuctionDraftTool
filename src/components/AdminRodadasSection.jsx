@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { ref, onValue, set, update, remove, push } from 'firebase/database'
 import { db } from '../firebase/database'
+import { useCampeonato } from '../contexts/CampeonatoContext'
+import { teamPath, rodadasPath, confrontosPath, disponibilidadePath } from '../utils/campeonatoPaths'
 import {
   SLOTS, SLOT_LABEL, SLOT_DIA, DIA_LABEL,
   STATUS_CONFRONTO, STATUS_LABEL, STATUS_COR,
@@ -18,6 +20,7 @@ const inputStyle = {
 // ── Componente principal ─────────────────────────────────────────────────────
 
 export default function AdminRodadasSection() {
+  const { campeonatoId } = useCampeonato()
   const [rodadas, setRodadas]           = useState({})
   const [confrontos, setConfrontos]     = useState({})
   const [disponibilidade, setDisp]      = useState({})
@@ -33,10 +36,10 @@ export default function AdminRodadasSection() {
   const [modalSlot, setModalSlot]                 = useState(null) // confrontoId
   const [confirmDelete, setConfirmDelete]         = useState(null) // confrontoId
 
-  useEffect(() => onValue(ref(db, '/rodadas'),         snap => setRodadas(snap.val()    ?? {})), [])
-  useEffect(() => onValue(ref(db, '/confrontos'),      snap => setConfrontos(snap.val() ?? {})), [])
-  useEffect(() => onValue(ref(db, '/disponibilidade'), snap => setDisp(snap.val()       ?? {})), [])
-  useEffect(() => onValue(ref(db, '/teams'),           snap => setTimes(snap.val()      ?? {})), [])
+  useEffect(() => onValue(ref(db, rodadasPath(campeonatoId)),         snap => setRodadas(snap.val()    ?? {})), [campeonatoId])
+  useEffect(() => onValue(ref(db, confrontosPath(campeonatoId)),      snap => setConfrontos(snap.val() ?? {})), [campeonatoId])
+  useEffect(() => onValue(ref(db, disponibilidadePath(campeonatoId)), snap => setDisp(snap.val()       ?? {})), [campeonatoId])
+  useEffect(() => onValue(ref(db, teamPath(campeonatoId)),            snap => setTimes(snap.val()      ?? {})), [campeonatoId])
 
   function flash(tipo, msg) {
     setFeedback({ tipo, msg })
@@ -55,8 +58,8 @@ export default function AdminRodadasSection() {
 
   async function criarRodada({ numero, semanaAnuncio, semanaJogos }) {
     try {
-      const id = push(ref(db, '/rodadas')).key
-      await set(ref(db, `/rodadas/${id}`), {
+      const id = push(ref(db, rodadasPath(campeonatoId))).key
+      await set(ref(db, `${rodadasPath(campeonatoId)}/${id}`), {
         numero, semanaAnuncio, semanaJogos,
         status: 'configurando',
         criadaEm: Date.now(),
@@ -75,8 +78,8 @@ export default function AdminRodadasSection() {
     if (!rodadaSel) return
     if (timeA === timeB) return flash('erro', 'Os times precisam ser diferentes.')
     try {
-      const id = push(ref(db, '/confrontos')).key
-      await set(ref(db, `/confrontos/${id}`), {
+      const id = push(ref(db, confrontosPath(campeonatoId))).key
+      await set(ref(db, `${confrontosPath(campeonatoId)}/${id}`), {
         rodadaId: rodadaSel,
         timeA, timeB, tipo, formato,
         slot: null,
@@ -106,7 +109,7 @@ export default function AdminRodadasSection() {
         novoStatus = STATUS_CONFRONTO.EMPATE_PENDENTE
       }
 
-      await update(ref(db, `/confrontos/${confrontoId}`), {
+      await update(ref(db, `${confrontosPath(campeonatoId)}/${confrontoId}`), {
         resultado,
         status: novoStatus,
         alertas: {},
@@ -123,7 +126,7 @@ export default function AdminRodadasSection() {
 
   async function forcarSlot(confrontoId, slot) {
     try {
-      await update(ref(db, `/confrontos/${confrontoId}`), {
+      await update(ref(db, `${confrontosPath(campeonatoId)}/${confrontoId}`), {
         slot,
         status: STATUS_CONFRONTO.CONFIRMADO,
         alertas: {},
@@ -140,7 +143,7 @@ export default function AdminRodadasSection() {
 
   async function mudarStatus(confrontoId, status, extras = {}) {
     try {
-      await update(ref(db, `/confrontos/${confrontoId}`), {
+      await update(ref(db, `${confrontosPath(campeonatoId)}/${confrontoId}`), {
         status, ...extras, atualizadoEm: Date.now(),
       })
       flash('ok', `Status atualizado: ${STATUS_LABEL[status]}`)
@@ -156,10 +159,10 @@ export default function AdminRodadasSection() {
       // Remove todos os confrontos da rodada + suas disponibilidades
       const confsDaRodada = Object.entries(confrontos).filter(([, c]) => c.rodadaId === rodadaId)
       for (const [id] of confsDaRodada) {
-        await remove(ref(db, `/confrontos/${id}`))
-        await remove(ref(db, `/disponibilidade/${id}`))
+        await remove(ref(db, `${confrontosPath(campeonatoId)}/${id}`))
+        await remove(ref(db, `${disponibilidadePath(campeonatoId)}/${id}`))
       }
-      await remove(ref(db, `/rodadas/${rodadaId}`))
+      await remove(ref(db, `${rodadasPath(campeonatoId)}/${rodadaId}`))
       setRodadaSel('')
       flash('ok', `Rodada removida (${confsDaRodada.length} confronto(s) apagados).`)
     } catch (e) {
@@ -171,8 +174,8 @@ export default function AdminRodadasSection() {
 
   async function deletarConfronto(confrontoId) {
     try {
-      await remove(ref(db, `/confrontos/${confrontoId}`))
-      await remove(ref(db, `/disponibilidade/${confrontoId}`))
+      await remove(ref(db, `${confrontosPath(campeonatoId)}/${confrontoId}`))
+      await remove(ref(db, `${disponibilidadePath(campeonatoId)}/${confrontoId}`))
       setConfirmDelete(null)
       flash('ok', 'Confronto apagado.')
     } catch (e) {
@@ -186,8 +189,8 @@ export default function AdminRodadasSection() {
     const orig = confrontos[confrontoOriginalId]
     if (!orig) return
     try {
-      const id = push(ref(db, '/confrontos')).key
-      await set(ref(db, `/confrontos/${id}`), {
+      const id = push(ref(db, confrontosPath(campeonatoId))).key
+      await set(ref(db, `${confrontosPath(campeonatoId)}/${id}`), {
         rodadaId: orig.rodadaId,
         timeA: orig.timeA,
         timeB: orig.timeB,
@@ -203,7 +206,7 @@ export default function AdminRodadasSection() {
         atualizadoEm: Date.now(),
       })
       // Marca o confronto original como realizado (série empatada)
-      await update(ref(db, `/confrontos/${confrontoOriginalId}`), {
+      await update(ref(db, `${confrontosPath(campeonatoId)}/${confrontoOriginalId}`), {
         status: STATUS_CONFRONTO.REALIZADO,
         atualizadoEm: Date.now(),
       })

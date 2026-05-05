@@ -3,6 +3,8 @@ import { ref, onValue } from 'firebase/database'
 import { db } from '../firebase/database'
 import { useTranslation } from 'react-i18next'
 import { useModules } from '../hooks/useConfig'
+import { useCampeonato } from '../contexts/CampeonatoContext'
+import { draftSessionPath, playerOverridesPath } from '../utils/campeonatoPaths'
 import EloIcon, { ELO_CONFIG } from '../components/EloIcon'
 import RoleIcon from '../components/RoleIcon'
 import './Espectador.css'
@@ -12,6 +14,7 @@ const DEFAULT_STATE = { status: 'aguardando', turnoAtual: null, turnoExtra: null
 export default function Espectador() {
   const { t } = useTranslation()
   const { privacidadeAtiva } = useModules()
+  const { idPublico } = useCampeonato()
 
   const [captains,    setCaptains]    = useState({})
   const [draftState,  setDraftState]  = useState(DEFAULT_STATE)
@@ -24,13 +27,13 @@ export default function Espectador() {
   const prevActionTs = useRef(null)
 
   useEffect(() => {
-    const u1 = onValue(ref(db, '/draftSession/captains'),    s => setCaptains(s.val() ?? {}))
-    const u2 = onValue(ref(db, '/draftSession/state'),       s => setDraftState(s.exists() ? { ...DEFAULT_STATE, ...s.val() } : DEFAULT_STATE))
-    const u3 = onValue(ref(db, '/draftSession/playerState'), s => setPlayerState(s.val() ?? {}))
-    const u4 = onValue(ref(db, '/playerOverrides'),          s => setOverrides(s.val() ?? {}))
-    const u5 = onValue(ref(db, '/config/settings/cupName'),  s => { if (s.exists()) setCupName(s.val()) })
+    const u1 = onValue(ref(db, `${draftSessionPath(idPublico)}/captains`),    s => setCaptains(s.val() ?? {}))
+    const u2 = onValue(ref(db, `${draftSessionPath(idPublico)}/state`),       s => setDraftState(s.exists() ? { ...DEFAULT_STATE, ...s.val() } : DEFAULT_STATE))
+    const u3 = onValue(ref(db, `${draftSessionPath(idPublico)}/playerState`), s => setPlayerState(s.val() ?? {}))
+    const u4 = onValue(ref(db, playerOverridesPath(idPublico)),               s => setOverrides(s.val() ?? {}))
+    const u5 = onValue(ref(db, '/config/settings/cupName'),                   s => { if (s.exists()) setCupName(s.val()) })
     return () => { u1(); u2(); u3(); u4(); u5() }
-  }, [])
+  }, [idPublico])
 
   useEffect(() => {
     fetch(import.meta.env.VITE_SHEETS_WEBAPP_URL)

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { ref, onValue, update, remove, set } from 'firebase/database'
 import { db } from '../firebase/database'
+import { useCampeonato } from '../contexts/CampeonatoContext'
+import { draftSessionPath } from '../utils/campeonatoPaths'
 
 const DEFAULT_STATE = { status: 'aguardando', turnoAtual: null, turnoExtra: null, rodada: 1 }
 
@@ -18,6 +20,7 @@ function proximoCom(sortedCaptains, captains, currentId, myNewSize, maxPlayers) 
 }
 
 export default function AdminDraftControl({ draftConfig }) {
+  const { campeonatoId } = useCampeonato()
   const [captains,    setCaptains]    = useState({})
   const [draftState,  setDraftState]  = useState(DEFAULT_STATE)
   const [playerState, setPlayerState] = useState({})
@@ -25,11 +28,11 @@ export default function AdminDraftControl({ draftConfig }) {
   const [confirmReset, setConfirmReset] = useState(false)
 
   useEffect(() => {
-    const u1 = onValue(ref(db, '/draftSession/captains'),    s => setCaptains(s.val() ?? {}))
-    const u2 = onValue(ref(db, '/draftSession/state'),       s => setDraftState(s.exists() ? { ...DEFAULT_STATE, ...s.val() } : DEFAULT_STATE))
-    const u3 = onValue(ref(db, '/draftSession/playerState'), s => setPlayerState(s.val() ?? {}))
+    const u1 = onValue(ref(db, `${draftSessionPath(campeonatoId)}/captains`),    s => setCaptains(s.val() ?? {}))
+    const u2 = onValue(ref(db, `${draftSessionPath(campeonatoId)}/state`),       s => setDraftState(s.exists() ? { ...DEFAULT_STATE, ...s.val() } : DEFAULT_STATE))
+    const u3 = onValue(ref(db, `${draftSessionPath(campeonatoId)}/playerState`), s => setPlayerState(s.val() ?? {}))
     return () => { u1(); u2(); u3() }
-  }, [])
+  }, [campeonatoId])
 
   const sortedCaptains = Object.entries(captains).sort(([, a], [, b]) => a.seed - b.seed)
   const min = draftConfig?.minCaptains ?? 2
@@ -45,7 +48,7 @@ export default function AdminDraftControl({ draftConfig }) {
     if (!podeIniciar) return
     const primeiro = sortedCaptains[0]?.[0]
     if (!primeiro) return
-    await set(ref(db, '/draftSession/state'), {
+    await set(ref(db, `${draftSessionPath(campeonatoId)}/state`), {
       status:     'rodando',
       turnoAtual: primeiro,
       turnoExtra: null,
@@ -55,12 +58,12 @@ export default function AdminDraftControl({ draftConfig }) {
   }
 
   async function encerrarDraft() {
-    await update(ref(db, '/draftSession/state'), { status: 'encerrado' })
+    await update(ref(db, `${draftSessionPath(campeonatoId)}/state`), { status: 'encerrado' })
     flash('Leilão encerrado.')
   }
 
   async function retomar() {
-    await update(ref(db, '/draftSession/state'), { status: 'rodando' })
+    await update(ref(db, `${draftSessionPath(campeonatoId)}/state`), { status: 'rodando' })
     flash('Leilão retomado.')
   }
 
@@ -71,15 +74,15 @@ export default function AdminDraftControl({ draftConfig }) {
     const maxPlayers  = draftConfig?.maxPlayers ?? 7
     const next = proximoCom(sortedCaptains, captains, currentId, currentSize, maxPlayers)
     if (!next) {
-      await update(ref(db, '/draftSession/state'), { status: 'encerrado' })
+      await update(ref(db, `${draftSessionPath(campeonatoId)}/state`), { status: 'encerrado' })
       flash('Todos os times estão completos. Leilão encerrado.')
       return
     }
     const updates = {
-      '/draftSession/state/turnoAtual': next.id,
-      '/draftSession/state/turnoExtra': null,
+      [`${draftSessionPath(campeonatoId)}/state/turnoAtual`]: next.id,
+      [`${draftSessionPath(campeonatoId)}/state/turnoExtra`]: null,
     }
-    if (next.novaRodada) updates['/draftSession/state/rodada'] = (draftState.rodada ?? 1) + 1
+    if (next.novaRodada) updates[`${draftSessionPath(campeonatoId)}/state/rodada`] = (draftState.rodada ?? 1) + 1
     await update(ref(db), updates)
     flash('Turno avançado.')
   }
@@ -87,12 +90,12 @@ export default function AdminDraftControl({ draftConfig }) {
   async function resetarDraft() {
     // Limpa rosters e playerState mas mantém os times cadastrados
     const updates = {}
-    sortedCaptains.forEach(([id, cap]) => {
-      updates[`/draftSession/captains/${id}/roster`]  = null
-      updates[`/draftSession/captains/${id}/moedas`]  = draftConfig?.moedas ?? 15
+    sortedCaptains.forEach(([id]) => {
+      updates[`${draftSessionPath(campeonatoId)}/captains/${id}/roster`]  = null
+      updates[`${draftSessionPath(campeonatoId)}/captains/${id}/moedas`]  = draftConfig?.moedas ?? 15
     })
-    updates['/draftSession/playerState'] = null
-    updates['/draftSession/state']       = DEFAULT_STATE
+    updates[`${draftSessionPath(campeonatoId)}/playerState`] = null
+    updates[`${draftSessionPath(campeonatoId)}/state`]       = DEFAULT_STATE
     await update(ref(db), updates)
     setConfirmReset(false)
     flash('Leilão resetado. Times mantidos, compras apagadas.')

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useTranslation, Trans } from 'react-i18next'
 import { Link } from 'react-router-dom'
-import { ref, set, get } from 'firebase/database'
+import { ref, set, update, get } from 'firebase/database'
 import { db } from '../firebase/database'
 import { useAuth } from '../hooks/useAuth'
 import { useModules, useConteudo } from '../hooks/useConfig'
@@ -63,6 +63,7 @@ export default function Inscricao() {
   const [submitted, setSubmitted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [jaInscrito, setJaInscrito] = useState(false)
+  const [editando, setEditando] = useState(false)
   const [loginError, setLoginError] = useState(null)
 
   useEffect(() => {
@@ -71,6 +72,27 @@ export default function Inscricao() {
       if (snap.exists()) setJaInscrito(true)
     })
   }, [user])
+
+  // Pré-preenche o form ao entrar no modo edição
+  useEffect(() => {
+    if (!editando || !user) return
+    get(ref(db, `/players/${user.uid}`)).then((snap) => {
+      if (!snap.exists()) return
+      const d = snap.val()
+      setForm({
+        nomeDiscord:    d.discord       || '',
+        battletag:      d.battletag     || '',
+        pais:           d.pais          || '',
+        linguas:        d.linguas       || [],
+        elo:            d.elo           || '',
+        rolePrimaria:   d.rolePrimaria  || '',
+        roleSecundaria: d.roleSecundaria|| '',
+        querCapitao:    d.querCapitao   || '',
+        titularReserva: d.titularReserva|| '',
+        aceitouRegras:  true,
+      })
+    })
+  }, [editando, user])
 
   function validate() {
     const req = t('form.errors.required')
@@ -122,24 +144,30 @@ export default function Inscricao() {
       titularReserva: form.titularReserva,
     }
     try {
-      // Salva no Firebase (controle de duplicidade)
-      await set(ref(db, `/players/${user.uid}`), {
-        ...payload,
-        premium: false,
-        precoBase: 0,
-        confirmado: false,
-        inscritoEm: Date.now(),
-        origem: 'site',
-      })
-      // Envia ao Google Sheets (espelho para os organizadores)
-      // mode: no-cors necessário pois Apps Script não devolve CORS header em POST
-      // O dado já está salvo no Firebase acima — o Sheets é backup/visualização
-      fetch(import.meta.env.VITE_SHEETS_WEBAPP_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        body: JSON.stringify(payload),
-      }).catch(() => {}) // falha silenciosa — Firebase é a fonte primária
-      setSubmitted(true)
+      if (editando) {
+        // Atualiza apenas os campos editáveis — preserva premium, precoBase, etc.
+        await update(ref(db, `/players/${user.uid}`), {
+          ...payload,
+          atualizadoEm: Date.now(),
+        })
+        setEditando(false)
+        setSubmitted(true)
+      } else {
+        await set(ref(db, `/players/${user.uid}`), {
+          ...payload,
+          premium: false,
+          precoBase: 0,
+          confirmado: false,
+          inscritoEm: Date.now(),
+          origem: 'site',
+        })
+        fetch(import.meta.env.VITE_SHEETS_WEBAPP_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          body: JSON.stringify(payload),
+        }).catch(() => {})
+        setSubmitted(true)
+      }
     } catch (err) {
       setErrors({ submit: t('form.errors.submit') })
     } finally {
@@ -177,7 +205,7 @@ export default function Inscricao() {
     )
   }
 
-  if (jaInscrito) {
+  if (jaInscrito && !editando) {
     return (
       <main className="page">
         <div className="inscricao-success">
@@ -186,6 +214,13 @@ export default function Inscricao() {
           <p style={{ color: 'var(--text2)', fontSize: '14px', marginTop: '8px' }}>
             {t('form.already_registered_hint')}
           </p>
+          <button
+            className="btn"
+            style={{ marginTop: 20, fontSize: 13 }}
+            onClick={() => { setEditando(true); setSubmitted(false) }}
+          >
+            ✏ Editar inscrição
+          </button>
         </div>
       </main>
     )
@@ -230,8 +265,8 @@ export default function Inscricao() {
 
   return (
     <main className="page">
-      <h1 className="page-title">{t('form.title')}</h1>
-      <p className="page-subtitle">{t('form.subtitle')}</p>
+      <h1 className="page-title">{editando ? 'Editar Inscrição' : t('form.title')}</h1>
+      <p className="page-subtitle">{editando ? 'Atualize seus dados abaixo' : t('form.subtitle')}</p>
 
       <form className="inscricao-form" onSubmit={handleSubmit} noValidate>
 
@@ -410,9 +445,16 @@ export default function Inscricao() {
 
         {errors.submit && <p style={{ color: 'var(--red)', fontSize: '13px' }}>{errors.submit}</p>}
 
-        <button type="submit" className="btn primary inscricao-submit" disabled={submitting}>
-          {submitting ? t('form.submitting') : t('form.submit')}
-        </button>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <button type="submit" className="btn primary inscricao-submit" disabled={submitting}>
+            {submitting ? t('form.submitting') : editando ? 'Salvar alterações' : t('form.submit')}
+          </button>
+          {editando && (
+            <button type="button" className="btn" onClick={() => setEditando(false)}>
+              Cancelar
+            </button>
+          )}
+        </div>
 
       </form>
     </main>

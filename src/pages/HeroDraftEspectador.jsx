@@ -1,28 +1,61 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useHeroDraft } from '../hooks/useHeroDraft'
+import { useCampeonato } from '../contexts/CampeonatoContext'
+import { heroDraftPath } from '../utils/campeonatoPaths'
 import { HEROES } from '../utils/heroPool'
 import { getHeroVideoUrl, getHeroImageUrl } from '../utils/heroVideos'
 import { passoAtual, ACOES, STATUS_DRAFT } from '../utils/heroDraft'
 import { getMapaById } from '../utils/mapPool'
+import { useLocation } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import './HeroDraftEspectador.css'
 
-const TEMPO_TURNO = 30 // segundos por ação/turno
+const TEMPO_TURNO = 30
+const SHOWMATCH_DRAFT_PATH = 'showmatch/sessaoAtiva/heroDraft'
 
-// URL: /hero-draft/espectador?sessao=semifinal-1
+// URL: /campeonatos/:id/hero-draft/espectador?sessao=semifinal-1
+// URL: /showmatch/espectador  (reutiliza este componente)
 export default function HeroDraftEspectador() {
+  const { t } = useTranslation()
   const [params]  = useSearchParams()
   const sessaoId  = params.get('sessao') ?? 'default'
-  const { estado, loading, erro } = useHeroDraft(sessaoId)
+  const { idPublico } = useCampeonato()
+  const location      = useLocation()
+  const isShowmatch   = location.pathname.startsWith('/showmatch')
 
-  // ── Anúncio de picks (suporta múltiplos picks do mesmo turno) ─────────────
-  const [anuncioPicks, setAnuncioPicks] = useState([]) // [{heroi, timeSide}]
+  const pathOverride = isShowmatch
+    ? SHOWMATCH_DRAFT_PATH
+    : (idPublico ? `${heroDraftPath(idPublico)}/${sessaoId}` : null)
+
+  const { estado, loading, erro } = useHeroDraft(
+    isShowmatch ? null : sessaoId, null, pathOverride
+  )
+
+  // ── Anúncio de picks ─────────────────────────────────────────────────────
+  const [anuncioPicks, setAnuncioPicks] = useState([])
   const [anuncioSaindo, setAnuncioSaindo] = useState(false)
-  const prevHistLen    = useRef(0)
-  const dismissTimer   = useRef(null)
-  const saidoTimerRef  = useRef(null)
+  const prevHistLen   = useRef(0)
+  const dismissTimer  = useRef(null)
+  const saidoTimerRef = useRef(null)
 
-  // Inicia a animação de saída do overlay e depois limpa
+  // ── Anúncio de bans ──────────────────────────────────────────────────────
+  const [anuncioBan,       setAnuncioBan]       = useState(null)  // { heroi, timeSide }
+  const [anuncioBanSaindo, setAnuncioBanSaindo] = useState(false)
+  const banDismissRef = useRef(null)
+  const banSaidoRef   = useRef(null)
+
+  const iniciarSaidaBan = () => {
+    if (banDismissRef.current) clearTimeout(banDismissRef.current)
+    if (banSaidoRef.current)   clearTimeout(banSaidoRef.current)
+    setAnuncioBanSaindo(true)
+    banSaidoRef.current = setTimeout(() => {
+      setAnuncioBan(null)
+      setAnuncioBanSaindo(false)
+    }, 400)
+  }
+
+  // Inicia a animação de saída do overlay de pick e depois limpa
   const iniciarSaida = (delay = 0) => {
     if (dismissTimer.current) clearTimeout(dismissTimer.current)
     if (saidoTimerRef.current) clearTimeout(saidoTimerRef.current)
@@ -49,9 +82,18 @@ export default function HeroDraftEspectador() {
 
     for (const entry of novasEntradas) {
       if (entry.acao === 'ban') {
-        // Ban fecha o overlay com fade se havia pick aberto
+        // Fecha overlay de pick imediatamente
         iniciarSaida(0)
         ultimoPick = null
+        // Mostra overlay de ban
+        const heroi = HEROES.find(h => h.id === entry.heroiId)
+        if (heroi) {
+          if (banDismissRef.current) clearTimeout(banDismissRef.current)
+          if (banSaidoRef.current)   clearTimeout(banSaidoRef.current)
+          setAnuncioBanSaindo(false)
+          setAnuncioBan({ heroi, timeSide: entry.time })
+          banDismissRef.current = setTimeout(iniciarSaidaBan, 2600)
+        }
       } else if (entry.acao === 'pick') {
         const heroi = HEROES.find(h => h.id === entry.heroiId)
         if (!heroi) continue
@@ -125,10 +167,54 @@ export default function HeroDraftEspectador() {
     return () => clearInterval(tick)
   }, [turnoIniciadoEm, estado?.status])
 
+  // ── Countdown ─────────────────────────────────────────────────────────────
+  const [countdown, setCountdown] = useState(null)
+  useEffect(() => {
+    if (estado?.status !== STATUS_DRAFT.COUNTDOWN || !estado?.countdownEndsAt) {
+      setCountdown(null); return
+    }
+    const tick = () => setCountdown(Math.max(0, Math.ceil((estado.countdownEndsAt - Date.now()) / 1000)))
+    tick()
+    const id = setInterval(tick, 200)
+    return () => clearInterval(id)
+  }, [estado?.status, estado?.countdownEndsAt])
+
   // ── Guards ────────────────────────────────────────────────────────────────
-  if (loading) return <div className="hde-loading">Conectando ao draft...</div>
+  if (loading) return <div className="hde-loading">{t('hero_espectador.connecting')}</div>
   if (erro)    return <div className="hde-loading">Erro: {erro}</div>
-  if (!estado) return <div className="hde-loading">Nenhum draft ativo.</div>
+  if (!estado) return <div className="hde-loading">{t('hero_espectador.no_draft')}</div>
+
+  // Countdown overlay para o espectador
+  if (estado.status === STATUS_DRAFT.COUNTDOWN && countdown !== null) {
+    return (
+      <div className="hde-root" style={{ alignItems: 'center', justifyContent: 'center' }}>
+        <div className="hde-bg-grid" />
+        <div style={{ textAlign: 'center', position: 'relative', zIndex: 1 }}>
+          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 16, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)', marginBottom: 16 }}>
+            {t('hero_espectador.countdown_label')}
+          </div>
+          <div key={countdown} style={{
+            fontFamily: "'Rajdhani', sans-serif", fontWeight: 900,
+            fontSize: 'clamp(10rem, 28vw, 20rem)', lineHeight: 1,
+            color: countdown <= 2 ? '#ff4444' : 'var(--gold2)',
+            textShadow: `0 0 80px ${countdown <= 2 ? 'rgba(255,60,60,0.8)' : 'rgba(201,168,76,0.7)'}`,
+            animation: 'hde-countdown-pulse 0.15s ease-out',
+          }}>
+            {countdown || '!'}
+          </div>
+          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 14, letterSpacing: '0.15em', color: 'rgba(255,255,255,0.3)', marginTop: 16, textTransform: 'uppercase' }}>
+            {estado.timeA?.nome} <span style={{ color: 'var(--gold)', opacity: 0.6 }}>×</span> {estado.timeB?.nome}
+          </div>
+        </div>
+        <style>{`
+          @keyframes hde-countdown-pulse {
+            from { transform: scale(1.3); opacity: 0.5; }
+            to   { transform: scale(1);   opacity: 1;   }
+          }
+        `}</style>
+      </div>
+    )
+  }
 
   const mapa  = getMapaById(estado.mapaId)
   const passo = passoAtual(estado)
@@ -238,7 +324,7 @@ export default function HeroDraftEspectador() {
           {isRunning && passo ? (
             <>
               <div className={`hde-centro-acao hde-centro-acao--${passo.acao}`}>
-                {passo.acao === ACOES.BAN ? 'BANIR' : 'ESCOLHER'}
+                {passo.acao === ACOES.BAN ? t('hero_espectador.action_ban') : t('hero_espectador.action_pick')}
               </div>
               <div
                 className="hde-centro-time"
@@ -250,7 +336,7 @@ export default function HeroDraftEspectador() {
           ) : estado.status === STATUS_DRAFT.AGUARDANDO ? (
             <div className="hde-centro-emblema">⚔</div>
           ) : (
-            <div className="hde-centro-fim">DRAFT<br />ENCERRADO</div>
+            <div className="hde-centro-fim">{t('hero_espectador.draft_ended')}</div>
           )}
         </div>
 
@@ -261,6 +347,16 @@ export default function HeroDraftEspectador() {
         </div>
 
       </div>
+
+      {/* ── Overlay de ban ───────────────────────────────────────────────── */}
+      {anuncioBan && (
+        <AnuncioBanOverlay
+          heroi={anuncioBan.heroi}
+          timeSide={anuncioBan.timeSide}
+          nomeTime={anuncioBan.timeSide === 'A' ? estado.timeA.nome : estado.timeB.nome}
+          saindo={anuncioBanSaindo}
+        />
+      )}
 
       {/* ── Overlay de anúncio (picks do turno corrente) ─────────────────── */}
       {anuncioPicks.length > 0 && (
@@ -396,6 +492,48 @@ function AnuncioVideoPanel({ heroi, cor }) {
         </div>
       )}
       <div className="hde-anuncio-vinheta" />
+    </div>
+  )
+}
+
+// ── Overlay de ban ────────────────────────────────────────────────────────────
+
+function AnuncioBanOverlay({ heroi, timeSide, nomeTime, saindo }) {
+  const videoUrl  = getHeroVideoUrl(heroi.id)
+  const imageUrl  = getHeroImageUrl(heroi.id)
+  const [videoFalhou, setVideoFalhou] = useState(false)
+  const [imageFalhou, setImageFalhou] = useState(false)
+
+  const usarVideo  = videoUrl && !videoFalhou
+  const usarImagem = !usarVideo && imageUrl && !imageFalhou
+
+  return (
+    <div className={`hde-ban-overlay${saindo ? ' hde-ban-overlay--saindo' : ''}`}>
+
+      {/* Hero em preto e branco como fundo */}
+      <div className="hde-ban-midia">
+        {usarVideo ? (
+          <video src={videoUrl} autoPlay muted loop playsInline className="hde-ban-video"
+            onError={() => setVideoFalhou(true)} />
+        ) : usarImagem ? (
+          <img src={imageUrl} alt={heroi.nome} className="hde-ban-img"
+            onError={() => setImageFalhou(true)} />
+        ) : (
+          <img src={heroi.iconeUrl} alt={heroi.nome} className="hde-ban-img hde-ban-img--icon"
+            onError={e => { e.target.src = '/heroes/placeholder.png' }} />
+        )}
+        {/* Camadas de escurecimento e ruído */}
+        <div className="hde-ban-noise" />
+        <div className="hde-ban-vinheta" />
+      </div>
+
+      {/* Conteúdo central */}
+      <div className="hde-ban-conteudo">
+        <div className="hde-ban-nome-heroi">{heroi.nome}</div>
+        <div className="hde-ban-stamp">BANIDO</div>
+        <div className="hde-ban-sub">{nomeTime} baniu este herói</div>
+      </div>
+
     </div>
   )
 }

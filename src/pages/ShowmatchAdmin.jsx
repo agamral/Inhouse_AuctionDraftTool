@@ -1,0 +1,441 @@
+import { useState, useEffect } from 'react'
+import { ref, onValue, set, update, remove } from 'firebase/database'
+import { db } from '../firebase/database'
+import { useHeroDraft } from '../hooks/useHeroDraft'
+import { criarEstadoInicial, SEQUENCIA_PADRAO } from '../utils/heroDraft'
+import { MAPAS } from '../utils/mapPool'
+import { HEROES } from '../utils/heroPool'
+
+const SHOWMATCH_PATH = 'showmatch/sessaoAtiva'
+const HERO_DRAFT_PATH = 'showmatch/sessaoAtiva/heroDraft'
+
+// Sequências compactas (criarEstadoInicial chama expandirSequencia internamente)
+const SEQUENCIAS = {
+  0: [
+    { acao: 'pick', time: 'A', quantidade: 1 },
+    { acao: 'pick', time: 'B', quantidade: 2 },
+    { acao: 'pick', time: 'A', quantidade: 2 },
+    { acao: 'pick', time: 'B', quantidade: 2 },
+    { acao: 'pick', time: 'A', quantidade: 2 },
+    { acao: 'pick', time: 'B', quantidade: 1 },
+  ],
+  2: [
+    { acao: 'ban',  time: 'A', quantidade: 1 },
+    { acao: 'ban',  time: 'B', quantidade: 1 },
+    { acao: 'ban',  time: 'A', quantidade: 1 },
+    { acao: 'ban',  time: 'B', quantidade: 1 },
+    { acao: 'pick', time: 'A', quantidade: 1 },
+    { acao: 'pick', time: 'B', quantidade: 2 },
+    { acao: 'pick', time: 'A', quantidade: 2 },
+    { acao: 'pick', time: 'B', quantidade: 2 },
+    { acao: 'pick', time: 'A', quantidade: 2 },
+    { acao: 'pick', time: 'B', quantidade: 1 },
+  ],
+  3: SEQUENCIA_PADRAO,
+}
+
+const inputStyle = {
+  background: 'var(--bg)', border: '1px solid var(--border2)', borderRadius: 6,
+  padding: '8px 12px', color: 'var(--text)', fontFamily: "'Barlow', sans-serif",
+  fontSize: 13, outline: 'none', width: '100%', boxSizing: 'border-box',
+}
+
+export default function ShowmatchAdmin() {
+  const [sessao,   setSessao]   = useState(undefined) // undefined=loading, null=none, obj=active
+  const [msg,      setMsg]      = useState(null)
+  const [confirmEnd, setConfirmEnd] = useState(false)
+
+  // Form for creating a showmatch
+  const [nomeA,      setNomeA]      = useState('Time A')
+  const [nomeB,      setNomeB]      = useState('Time B')
+  const [jogadoresA, setJogadoresA] = useState('')
+  const [jogadoresB, setJogadoresB] = useState('')
+
+  // Hero Draft config
+  const [mapaId,      setMapaId]      = useState('')
+  const [numBans,     setNumBans]     = useState(2)
+  const [globalBans,  setGlobalBans]  = useState([])
+  const [buscaBan,    setBuscaBan]    = useState('')
+  const [draftCriado, setDraftCriado] = useState(false)
+
+  // Hero Draft hook — uses showmatch path via pathOverride
+  const { estado: draftEstado, iniciar: _iniciarDraft, iniciarComContagem, encerrar: encerrarDraft, desfazer: desfazerDraft } = useHeroDraft(
+    null, 'admin', HERO_DRAFT_PATH
+  )
+
+  // Auto-transição countdown → rodando
+  useEffect(() => {
+    if (draftEstado?.status !== 'countdown' || !draftEstado?.countdownEndsAt) return
+    const remaining = Math.max(0, draftEstado.countdownEndsAt - Date.now())
+    const t = setTimeout(() => _iniciarDraft(), remaining + 100)
+    return () => clearTimeout(t)
+  }, [draftEstado?.status, draftEstado?.countdownEndsAt]) // eslint-disable-line
+
+  useEffect(() => {
+    const unsub = onValue(ref(db, SHOWMATCH_PATH), (snap) => {
+      const val = snap.val()
+      // Filter out heroDraft sub-node from session display
+      if (val) {
+        const { heroDraft: _, ...rest } = val
+        setSessao(rest)
+      } else {
+        setSessao(null)
+      }
+    })
+    return unsub
+  }, [])
+
+  useEffect(() => {
+    setDraftCriado(!!draftEstado)
+  }, [draftEstado])
+
+  function flash(text, tipo = 'ok') {
+    setMsg({ text, tipo })
+    setTimeout(() => setMsg(null), 3000)
+  }
+
+  async function criarShowmatch() {
+    const listaA = jogadoresA.split('\n').map(s => s.trim()).filter(Boolean)
+    const listaB = jogadoresB.split('\n').map(s => s.trim()).filter(Boolean)
+    await set(ref(db, SHOWMATCH_PATH), {
+      criadoEm: Date.now(),
+      status: 'configurando',
+      timeA: { nome: nomeA.trim() || 'Time A', jogadores: listaA },
+      timeB: { nome: nomeB.trim() || 'Time B', jogadores: listaB },
+    })
+    flash('Showmatch criado!')
+  }
+
+  async function criarHeroDraft() {
+    if (!sessao) return
+    const sequencia = SEQUENCIAS[numBans] ?? SEQUENCIAS[2]
+    const estado = criarEstadoInicial({
+      timeA:      { nome: sessao.timeA?.nome ?? 'Time A' },
+      timeB:      { nome: sessao.timeB?.nome ?? 'Time B' },
+      sequencia,
+      globalBans,
+      mapaId:     mapaId || null,
+    })
+    await set(ref(db, HERO_DRAFT_PATH), estado)
+    await update(ref(db, SHOWMATCH_PATH), { status: 'heroDraft' })
+    flash('Hero Draft criado — clique em Iniciar para começar.')
+  }
+
+  function toggleGlobalBan(heroId) {
+    setGlobalBans(prev =>
+      prev.includes(heroId) ? prev.filter(id => id !== heroId) : [...prev, heroId]
+    )
+  }
+
+  async function handleIniciar() {
+    const r = await iniciarComContagem(5)
+    r?.ok ? flash('Contagem iniciada!') : flash(`Erro: ${r?.erro}`, 'err')
+  }
+
+  async function handleDesfazer() {
+    const r = await desfazerDraft()
+    if (!r?.ok) flash(`Erro: ${r?.erro}`, 'err')
+  }
+
+  async function handleEncerrar() {
+    const r = await encerrarDraft()
+    r?.ok ? flash('Draft encerrado.') : flash(`Erro: ${r?.erro}`, 'err')
+  }
+
+  async function encerrarShowmatch() {
+    await remove(ref(db, SHOWMATCH_PATH))
+    setConfirmEnd(false)
+    flash('Showmatch encerrado e apagado.')
+  }
+
+  const baseUrl = window.location.origin
+
+  if (sessao === undefined) return (
+    <main className="page"><p style={{ color: 'var(--text2)' }}>Carregando...</p></main>
+  )
+
+  return (
+    <main className="page">
+
+      {/* Red SHOWMATCH banner when active */}
+      {sessao && (
+        <div style={{
+          background: 'rgba(224,85,85,0.12)', border: '1px solid rgba(224,85,85,0.4)',
+          borderRadius: 8, padding: '12px 20px', marginBottom: 24,
+          display: 'flex', alignItems: 'center', gap: 12,
+        }}>
+          <span style={{ fontSize: 20 }}>&#x26A1;</span>
+          <div>
+            <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 16, color: 'var(--red)', letterSpacing: '0.05em' }}>
+              SHOWMATCH ATIVO
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text2)' }}>
+              Nada aqui afeta dados do campeonato oficial.
+            </div>
+          </div>
+        </div>
+      )}
+
+      <h1 className="page-title" style={{ marginBottom: 8 }}>Showmatch</h1>
+      <p style={{ color: 'var(--text2)', fontSize: 13, marginBottom: 28 }}>
+        {sessao ? 'Gerencie a sessão ativa.' : 'Crie uma partida casual sem afetar nenhum campeonato.'}
+      </p>
+
+      {/* ── SEM SESSAO: formulário de criação ─────────────────────────── */}
+      {!sessao && (
+        <div className="admin-section" style={{ maxWidth: 600 }}>
+          <div className="admin-section-title">Criar Showmatch</div>
+          <div style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div>
+                <div className="admin-toggle-label" style={{ marginBottom: 6 }}>Nome do Time A</div>
+                <input style={inputStyle} value={nomeA} onChange={e => setNomeA(e.target.value)} placeholder="Time A" />
+                <div className="admin-toggle-label" style={{ marginTop: 10, marginBottom: 6 }}>Jogadores (um por linha)</div>
+                <textarea style={{ ...inputStyle, resize: 'vertical', minHeight: 100 }}
+                  value={jogadoresA} onChange={e => setJogadoresA(e.target.value)}
+                  placeholder={'Jogador1\nJogador2\nJogador3'} />
+              </div>
+              <div>
+                <div className="admin-toggle-label" style={{ marginBottom: 6 }}>Nome do Time B</div>
+                <input style={inputStyle} value={nomeB} onChange={e => setNomeB(e.target.value)} placeholder="Time B" />
+                <div className="admin-toggle-label" style={{ marginTop: 10, marginBottom: 6 }}>Jogadores (um por linha)</div>
+                <textarea style={{ ...inputStyle, resize: 'vertical', minHeight: 100 }}
+                  value={jogadoresB} onChange={e => setJogadoresB(e.target.value)}
+                  placeholder={'Jogador1\nJogador2\nJogador3'} />
+              </div>
+            </div>
+            <button className="btn primary" style={{ fontSize: 13, padding: '10px 20px', alignSelf: 'flex-start' }} onClick={criarShowmatch}>
+              &#x26A1; Criar Showmatch
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── SESSAO ATIVA ──────────────────────────────────────────────── */}
+      {sessao && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+          {/* Times */}
+          <div className="admin-section" style={{ maxWidth: 700 }}>
+            <div className="admin-section-title">Times</div>
+            <div style={{ padding: '14px 18px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+              {['timeA', 'timeB'].map(t => {
+                const time = sessao[t] ?? {}
+                return (
+                  <div key={t}>
+                    <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 16, color: t === 'timeA' ? 'var(--blue)' : 'var(--gold)', marginBottom: 6 }}>
+                      {time.nome ?? t}
+                    </div>
+                    {(time.jogadores ?? []).map((j, i) => (
+                      <div key={i} style={{ fontSize: 12, color: 'var(--text2)', padding: '2px 0' }}>&middot; {j}</div>
+                    ))}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Links de capitão */}
+          <div className="admin-section" style={{ maxWidth: 700 }}>
+            <div className="admin-section-title">Links dos Capitães</div>
+            <div style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {['A', 'B'].map(t => {
+                const url = `${baseUrl}/showmatch/draft?time=${t}&sessao=showmatch`
+                return (
+                  <div key={t}>
+                    <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 4 }}>
+                      Capitão {t === 'A' ? (sessao.timeA?.nome ?? 'Time A') : (sessao.timeB?.nome ?? 'Time B')}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <code style={{ flex: 1, background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 6, padding: '7px 12px', fontSize: 12, color: 'var(--text)', wordBreak: 'break-all' }}>
+                        {url}
+                      </code>
+                      <button className="btn" style={{ fontSize: 12, padding: '6px 12px', whiteSpace: 'nowrap' }}
+                        onClick={() => { navigator.clipboard.writeText(url); flash(`Link Time ${t} copiado!`) }}>
+                        Copiar
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+              <div>
+                <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 4 }}>Espectador (público)</div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <code style={{ flex: 1, background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 6, padding: '7px 12px', fontSize: 12, color: 'var(--text)' }}>
+                    {baseUrl}/showmatch/espectador
+                  </code>
+                  <button className="btn" style={{ fontSize: 12, padding: '6px 12px', whiteSpace: 'nowrap' }}
+                    onClick={() => { navigator.clipboard.writeText(`${baseUrl}/showmatch/espectador`); flash('Link espectador copiado!') }}>
+                    Copiar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Hero Draft */}
+          <div className="admin-section" style={{ maxWidth: 700 }}>
+            <div className="admin-section-title">Hero Draft</div>
+            <div style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {!draftCriado ? (
+                <>
+                  {/* Bans por time */}
+                  <div>
+                    <div className="admin-toggle-label" style={{ marginBottom: 8 }}>Bans por time</div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      {[0, 2, 3].map(n => (
+                        <button key={n} onClick={() => setNumBans(n)} style={{
+                          padding: '6px 16px', borderRadius: 6, fontSize: 13, cursor: 'pointer',
+                          fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700,
+                          border: `1px solid ${numBans === n ? 'var(--blue)' : 'var(--border2)'}`,
+                          background: numBans === n ? 'rgba(74,158,218,0.12)' : 'var(--bg2)',
+                          color: numBans === n ? 'var(--blue)' : 'var(--text2)',
+                        }}>
+                          {n === 0 ? 'Sem bans' : `${n} por time`}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Mapa */}
+                  <div>
+                    <div className="admin-toggle-label" style={{ marginBottom: 8 }}>Mapa <span style={{ color: 'var(--text3)', fontWeight: 400 }}>(opcional)</span></div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 6, maxHeight: 180, overflowY: 'auto', padding: 8, background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 6 }}>
+                      <button onClick={() => setMapaId('')} style={{
+                        padding: '6px 8px', borderRadius: 4, cursor: 'pointer', fontSize: 12,
+                        fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600,
+                        border: `1px solid ${!mapaId ? 'var(--blue)' : 'var(--border)'}`,
+                        background: !mapaId ? 'rgba(74,158,218,0.12)' : 'var(--bg3)',
+                        color: !mapaId ? 'var(--blue)' : 'var(--text2)',
+                      }}>
+                        — Sem mapa
+                      </button>
+                      {MAPAS.map(m => (
+                        <button key={m.id} onClick={() => setMapaId(m.id)} style={{
+                          padding: 0, borderRadius: 4, cursor: 'pointer', overflow: 'hidden',
+                          border: `1px solid ${mapaId === m.id ? 'var(--gold)' : 'var(--border)'}`,
+                          background: 'var(--bg3)',
+                          boxShadow: mapaId === m.id ? '0 0 8px rgba(201,168,76,0.4)' : 'none',
+                        }}>
+                          <img src={m.splashUrl} alt={m.nome} onError={e => { e.target.style.display = 'none' }}
+                            style={{ width: '100%', height: 46, objectFit: 'cover', display: 'block' }} />
+                          <div style={{ padding: '3px 6px', fontSize: 10, textAlign: 'center', fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, color: mapaId === m.id ? 'var(--gold)' : 'var(--text2)', lineHeight: 1.2 }}>
+                            {m.nome}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Global Bans */}
+                  <div>
+                    <div className="admin-toggle-label" style={{ marginBottom: 8 }}>
+                      Global Bans{globalBans.length > 0 && <span style={{ color: 'var(--red)', marginLeft: 6 }}>({globalBans.length} selecionados)</span>}
+                      <span style={{ color: 'var(--text3)', fontWeight: 400, marginLeft: 6 }}>bloqueados antes do draft</span>
+                    </div>
+                    <input value={buscaBan} onChange={e => setBuscaBan(e.target.value)}
+                      placeholder="Buscar herói..." style={{ ...inputStyle, marginBottom: 8 }} />
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, maxHeight: 160, overflowY: 'auto', padding: 8, background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 6 }}>
+                      {HEROES
+                        .filter(h => !buscaBan || h.nome.toLowerCase().includes(buscaBan.toLowerCase()))
+                        .map(h => {
+                          const sel = globalBans.includes(h.id)
+                          return (
+                            <button key={h.id} onClick={() => toggleGlobalBan(h.id)} style={{
+                              display: 'flex', alignItems: 'center', gap: 4,
+                              background: sel ? 'rgba(224,85,85,0.18)' : 'var(--bg3)',
+                              border: `1px solid ${sel ? 'var(--red)' : 'var(--border)'}`,
+                              color: sel ? 'var(--red)' : 'var(--text2)',
+                              borderRadius: 4, padding: '3px 8px', fontSize: 12,
+                              fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600, cursor: 'pointer',
+                            }}>
+                              <img src={h.iconeUrl} alt="" style={{ width: 16, height: 16, borderRadius: 2, objectFit: 'cover' }}
+                                onError={e => { e.target.style.display = 'none' }} />
+                              {h.nome}{sel && ' ✕'}
+                            </button>
+                          )
+                        })}
+                    </div>
+                  </div>
+
+                  <button className="btn primary" style={{ fontSize: 13, padding: '9px 20px', alignSelf: 'flex-start' }} onClick={criarHeroDraft}>
+                    Criar Hero Draft
+                  </button>
+                </>
+              ) : (
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                  {draftEstado?.status === 'encerrado' && (
+                    <span style={{ fontSize: 13, color: 'var(--text2)' }}>✓ Encerrado</span>
+                  )}
+                  {draftEstado?.status === 'aguardando' && (
+                    <>
+                      {/* Presença dos capitães */}
+                      <div style={{ display: 'flex', gap: 16, marginBottom: 8, padding: '8px 12px', background: 'var(--bg2)', borderRadius: 6, border: '1px solid var(--border)' }}>
+                        {['A', 'B'].map(t => {
+                          const online = !!(draftEstado.presence?.[t]?.onlineEm)
+                          const nome = t === 'A' ? sessao?.timeA?.nome : sessao?.timeB?.nome
+                          return (
+                            <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+                              <div style={{ width: 7, height: 7, borderRadius: '50%', background: online ? 'var(--green)' : 'var(--text3)', boxShadow: online ? '0 0 5px var(--green)' : 'none' }} />
+                              <span style={{ color: online ? 'var(--text)' : 'var(--text3)', fontFamily: "'Barlow Condensed'" }}>
+                                {nome ?? `Time ${t}`}: {online ? 'na sala' : 'aguardando...'}
+                              </span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                      <button className="btn primary" style={{ fontSize: 12, padding: '6px 14px' }} onClick={handleIniciar}>
+                        ▶ Iniciar Draft
+                      </button>
+                    </>
+                  )}
+                  {draftEstado?.status === 'countdown' && (
+                    <span style={{ fontSize: 13, color: 'var(--gold2)', fontFamily: "'Barlow Condensed'" }}>⏳ Contagem regressiva...</span>
+                  )}
+                  {draftEstado?.status === 'rodando' && (
+                    <>
+                      <span style={{ fontSize: 13, color: 'var(--green)' }}>● Em andamento</span>
+                      <button className="btn" style={{ fontSize: 12, padding: '6px 12px' }} onClick={handleDesfazer}
+                        disabled={!draftEstado?.historico?.length}>
+                        ↩ Desfazer
+                      </button>
+                      <button className="btn" style={{ fontSize: 12, padding: '6px 12px', color: 'var(--red)', borderColor: 'rgba(224,85,85,0.3)' }}
+                        onClick={handleEncerrar}>
+                        ⏹ Encerrar Draft
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Encerrar showmatch */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {!confirmEnd ? (
+              <button className="btn" style={{ fontSize: 13, padding: '8px 18px', color: 'var(--red)', borderColor: 'rgba(224,85,85,0.3)' }}
+                onClick={() => setConfirmEnd(true)}>
+                Encerrar e apagar showmatch
+              </button>
+            ) : (
+              <>
+                <span style={{ fontSize: 13, color: 'var(--text2)' }}>Apagar tudo permanentemente?</span>
+                <button className="btn" style={{ fontSize: 13, padding: '7px 14px', color: 'var(--red)', borderColor: 'rgba(224,85,85,0.4)' }}
+                  onClick={encerrarShowmatch}>Confirmar</button>
+                <button className="btn" style={{ fontSize: 13, padding: '7px 14px' }}
+                  onClick={() => setConfirmEnd(false)}>Cancelar</button>
+              </>
+            )}
+          </div>
+
+        </div>
+      )}
+
+      {msg && (
+        <div style={{ position: 'fixed', bottom: 24, right: 24, padding: '10px 18px', borderRadius: 8, fontSize: 13, background: msg.tipo === 'err' ? 'rgba(224,85,85,0.9)' : 'rgba(76,175,125,0.9)', color: '#fff', zIndex: 999 }}>
+          {msg.text}
+        </div>
+      )}
+    </main>
+  )
+}

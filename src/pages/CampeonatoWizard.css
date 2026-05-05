@@ -1,0 +1,311 @@
+.wizard-root {
+  max-width: 680px;
+}
+
+/* ── Progress ── */
+.wizard-steps {
+  display: flex;
+  gap: 0;
+  margin-bottom: 32px;
+  position: relative;
+}
+
+.wizard-steps::before {
+  content: '';
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  right: 14px;
+  height: 1px;
+  background: var(--border2);
+  z-index: 0;
+}
+
+.wizard-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  position: relative;
+  z-index: 1;
+}
+
+.wizard-step-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text3);
+  transition: all 0.2s;
+}
+
+.wizard-step.ativo .wizard-step-dot {
+  background: var(--gold-dim);
+  border-color: var(--gold);
+  color: var(--gold2);
+}
+
+.wizard-step.concluido .wizard-step-dot {
+  background: rgba(76,175,125,0.15);
+  border-color: var(--green);
+  color: var(--green);
+}
+
+.wizard-step-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text3);
+}
+
+.wizard-step.ativo .wizard-step-label   { color: var(--gold2); }
+.wizard-step.concluido .wizard-step-label { color: var(--green); }
+
+/* ── Body ── */
+.wizard-body {
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  padding: 28px 28px 20px;
+  margin-bottom: 20px;
+  min-height: 280px;
+}
+
+/* ── Fields ── */
+.wizard-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.wizard-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.wizard-field-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text2);
+}
+
+.wizard-field-hint {
+  font-family: 'Barlow', sans-serif;
+  font-size: 11px;
+  color: var(--text3);
+  margin-top: -2px;
+}
+
+.wizard-field input,
+.wizard-field textarea,
+.wizard-field select {
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  padding: 9px 12px;
+  color: var(--text);
+  font-family: 'Barlow', sans-serif;
+  font-size: 14px;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+}
+
+.wizard-field input:focus,
+.wizard-field textarea:focus {
+  border-color: var(--gold);
+}
+
+/* ── Toggle group ── */
+.wizard-toggle-group {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.wizard-toggle-btn {
+  padding: 7px 18px;
+  border-radius: 6px;
+  border: 1px solid var(--border2);
+  background: var(--bg3);
+  color: var(--text2);
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.wizard-toggle-btn.ativo {
+  border-color: var(--gold);
+  background: var(--gold-dim);
+  color: var(--gold2);
+}
+
+/* ── Toggle switch ── */
+.wizard-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+}
+
+.wiz-switch {
+  width: 40px;
+  height: 22px;
+  border-radius: 11px;
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+  flex-shrink: 0;
+}
+
+.wiz-switch.on {
+  background: rgba(76,175,125,0.2);
+  border-color: var(--green);
+}
+
+.wiz-switch-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--text3);
+  transition: transform 0.2s, background 0.2s;
+}
+
+.wiz-switch.on .wiz-switch-thumb {
+  transform: translateX(18px);
+  background: var(--green);
+}
+
+/* ── Number field ── */
+.wizard-row3 {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.wizard-number-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 100px;
+}
+
+.wizard-number-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+.wizard-number-controls button {
+  background: none;
+  border: none;
+  color: var(--text2);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.wizard-number-controls span {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--gold2);
+  min-width: 28px;
+  text-align: center;
+}
+
+/* ── Divider ── */
+.wizard-divider {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text3);
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+  margin-top: 4px;
+}
+
+/* ── Revisão ── */
+.wizard-revisao {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.wizard-revisao-item {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.wizard-revisao-titulo {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text2);
+  min-width: 120px;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+.wizard-revisao-valor {
+  font-family: 'Barlow', sans-serif;
+  font-size: 13px;
+  color: var(--text);
+}
+
+/* ── Nav ── */
+.wizard-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* ── Erro ── */
+.wizard-erro {
+  margin: 12px 0 0;
+  padding: 8px 12px;
+  background: rgba(224,85,85,0.08);
+  border: 1px solid rgba(224,85,85,0.3);
+  border-radius: 6px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px;
+  color: var(--red);
+}

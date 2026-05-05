@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react'
-import { ref, set, onValue } from 'firebase/database'
+import { ref, set, onValue, update } from 'firebase/database'
+import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { db } from '../firebase/database'
 import { useAuth } from '../hooks/useAuth'
+import { useCampeonato } from '../contexts/CampeonatoContext'
 import { DEFAULT_CONTEUDO } from '../hooks/useConfig'
+import { configModulesPath, configDraftPath, configConteudoPath } from '../utils/campeonatoPaths'
 import SuperAdminSection        from '../components/SuperAdminSection'
 import AdminPlayersSection      from '../components/AdminPlayersSection'
 import AdminCaptainsSection     from '../components/AdminCaptainsSection'
@@ -12,20 +15,41 @@ import AdminHeroDraftSection    from '../components/AdminHeroDraftSection'
 import AdminTeamsSection        from '../components/AdminTeamsSection'
 import AdminRodadasSection      from '../components/AdminRodadasSection'
 import AdminCapitaoAcesso       from '../components/AdminCapitaoAcesso'
+import AdminMigracaoSection          from '../components/AdminMigracaoSection'
+import AdminProvisionamentoSection   from '../components/AdminProvisionamentoSection'
+import AdminEncerramentoSection      from '../components/AdminEncerramentoSection'
+import AdminBotSetupSection          from '../components/AdminBotSetupSection'
 import './Admin.css'
 
-const TABS = [
+const ALL_TABS = [
   { id: 'geral',      label: 'Geral'      },
   { id: 'inscricoes', label: 'Inscrições' },
   { id: 'leilao',     label: 'Leilão'     },
   { id: 'times',      label: 'Times'      },
   { id: 'campeonato', label: 'Campeonato' },
-  { id: 'sistema',    label: 'Sistema'    },
+  { id: 'sistema',    label: 'Sistema',   superAdminOnly: true },
 ]
 
 export default function Admin() {
-  const { isSuperAdmin } = useAuth()
+  const { isSuperAdmin, isAdmin, adminCampeonatoIds, loading: authLoading } = useAuth()
+  const { campeonatoId, campeonato, campeonatos, setCampeonatoId, setPrincipal } = useCampeonato()
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [aba, setAba] = useState('geral')
+
+  // Championship admins don't belong on /admin — redirect to their championship
+  useEffect(() => {
+    if (authLoading) return
+    if (!isSuperAdmin && isAdmin && adminCampeonatoIds?.length > 0) {
+      navigate(`/campeonatos/${adminCampeonatoIds[0]}/admin`, { replace: true })
+    }
+  }, [authLoading, isSuperAdmin, isAdmin, adminCampeonatoIds]) // eslint-disable-line
+
+  // Se vier com ?campeonato=id na URL (após wizard), seleciona aquele campeonato
+  useEffect(() => {
+    const paramId = searchParams.get('campeonato')
+    if (paramId && campeonatos[paramId]) setCampeonatoId(paramId)
+  }, [searchParams, campeonatos]) // eslint-disable-line
 
   const [modules, setModules] = useState({
     inscricaoAberta:   false,
@@ -46,19 +70,21 @@ export default function Admin() {
 
   const [conteudo, setConteudo] = useState(DEFAULT_CONTEUDO)
 
-  const [loading, setLoading] = useState(true)
+  const [configLoading, setConfigLoading] = useState(true)
   const [saving,  setSaving]  = useState(false)
   const [saved,   setSaved]   = useState(false)
+  const [showMigracao, setShowMigracao] = useState(false)
+
+  const tabs = ALL_TABS.filter(t => !t.superAdminOnly || isSuperAdmin)
 
   useEffect(() => {
     let n = 0
-    const done = () => { if (++n === 2) setLoading(false) }
-    const u1 = onValue(ref(db, '/config/modules'), s => { if (s.exists()) setModules(p => ({ ...p, ...s.val() })); done() }, { onlyOnce: true })
-    const u2 = onValue(ref(db, '/config/draft'),   s => { if (s.exists()) setDraft(p   => ({ ...p, ...s.val() })); done() }, { onlyOnce: true })
-    // conteudo carrega independente — não bloqueia o painel
-    const u3 = onValue(ref(db, '/config/conteudo'), s => { if (s.exists()) setConteudo(p => ({ ...p, ...s.val() })) }, { onlyOnce: true })
+    const done = () => { if (++n === 2) setConfigLoading(false) }
+    const u1 = onValue(ref(db, configModulesPath(campeonatoId)),  s => { if (s.exists()) setModules(p => ({ ...p, ...s.val() })); done() }, { onlyOnce: true })
+    const u2 = onValue(ref(db, configDraftPath(campeonatoId)),    s => { if (s.exists()) setDraft(p   => ({ ...p, ...s.val() })); done() }, { onlyOnce: true })
+    const u3 = onValue(ref(db, configConteudoPath(campeonatoId)), s => { if (s.exists()) setConteudo(p => ({ ...p, ...s.val() })) }, { onlyOnce: true })
     return () => { u1(); u2(); u3() }
-  }, [])
+  }, [campeonatoId])
 
   function setConteudoField(key, val) { setConteudo(p => ({ ...p, [key]: val })); setSaved(false) }
 
@@ -74,9 +100,9 @@ export default function Admin() {
     setSaving(true)
     try {
       await Promise.all([
-        set(ref(db, '/config/modules'),  modules),
-        set(ref(db, '/config/draft'),    draft),
-        set(ref(db, '/config/conteudo'), conteudo),
+        set(ref(db, configModulesPath(campeonatoId)),  modules),
+        set(ref(db, configDraftPath(campeonatoId)),    draft),
+        set(ref(db, configConteudoPath(campeonatoId)), conteudo),
       ])
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
@@ -85,14 +111,81 @@ export default function Admin() {
     }
   }
 
-  if (loading) return <main className="page"><p style={{ color: 'var(--text2)' }}>Carregando...</p></main>
+  if (authLoading || configLoading) return <main className="page"><p style={{ color: 'var(--text2)' }}>Carregando...</p></main>
+
+  const campeonatosArr = Object.entries(campeonatos).sort(([,a],[,b]) => (b.info?.criadoEm ?? 0) - (a.info?.criadoEm ?? 0))
 
   return (
     <main className="page admin-dashboard">
+
+      {/* ── Banner de contexto ────────────────────────────────────────────── */}
+      <div className="admin-contexto-banner">
+        <div className="admin-contexto-info">
+          <span className="admin-contexto-dot" style={{ background: campeonato?.info?.principal ? 'var(--gold)' : 'var(--blue)' }} />
+          <span className="admin-contexto-label">
+            {campeonato
+              ? <>Operando em: <strong style={{ color: 'var(--text)' }}>{campeonato.info?.nome ?? campeonatoId}</strong>
+                  {campeonato.info?.principal && <span className="admin-contexto-badge">principal</span>}
+                </>
+              : <span style={{ color: 'var(--text3)' }}>Nenhum campeonato selecionado</span>
+            }
+          </span>
+        </div>
+
+        {/* Seletor e ações (SuperAdmin) */}
+        {isSuperAdmin && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            {/* Seletor só aparece quando há campeonatos */}
+            {campeonatosArr.length > 0 && (
+              <select
+                value={campeonatoId ?? ''}
+                onChange={e => setCampeonatoId(e.target.value)}
+                className="admin-contexto-select"
+              >
+                {campeonatosArr.map(([id, c]) => (
+                  <option key={id} value={id}>{c.info?.nome ?? id}</option>
+                ))}
+              </select>
+            )}
+            {campeonato && !campeonato.info?.principal && (
+              <button
+                className="btn"
+                style={{ fontSize: 11, padding: '3px 10px', color: 'var(--gold)', borderColor: 'rgba(201,168,76,0.35)' }}
+                onClick={() => setPrincipal(campeonatoId)}
+                title="Tornar este o campeonato exibido publicamente"
+              >
+                Tornar principal
+              </button>
+            )}
+            {campeonato && (
+              <button
+                className="btn"
+                style={{ fontSize: 11, padding: '3px 10px', color: campeonato.info?.visivel !== false ? 'var(--green)' : 'var(--text2)', borderColor: campeonato.info?.visivel !== false ? 'rgba(76,175,125,0.35)' : 'var(--border)' }}
+                onClick={() => update(ref(db, `/campeonatos/${campeonatoId}/info`), { visivel: campeonato.info?.visivel === false ? true : false })}
+                title={campeonato.info?.visivel !== false ? 'Ocultar da Home Mestre' : 'Exibir na Home Mestre'}
+              >
+                {campeonato.info?.visivel !== false ? '👁 Visível na home' : '🚫 Oculto da home'}
+              </button>
+            )}
+            <Link to="/showmatch" className="btn" style={{ fontSize: 12, padding: '5px 14px', whiteSpace: 'nowrap', color: 'var(--red)', borderColor: 'rgba(224,85,85,0.35)' }}>
+              ⚡ Showmatch
+            </Link>
+            {/* + Novo sempre visível para SuperAdmin */}
+            <Link to="/admin/novo-campeonato" className="btn primary" style={{ fontSize: 12, padding: '5px 14px', whiteSpace: 'nowrap' }}>
+              + Novo campeonato
+            </Link>
+          </div>
+        )}
+      </div>
+
       <div className="admin-dash-header">
         <div>
-          <h1 className="page-title" style={{ marginBottom: 2 }}>Painel Admin</h1>
-          <p className="page-subtitle" style={{ margin: 0 }}>Copa Inhouse</p>
+          <h1 className="page-title" style={{ marginBottom: 2 }}>
+            {isSuperAdmin ? 'Painel SuperAdmin' : `${campeonato?.info?.nome ?? 'Painel Admin'}`}
+          </h1>
+          <p className="page-subtitle" style={{ margin: 0 }}>
+            {isSuperAdmin ? 'Administração global · Copa Inhouse' : 'Administração do campeonato'}
+          </p>
         </div>
         {/* Status rápido dos módulos */}
         <div className="admin-dash-status">
@@ -112,7 +205,7 @@ export default function Admin() {
 
       {/* ── Abas ──────────────────────────────────────────────────────────────── */}
       <div className="admin-tabs">
-        {TABS.map(t => (
+        {tabs.map(t => (
           <button
             key={t.id}
             className={`admin-tab${aba === t.id ? ' admin-tab--ativo' : ''}`}
@@ -301,9 +394,25 @@ export default function Admin() {
       )}
 
       {/* SISTEMA */}
-      {aba === 'sistema' && (
+      {aba === 'sistema' && isSuperAdmin && (
         <div className="admin-tab-content">
-          {isSuperAdmin && <SuperAdminSection />}
+          <AdminBotSetupSection />
+          <AdminProvisionamentoSection />
+          <AdminEncerramentoSection />
+          <SuperAdminSection />
+
+          {/* Migração — colapsada por ser de uso único */}
+          <div className="admin-section" style={{ border: '1px solid var(--border)', borderRadius: 8 }}>
+            <button
+              className="admin-section-title"
+              style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--text2)' }}
+              onClick={() => setShowMigracao(v => !v)}
+            >
+              <span>🔄 Ferramenta de Migração</span>
+              <span style={{ fontSize: 11, opacity: 0.6 }}>{showMigracao ? '▲ recolher' : '▼ expandir'}</span>
+            </button>
+            {showMigracao && <AdminMigracaoSection />}
+          </div>
         </div>
       )}
 

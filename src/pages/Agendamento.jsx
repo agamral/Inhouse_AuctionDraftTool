@@ -3,6 +3,8 @@ import { ref, onValue, set, update } from 'firebase/database'
 import { db } from '../firebase/database'
 import { useAuth } from '../hooks/useAuth'
 import { useConteudo } from '../hooks/useConfig'
+import { useCampeonato } from '../contexts/CampeonatoContext'
+import { teamPath, rodadasPath, confrontosPath, disponibilidadePath } from '../utils/campeonatoPaths'
 import HeroDraftAlerta from '../components/HeroDraftAlerta'
 import {
   SLOTS, SLOT_LABEL, SLOT_DIA, DIA_LABEL,
@@ -141,6 +143,7 @@ function PartidaCard({ c, teams }) {
 export default function Agendamento() {
   const { user, isAdmin, capitao } = useAuth()
   const conteudo = useConteudo()
+  const { idPublico } = useCampeonato()
 
   const [teams,        setTeams]    = useState({})
   const [confrontos,   setConfrs]   = useState({})
@@ -154,10 +157,10 @@ export default function Agendamento() {
 
   const teamSel = isAdmin ? teamSelAdmin : (capitao?.teamId ?? '')
 
-  useEffect(() => onValue(ref(db, '/teams'),         s => setTeams(s.val()  ?? {})), [])
-  useEffect(() => onValue(ref(db, '/confrontos'),    s => setConfrs(s.val() ?? {})), [])
-  useEffect(() => onValue(ref(db, '/disponibilidade'),s => setDispon(s.val() ?? {})), [])
-  useEffect(() => onValue(ref(db, '/rodadas'),       s => setRodadas(s.val() ?? {})), [])
+  useEffect(() => onValue(ref(db, teamPath(idPublico)),            s => setTeams(s.val()  ?? {})), [idPublico])
+  useEffect(() => onValue(ref(db, confrontosPath(idPublico)),     s => setConfrs(s.val() ?? {})), [idPublico])
+  useEffect(() => onValue(ref(db, disponibilidadePath(idPublico)),s => setDispon(s.val() ?? {})), [idPublico])
+  useEffect(() => onValue(ref(db, rodadasPath(idPublico)),        s => setRodadas(s.val() ?? {})), [idPublico])
 
   const confsMeuTime = Object.entries(confrontos).filter(([, c]) =>
     (c.timeA === teamSel || c.timeB === teamSel) &&
@@ -212,7 +215,7 @@ export default function Agendamento() {
 
     setSaving(confrontoId)
     try {
-      await set(ref(db, `/disponibilidade/${confrontoId}/${teamSel}`), {
+      await set(ref(db, `${disponibilidadePath(idPublico)}/${confrontoId}/${teamSel}`), {
         slots: meusSlots,
         registradoEm: Date.now(),
       })
@@ -222,7 +225,7 @@ export default function Agendamento() {
         const resultado  = resolverDisponibilidade(meusSlots, advSlots, ocupados)
 
         if (resultado.slot) {
-          await update(ref(db, `/confrontos/${confrontoId}`), {
+          await update(ref(db, `${confrontosPath(idPublico)}/${confrontoId}`), {
             slot:          resultado.slot,
             status:        STATUS_CONFRONTO.CONFIRMADO,
             alertas:       {},
@@ -230,7 +233,7 @@ export default function Agendamento() {
           })
           flash(confrontoId, 'ok', `✓ Confirmado automaticamente! ${SLOT_LABEL[resultado.slot]}`)
         } else {
-          await update(ref(db, `/confrontos/${confrontoId}`), {
+          await update(ref(db, `${confrontosPath(idPublico)}/${confrontoId}`), {
             status:   STATUS_CONFRONTO.AGENDANDO,
             alertas:  { semOverlap: true },
             atualizadoEm: Date.now(),
@@ -239,7 +242,7 @@ export default function Agendamento() {
         }
       } else {
         if (confronto.status === STATUS_CONFRONTO.PENDENTE) {
-          await update(ref(db, `/confrontos/${confrontoId}`), {
+          await update(ref(db, `${confrontosPath(idPublico)}/${confrontoId}`), {
             status:       STATUS_CONFRONTO.AGENDANDO,
             atualizadoEm: Date.now(),
           })

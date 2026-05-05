@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, useNavigate, useMatch, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth'
@@ -14,10 +14,12 @@ const LANGUAGES = [
 
 export default function Navbar() {
   const { t, i18n } = useTranslation()
-  const { user, isAdmin, capitao } = useAuth()
+  const { user, isAdmin, isSuperAdmin, adminCampeonatoIds, capitao } = useAuth()
   const modules = useModules()
   const conteudo = useConteudo()
   const navigate = useNavigate()
+  const inCampeonato = useMatch('/campeonatos/:campeonatoId/*')
+  const base = inCampeonato ? `/campeonatos/${inCampeonato.params.campeonatoId}` : ''
 
   useEffect(() => {
     if (conteudo.cupName) document.title = conteudo.cupName
@@ -33,76 +35,77 @@ export default function Navbar() {
       <div className="navbar-logo">
         <div className="navbar-logo-icon">⚔️</div>
         <div>
-          <div className="navbar-logo-text">{conteudo.cupName || 'Copa Inhouse'}</div>
+          <div className="navbar-logo-text">
+            {inCampeonato
+              ? (conteudo.cupName || 'Copa Inhouse')
+              : 'Copa Inhouse'
+            }
+          </div>
           <div className="navbar-logo-sub">Heroes of the Storm</div>
         </div>
       </div>
 
       <nav className="navbar-nav">
-        <NavLink to="/" end className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-          {t('nav.home')}
-        </NavLink>
-        {/* Inscritos — só capitães e admins */}
-        {(isAdmin || capitao) && (
-          <NavLink to="/inscritos" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-            {t('nav.inscritos')}
-          </NavLink>
-        )}
-
-        {/* Leilão — renomeado, só durante a fase de leilão */}
-        {modules.draftAtivo && (isAdmin || capitao) && (
-          <NavLink to="/draft" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-            {t('nav.leilao')}
-          </NavLink>
-        )}
-
-        {/* Inscrição — quando aberta */}
-        {modules.inscricaoAberta && (
-          <NavLink to="/inscricao" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-            {t('nav.inscricao')}
-          </NavLink>
-        )}
-
-        {/* Resultado do leilão — visível quando campeonato ativo */}
-        {(modules.campeonatoAtivo || isAdmin) && (
-          <NavLink to="/resultados" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-            {t('nav.resultados')}
-          </NavLink>
-        )}
-
-        {/* Campeonato — elenco, tabela, chave, agendamento */}
-        {(modules.campeonatoAtivo || isAdmin) && (
-          <NavLink to="/elenco" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-            {t('nav.elenco')}
-          </NavLink>
-        )}
-        {(modules.campeonatoAtivo || isAdmin) && (
-          <NavLink to="/tabela" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-            {t('nav.tabela')}
-          </NavLink>
-        )}
-        {(modules.campeonatoAtivo || isAdmin) && (
-          <NavLink to="/chave" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-            {t('nav.chave')}
-          </NavLink>
-        )}
-        {(modules.campeonatoAtivo || isAdmin || capitao) && (
-          <NavLink to="/agendamento" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-            {t('nav.agenda')}
-          </NavLink>
-        )}
-
-        {/* Espectador do leilão */}
-        {modules.espectadorAtivo && (
-          <NavLink to="/espectador" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-            {t('nav.espectador')}
-          </NavLink>
-        )}
-
-        {/* Hero Draft — quando ativo */}
-        {(modules.heroDraftAtivo || isAdmin) && (
-          <NavLink to="/hero-draft/espectador" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-            {t('nav.heroDraft')}
+        {inCampeonato ? (
+          <>
+            <Link to="/" className="nav-link" style={{ fontSize: 11, opacity: 0.6 }}>← Todos</Link>
+            <NavLink to={base} end className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+              {t('nav.home')}
+            </NavLink>
+            {(isAdmin || capitao) && (
+              <NavLink to={`${base}/inscritos`} className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                {t('nav.inscritos')}
+              </NavLink>
+            )}
+            {modules.draftAtivo && (isAdmin || capitao) && (
+              <NavLink to={`${base}/draft`} className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                {t('nav.leilao')}
+              </NavLink>
+            )}
+            {modules.inscricaoAberta && (
+              <NavLink to={`${base}/inscricao`} className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                {t('nav.inscricao')}
+              </NavLink>
+            )}
+            {(modules.campeonatoAtivo || isAdmin) && (
+              <NavLink to={`${base}/resultados`} className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                {t('nav.resultados')}
+              </NavLink>
+            )}
+            {(modules.campeonatoAtivo || isAdmin) && (
+              <NavLink to={`${base}/elenco`} className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                {t('nav.elenco')}
+              </NavLink>
+            )}
+            {(modules.campeonatoAtivo || isAdmin) && (
+              <NavLink to={`${base}/tabela`} className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                {t('nav.tabela')}
+              </NavLink>
+            )}
+            {(modules.campeonatoAtivo || isAdmin) && (
+              <NavLink to={`${base}/chave`} className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                {t('nav.chave')}
+              </NavLink>
+            )}
+            {(modules.campeonatoAtivo || isAdmin || capitao) && (
+              <NavLink to={`${base}/agendamento`} className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                {t('nav.agenda')}
+              </NavLink>
+            )}
+            {modules.espectadorAtivo && (
+              <NavLink to={`${base}/espectador`} className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                {t('nav.espectador')}
+              </NavLink>
+            )}
+            {(modules.heroDraftAtivo || isAdmin) && (
+              <NavLink to={`${base}/hero-draft/espectador`} className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                {t('nav.heroDraft')}
+              </NavLink>
+            )}
+          </>
+        ) : (
+          <NavLink to="/" end className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+            {t('nav.home')}
           </NavLink>
         )}
       </nav>
@@ -122,7 +125,10 @@ export default function Navbar() {
 
         {isAdmin ? (
           <div className="navbar-admin-area">
-            <NavLink to="/admin" className={({ isActive }) => `nav-link admin-link ${isActive ? 'active' : ''}`}>
+            <NavLink
+              to={isSuperAdmin ? '/admin' : inCampeonato ? `${base}/admin` : `/campeonatos/${adminCampeonatoIds?.[0]}/admin`}
+              className={({ isActive }) => `nav-link admin-link ${isActive ? 'active' : ''}`}
+            >
               ⚙ Admin
             </NavLink>
             <button className="navbar-avatar" onClick={handleLogout} title={`Sair (${user.email})`}>
@@ -133,7 +139,6 @@ export default function Navbar() {
             </button>
           </div>
         ) : capitao ? (
-          /* Capitão logado */
           <div className="navbar-admin-area">
             <span style={{ fontSize: 12, color: capitao.cor ?? 'var(--blue)', fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700 }}>
               {capitao.nome}
@@ -144,19 +149,13 @@ export default function Navbar() {
             </button>
           </div>
         ) : user ? (
-          /* Jogador logado (Google, sem papel especial) */
           <NavLink to="/meu-perfil" className="navbar-avatar" title={user.email}>
             {user.photoURL
               ? <img src={user.photoURL} alt={user.displayName} referrerPolicy="no-referrer" />
               : <span>{user.email[0].toUpperCase()}</span>
             }
           </NavLink>
-        ) : (
-          /* Visitante — link discreto para login capitão */
-          <NavLink to="/login-capitao" className="navbar-login-btn" title="Área do Capitão">
-            ⚔
-          </NavLink>
-        )}
+        ) : null}
       </div>
     </header>
   )

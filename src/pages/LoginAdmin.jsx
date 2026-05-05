@@ -4,19 +4,24 @@ import { loginWithGoogle, logout } from '../firebase/auth'
 import { useAuth } from '../hooks/useAuth'
 import { useCampeonato } from '../contexts/CampeonatoContext'
 
-export default function Login() {
+export default function LoginAdmin() {
   const { user, isSuperAdmin, adminCampeonatoIds, loading } = useAuth()
-  const { campeonatos, idPublico } = useCampeonato()
+  const { campeonatoId, campeonato } = useCampeonato()
   const navigate = useNavigate()
   const [signing,   setSigning]   = useState(false)
   const [error,     setError]     = useState(null)
   const [wrongRole, setWrongRole] = useState(false)
 
+  const campNome = campeonato?.info?.nome ?? campeonatoId
+
   useEffect(() => {
     if (loading) return
     if (isSuperAdmin) { navigate('/admin', { replace: true }); return }
+    if (user && adminCampeonatoIds.includes(campeonatoId)) {
+      navigate(`/campeonatos/${campeonatoId}/admin`, { replace: true }); return
+    }
     if (user) setWrongRole(true)
-  }, [loading, isSuperAdmin, user]) // eslint-disable-line
+  }, [loading, isSuperAdmin, user, adminCampeonatoIds, campeonatoId]) // eslint-disable-line
 
   async function handleLogin() {
     setSigning(true)
@@ -38,34 +43,22 @@ export default function Login() {
 
   if (loading) return null
 
-  // Non-SuperAdmin logged in here by mistake
   if (wrongRole && user) {
-    // If they're a championship admin, suggest their championship login
-    const adminCampId = adminCampeonatoIds?.[0]
-    const campNome = adminCampId ? (campeonatos[adminCampId]?.info?.nome ?? adminCampId) : null
-    const destCamp = adminCampId ?? idPublico
-
     return (
       <main className="page" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
         <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 12, padding: '48px 40px', textAlign: 'center', maxWidth: 380, width: '100%' }}>
           <div style={{ fontSize: 32, marginBottom: 12 }}>🔒</div>
           <h2 style={{ fontFamily: "'Rajdhani', sans-serif", color: 'var(--red)', fontSize: 20, marginBottom: 8 }}>
-            Acesso não autorizado
+            Sem acesso a este campeonato
           </h2>
           <p style={{ color: 'var(--text2)', fontSize: 13, marginBottom: 20, lineHeight: 1.6 }}>
-            A conta <strong style={{ color: 'var(--text)' }}>{user.email}</strong> não tem acesso a esta área.
-            {campNome && <><br />Você está tentando acessar o campeonato <strong style={{ color: 'var(--gold2)' }}>{campNome}</strong>?</>}
+            A conta <strong style={{ color: 'var(--text)' }}>{user.email}</strong> não é admin de <strong style={{ color: 'var(--gold2)' }}>{campNome}</strong>.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {destCamp && (
-              <a
-                href={adminCampId ? `/campeonatos/${adminCampId}/login` : `/campeonatos/${destCamp}`}
-                className="btn primary"
-                style={{ display: 'block', padding: '11px', fontSize: 13, textDecoration: 'none' }}
-              >
-                {adminCampId ? `Acessar painel de ${campNome}` : `Ir para o campeonato`}
-              </a>
-            )}
+            <a href={`/campeonatos/${campeonatoId}`} className="btn"
+              style={{ display: 'block', padding: '10px', fontSize: 13, textDecoration: 'none' }}>
+              Ver campeonato como visitante
+            </a>
             <button className="btn" style={{ fontSize: 13, padding: '10px' }} onClick={handleLogoutAndRetry}>
               Tentar com outra conta
             </button>
@@ -80,10 +73,10 @@ export default function Login() {
       <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 12, padding: '48px 40px', textAlign: 'center', maxWidth: 360, width: '100%' }}>
         <div style={{ fontSize: 32, marginBottom: 8 }}>⚔️</div>
         <h2 style={{ fontFamily: "'Rajdhani', sans-serif", color: 'var(--text)', fontSize: 22, marginBottom: 4 }}>
-          Copa Inhouse
+          {campNome}
         </h2>
         <p style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 11, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 28 }}>
-          Heroes of the Storm
+          Acesso de Administrador
         </p>
         <button
           className="btn primary"
@@ -100,7 +93,9 @@ export default function Login() {
           {signing ? 'Entrando...' : 'Entrar com Google'}
         </button>
         {error && <p style={{ color: 'var(--red)', fontSize: 13, marginTop: 16 }}>{error}</p>}
-        <p style={{ marginTop: 24, fontSize: 11, color: 'var(--text3)' }}>Acesso restrito.</p>
+        <p style={{ marginTop: 24, fontSize: 11, color: 'var(--text3)' }}>
+          Acesso restrito a administradores de {campNome}.
+        </p>
       </div>
     </main>
   )

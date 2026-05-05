@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { ref, onValue, set, remove, push } from 'firebase/database'
 import { db } from '../firebase/database'
 import { FUSOS, FUSO_PADRAO } from '../utils/scheduling'
+import { useCampeonato } from '../contexts/CampeonatoContext'
+import { teamPath, draftSessionPath } from '../utils/campeonatoPaths'
 
 const ROLES_LISTA = ['Tank', 'Bruiser', 'Melee Assassin', 'Ranged Assassin', 'Healer', 'Support', 'Flex']
 
@@ -16,6 +18,7 @@ const FORM_VAZIO = { nome: '', cor: '#4a9eda', fuso: FUSO_PADRAO, modoAdd: 'manu
 // ── Componente principal ─────────────────────────────────────────────────────
 
 export default function AdminTeamsSection() {
+  const { campeonatoId } = useCampeonato()
   const [times, setTimes]             = useState({})
   const [inscritos, setInscritos]     = useState([])      // do Google Sheets
   const [capitaes, setCapitaes]       = useState({})      // do leilão (/draftSession/captains)
@@ -29,10 +32,10 @@ export default function AdminTeamsSection() {
   const [salvando, setSalvando]       = useState(false)
 
   // Times salvos
-  useEffect(() => onValue(ref(db, '/teams'), snap => setTimes(snap.val() ?? {})), [])
+  useEffect(() => onValue(ref(db, teamPath(campeonatoId)), snap => setTimes(snap.val() ?? {})), [campeonatoId])
 
   // Times do leilão (draftSession)
-  useEffect(() => onValue(ref(db, '/draftSession/captains'), snap => setCapitaes(snap.val() ?? {})), [])
+  useEffect(() => onValue(ref(db, `${draftSessionPath(campeonatoId)}/captains`), snap => setCapitaes(snap.val() ?? {})), [campeonatoId])
 
   // Inscritos do Google Sheets
   useEffect(() => {
@@ -99,8 +102,8 @@ export default function AdminTeamsSection() {
     })
 
     try {
-      const id = push(ref(db, '/teams')).key
-      await set(ref(db, `/teams/${id}`), {
+      const id = push(ref(db, teamPath(campeonatoId))).key
+      await set(ref(db, `${teamPath(campeonatoId)}/${id}`), {
         nome:      cap.nome,
         cor:       cap.cor ?? '#4a9eda',
         fonte:     'leilao',
@@ -122,8 +125,8 @@ export default function AdminTeamsSection() {
 
     setSalvando(true)
     try {
-      const id = push(ref(db, '/teams')).key
-      await set(ref(db, `/teams/${id}`), {
+      const id = push(ref(db, teamPath(campeonatoId))).key
+      await set(ref(db, `${teamPath(campeonatoId)}/${id}`), {
         nome:      form.nome.trim(),
         cor:       form.cor,
         fuso:      form.fuso || FUSO_PADRAO,
@@ -148,7 +151,7 @@ export default function AdminTeamsSection() {
 
   async function handleDeletar(id) {
     try {
-      await remove(ref(db, `/teams/${id}`))
+      await remove(ref(db, `${teamPath(campeonatoId)}/${id}`))
       setConfirmDelete(null)
       flash('ok', 'Time removido.')
     } catch (e) {

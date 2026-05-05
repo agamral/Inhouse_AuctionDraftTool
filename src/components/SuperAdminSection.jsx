@@ -3,35 +3,20 @@ import { ref, get, set, remove, onValue } from 'firebase/database'
 import { db } from '../firebase/database'
 
 export default function SuperAdminSection() {
-  const [cupName, setCupName] = useState('')
-  const [cupNameInput, setCupNameInput] = useState('')
-  const [users, setUsers] = useState({})
-  const [admins, setAdmins] = useState({})
+  const [users,      setUsers]      = useState({})
+  const [admins,     setAdmins]     = useState({})
   const [superAdmins, setSuperAdmins] = useState({})
-  const [saving, setSaving] = useState(false)
-  const [savedMsg, setSavedMsg] = useState('')
+  const [savedMsg,   setSavedMsg]   = useState('')
+  const [confirmDelete, setConfirmDelete] = useState(null)
 
   useEffect(() => {
     const unsubs = [
-      onValue(ref(db, '/config/settings/cupName'), (snap) => {
-        const val = snap.val() ?? 'Copa Inhouse'
-        setCupName(val)
-        setCupNameInput(val)
-      }),
-      onValue(ref(db, '/users'), (snap) => setUsers(snap.val() ?? {})),
-      onValue(ref(db, '/config/admins'), (snap) => setAdmins(snap.val() ?? {})),
+      onValue(ref(db, '/users'),              (snap) => setUsers(snap.val() ?? {})),
+      onValue(ref(db, '/config/admins'),      (snap) => setAdmins(snap.val() ?? {})),
       onValue(ref(db, '/config/superAdmins'), (snap) => setSuperAdmins(snap.val() ?? {})),
     ]
     return () => unsubs.forEach((u) => u())
   }, [])
-
-  async function saveCupName() {
-    if (!cupNameInput.trim()) return
-    setSaving(true)
-    await set(ref(db, '/config/settings/cupName'), cupNameInput.trim())
-    setSaving(false)
-    flash('Nome salvo!')
-  }
 
   async function promoteAdmin(uid) {
     await set(ref(db, `/config/admins/${uid}`), true)
@@ -41,6 +26,12 @@ export default function SuperAdminSection() {
   async function demoteAdmin(uid) {
     await remove(ref(db, `/config/admins/${uid}`))
     flash('Admin removido!')
+  }
+
+  async function deleteUserRecord(uid) {
+    await remove(ref(db, `/users/${uid}`))
+    setConfirmDelete(null)
+    flash('Registro removido.')
   }
 
   function flash(msg) {
@@ -56,24 +47,6 @@ export default function SuperAdminSection() {
     <div className="admin-section superadmin-section">
       <div className="admin-section-title superadmin-title">
         ★ Super Admin
-      </div>
-
-      {/* Cup Name */}
-      <div className="sa-block">
-        <div className="admin-toggle-label">Nome da Copa</div>
-        <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-          <input
-            className="sa-input"
-            value={cupNameInput}
-            onChange={(e) => setCupNameInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && saveCupName()}
-            placeholder="Ex: Copa Inhouse #3"
-          />
-          <button className="btn primary" style={{ whiteSpace: 'nowrap', padding: '8px 16px', fontSize: '13px' }}
-            onClick={saveCupName} disabled={saving || cupNameInput === cupName}>
-            Salvar
-          </button>
-        </div>
       </div>
 
       {/* Admins */}
@@ -107,6 +80,22 @@ export default function SuperAdminSection() {
                       isAdm
                         ? <button className="btn sa-btn-remove" onClick={() => demoteAdmin(uid)}>Remover</button>
                         : <button className="btn primary sa-btn-add" onClick={() => promoteAdmin(uid)}>+ Admin</button>
+                    )}
+                    {!isSA && (
+                      confirmDelete === uid ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontSize: 11, color: 'var(--text2)' }}>Excluir registro?</span>
+                          <button className="btn" style={{ fontSize: 11, padding: '2px 8px', color: 'var(--red)', borderColor: 'rgba(224,85,85,0.4)' }}
+                            onClick={() => deleteUserRecord(uid)}>Sim</button>
+                          <button className="btn" style={{ fontSize: 11, padding: '2px 8px' }}
+                            onClick={() => setConfirmDelete(null)}>Não</button>
+                        </div>
+                      ) : (
+                        <button className="btn" style={{ fontSize: 11, padding: '3px 8px', color: 'var(--red)', borderColor: 'rgba(224,85,85,0.25)' }}
+                          onClick={() => setConfirmDelete(uid)} title="Excluir registro de login">
+                          🗑
+                        </button>
+                      )
                     )}
                   </div>
                 </div>

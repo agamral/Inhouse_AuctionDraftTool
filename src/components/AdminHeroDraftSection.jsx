@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { ref, onValue, set, update, remove } from 'firebase/database'
 import { db } from '../firebase/database'
+import { useCampeonato } from '../contexts/CampeonatoContext'
+import { teamPath, heroDraftPath } from '../utils/campeonatoPaths'
 import { useHeroDraft } from '../hooks/useHeroDraft'
 import { HEROES } from '../utils/heroPool'
 import { criarEstadoInicial, expandirSequencia, SEQUENCIA_PADRAO } from '../utils/heroDraft'
@@ -46,6 +48,7 @@ const inputStyle = {
 // ── Componente principal ─────────────────────────────────────────────────────
 
 export default function AdminHeroDraftSection() {
+  const { campeonatoId } = useCampeonato()
   const [sessoes, setSessoes]           = useState({})
   const [times, setTimes]               = useState({})
   const [sessaoId, setSessaoId]         = useState('')
@@ -62,10 +65,19 @@ export default function AdminHeroDraftSection() {
   const [buscaBan, setBuscaBan] = useState('')
   const [salvando, setSalvando] = useState(false)
 
-  const { estado, loading, iniciar, encerrar, desfazer } =
-    useHeroDraft(sessaoId || '__none__', 'admin')
+  const draftPathOverride = sessaoId ? `${heroDraftPath(campeonatoId)}/${sessaoId}` : null
+  const { estado, loading, iniciar, iniciarComContagem, encerrar, desfazer } =
+    useHeroDraft(sessaoId || null, 'admin', draftPathOverride)
 
-  useEffect(() => onValue(ref(db, '/heroDraft'), snap => setSessoes(snap.val() ?? {})), [])
+  // ── Auto-transição: countdown → rodando ─────────────────────────────────
+  useEffect(() => {
+    if (estado?.status !== 'countdown' || !estado?.countdownEndsAt) return
+    const remaining = Math.max(0, estado.countdownEndsAt - Date.now())
+    const t = setTimeout(() => iniciar(), remaining + 100) // +100ms margem
+    return () => clearTimeout(t)
+  }, [estado?.status, estado?.countdownEndsAt]) // eslint-disable-line
+
+  useEffect(() => onValue(ref(db, heroDraftPath(campeonatoId)), snap => setSessoes(snap.val() ?? {})), [campeonatoId])
 
   // Listener com retry automático caso o read falhe por regras desatualizadas
   useEffect(() => {
@@ -74,7 +86,7 @@ export default function AdminHeroDraftSection() {
 
     const conectar = () => {
       unsub = onValue(
-        ref(db, '/teams'),
+        ref(db, teamPath(campeonatoId)),
         snap => { setTimes(snap.val() ?? {}); retryId && clearTimeout(retryId) },
         () => { retryId = setTimeout(conectar, 3000) }, // retry em 3s se negar
       )
@@ -82,7 +94,7 @@ export default function AdminHeroDraftSection() {
 
     conectar()
     return () => { unsub?.(); retryId && clearTimeout(retryId) }
-  }, [])
+  }, [campeonatoId])
 
   // ── feedback ───────────────────────────────────────────────────────────────
 
@@ -125,7 +137,7 @@ export default function AdminHeroDraftSection() {
         globalBans,
         mapaId: mapaId || null,
       })
-      await set(ref(db, `/heroDraft/${novoId.trim()}`), estadoInicial)
+      await set(ref(db, `${heroDraftPath(campeonatoId)}/${novoId.trim()}`), estadoInicial)
       setSessaoId(novoId.trim())
       setMostraCriar(false)
       setForm({ novoId: '', modoTimes: 'manual', nomeA: '', corA: '#4a9eda', timeAId: '', nomeB: '', corB: '#e05555', timeBId: '', globalBans: [], bansPerTeam: 3, mapaId: '' })
@@ -141,8 +153,8 @@ export default function AdminHeroDraftSection() {
   // ── ações de controle ─────────────────────────────────────────────────────
 
   async function handleIniciar() {
-    const r = await iniciar()
-    r.ok ? flash('ok', 'Draft iniciado!') : flash('erro', r.erro)
+    const r = await iniciarComContagem(5)
+    r.ok ? flash('ok', 'Contagem iniciada!') : flash('erro', r.erro)
   }
 
   async function handleDesfazer() {
@@ -159,7 +171,7 @@ export default function AdminHeroDraftSection() {
   async function handleReabrir() {
     setConfirmAcao(null)
     try {
-      await update(ref(db, `/heroDraft/${sessaoId}`), { status: 'rodando' })
+      await update(ref(db, `${heroDraftPath(campeonatoId)}/${sessaoId}`), { status: 'rodando' })
       flash('ok', 'Draft reaberto.')
     } catch (e) {
       flash('erro', `Erro: ${e.message}`)
@@ -177,7 +189,7 @@ export default function AdminHeroDraftSection() {
         sequencia: seq,
         globalBans: estado.globalBans ?? [],
       })
-      await set(ref(db, `/heroDraft/${sessaoId}`), novo)
+      await set(ref(db, `${heroDraftPath(campeonatoId)}/${sessaoId}`), novo)
       flash('ok', 'Draft resetado para o estado inicial.')
     } catch (e) {
       flash('erro', `Erro: ${e.message}`)
@@ -187,7 +199,7 @@ export default function AdminHeroDraftSection() {
   async function handleDeletar() {
     setConfirmAcao(null)
     try {
-      await remove(ref(db, `/heroDraft/${sessaoId}`))
+      await remove(ref(db, `${heroDraftPath(campeonatoId)}/${sessaoId}`))
       setSessaoId('')
       flash('ok', 'Sessão deletada.')
     } catch (e) {
@@ -548,9 +560,34 @@ export default function AdminHeroDraftSection() {
                   </div>
                 )}
 
+                {/* Indicadores de presença */}
+                {estado.status === 'aguardando' && (
+                  <div style={{ display: 'flex', gap: 16, marginBottom: 12, padding: '10px 14px', background: 'var(--bg3)', borderRadius: 6, border: '1px solid var(--border)' }}>
+                    {['A', 'B'].map(t => {
+                      const online = !!(estado.presence?.[t]?.onlineEm)
+                      const nome   = t === 'A' ? estado.timeA?.nome : estado.timeB?.nome
+                      return (
+                        <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12 }}>
+                          <div style={{ width: 7, height: 7, borderRadius: '50%', background: online ? 'var(--green)' : 'var(--text3)', boxShadow: online ? '0 0 5px var(--green)' : 'none', flexShrink: 0 }} />
+                          <span style={{ color: online ? 'var(--text)' : 'var(--text3)', fontFamily: "'Barlow Condensed', sans-serif" }}>
+                            {nome ?? `Time ${t}`}: {online ? 'na sala' : 'aguardando...'}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+
+                {/* Countdown em andamento */}
+                {estado.status === 'countdown' && estado.countdownEndsAt && (
+                  <div style={{ marginBottom: 12, padding: '8px 14px', background: 'rgba(201,168,76,0.08)', border: '1px solid rgba(201,168,76,0.3)', borderRadius: 6, fontSize: 13, color: 'var(--gold2)', fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.05em' }}>
+                    ⏳ Contagem regressiva em andamento...
+                  </div>
+                )}
+
                 {/* botões de controle */}
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                  {estado.status === 'aguardando' && (
+                  {(estado.status === 'aguardando') && (
                     <button className="btn primary" style={{ fontSize: 13, padding: '7px 16px' }} onClick={handleIniciar}>
                       ▶ Iniciar
                     </button>

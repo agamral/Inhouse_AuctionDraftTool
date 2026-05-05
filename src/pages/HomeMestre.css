@@ -1,0 +1,34 @@
+.hm-header { display: flex; align-items: center; gap: 20px; margin-bottom: 36px; }
+.hm-trophy { font-size: 48px; }
+.hm-title  { font-family: 'Rajdhani', sans-serif; font-size: 32px; font-weight: 700; color: var(--text); margin: 0 0 4px; }
+.hm-sub    { font-family: 'Barlow Condensed', sans-serif; font-size: 14px; color: var(--text2); margin: 0; letter-spacing: 0.08em; text-transform: uppercase; }
+
+.hm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+
+.hm-card {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 20px 22px; border-radius: 10px;
+  background: var(--bg2); border: 1px solid var(--border);
+  text-decoration: none; transition: border-color 0.15s, background 0.15s;
+}
+.hm-card:hover { background: var(--bg3); border-color: var(--border2); }
+.hm-card.principal { border-color: rgba(201,168,76,0.4); }
+.hm-card.principal:hover { border-color: var(--gold); }
+
+.hm-card-top   { display: flex; align-items: center; gap: 8px; }
+.hm-card-nome  { font-family: 'Rajdhani', sans-serif; font-size: 20px; font-weight: 700; color: var(--text); flex: 1; }
+.hm-badge      { font-family: 'Barlow Condensed', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold); background: rgba(201,168,76,0.12); border: 1px solid rgba(201,168,76,0.3); border-radius: 4px; padding: 2px 7px; }
+.hm-card-label { font-family: 'Barlow Condensed', sans-serif; font-size: 12px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em; }
+.hm-card-status { font-family: 'Barlow Condensed', sans-serif; font-size: 12px; }
+.hm-card-cta   { font-family: 'Barlow Condensed', sans-serif; font-size: 12px; color: var(--text3); margin-top: 4px; }
+.hm-card:hover .hm-card-cta { color: var(--text2); }
+.hm-card.encerrado { opacity: 0.7; }
+.hm-card.encerrado:hover { opacity: 1; }
+.hm-badge-enc { font-family: 'Barlow Condensed', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text3); background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 4px; padding: 2px 7px; }
+
+.hm-proximo-evento { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; padding: 10px 16px; background: rgba(201,168,76,0.07); border: 1px solid rgba(201,168,76,0.2); border-radius: 8px; }
+.hm-proximo-label  { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text3); }
+.hm-proximo-data   { font-family: 'Barlow Condensed', sans-serif; font-size: 14px; font-weight: 600; color: var(--gold2); }
+
+.hm-historico-link { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; color: var(--text3); text-decoration: none; letter-spacing: 0.04em; }
+.hm-historico-link:hover { color: var(--text2); }

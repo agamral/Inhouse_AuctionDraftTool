@@ -146,5 +146,56 @@
     "players_count": "{{n}} jugadores",
     "spent": "gastados",
     "remaining": "Monedas restantes:"
+  },
+  "home_mestre": {
+    "subtitle": "Heroes of the Storm",
+    "next_event": "Próximo evento",
+    "status_running": "En progreso",
+    "status_draft": "Subasta",
+    "status_open": "Inscripciones abiertas",
+    "status_ended": "Finalizado",
+    "status_waiting": "En espera",
+    "cta_view": "Ver campeonato →",
+    "cta_history": "Ver historial →",
+    "history_link": "Ver todas las ediciones anteriores →",
+    "empty": "Ningún campeonato disponible aún."
+  },
+  "historico": {
+    "title": "Historial",
+    "subtitle": "Todas las ediciones de Copa Inhouse.",
+    "empty": "Ninguna edición archivada aún.",
+    "view_details": "Ver detalles →",
+    "back": "← Historial",
+    "not_found": "Edición no encontrada",
+    "teams": "equipos",
+    "matches": "partidas",
+    "no_data": "Sin datos detallados para esta edición.",
+    "section_teams": "Equipos",
+    "section_matches": "Partidas",
+    "round_label": "Ronda",
+    "closed_on": "Finalizado el",
+    "cap_badge": "CAP",
+    "no_roster": "Sin roster registrado."
+  },
+  "hero_draft": {
+    "loading": "Cargando draft...",
+    "not_found": "Sesión no encontrada.",
+    "waiting_admin": "Esperando que el admin inicie el Hero Draft...",
+    "countdown_label": "DRAFT INICIANDO EN",
+    "turn_ban": "Vetar un héroe",
+    "turn_pick": "Elegir un héroe",
+    "waiting_opponent": "Esperando al adversario...",
+    "confirm": "Confirmar",
+    "draft_waiting": "Esperando inicio del draft...",
+    "draft_ended": "¡Draft finalizado!"
+  },
+  "hero_espectador": {
+    "connecting": "Conectando al draft...",
+    "no_draft": "Ningún draft activo.",
+    "countdown_label": "DRAFT INICIANDO EN",
+    "action_ban": "VETAR",
+    "action_pick": "ELEGIR",
+    "draft_waiting": "Esperando inicio del draft...",
+    "draft_ended": "DRAFT FINALIZADO"
   }
 }

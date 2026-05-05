@@ -1,15 +1,18 @@
 import { useState, useEffect } from 'react'
 import { onAuthStateChanged } from 'firebase/auth'
-import { ref, get, set, onValue } from 'firebase/database'
+import { ref, get, set, remove } from 'firebase/database'
 import { auth } from '../firebase/auth'
 import { db } from '../firebase/database'
 
+const sanitizeEmail = (email) => email.toLowerCase().replace(/\./g, ',')
+
 export function useAuth() {
-  const [user,         setUser]         = useState(undefined)
-  const [isAdmin,      setIsAdmin]      = useState(false)
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
-  const [capitao,      setCapitao]      = useState(null)  // { teamId, ...team } ou null
-  const [adminChecked, setAdminChecked] = useState(false)
+  const [user,               setUser]               = useState(undefined)
+  const [isAdmin,            setIsAdmin]            = useState(false)
+  const [isSuperAdmin,       setIsSuperAdmin]       = useState(false)
+  const [capitao,            setCapitao]            = useState(null)
+  const [adminCampeonatoIds, setAdminCampeonatoIds] = useState([])
+  const [adminChecked,       setAdminChecked]       = useState(false)
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -17,30 +20,91 @@ export function useAuth() {
 
       if (firebaseUser) {
         try {
-          // Salva perfil para o super admin poder gerenciar
+          // Salva perfil básico para gerenciamento
           await set(ref(db, `/users/${firebaseUser.uid}`), {
             email:    firebaseUser.email,
             name:     firebaseUser.displayName ?? firebaseUser.email,
             photoURL: firebaseUser.photoURL ?? null,
           })
 
-          const [adminSnap, superSnap] = await Promise.all([
-            get(ref(db, `/config/admins/${firebaseUser.uid}`)),
-            get(ref(db, `/config/superAdmins/${firebaseUser.uid}`)),
+          // ── Verificação de superadmin ────────────────────────────────────
+          // Tenta path novo e legado; falha individual não derruba o login
+          const safeGet = async (path) => {
+            try { return await get(ref(db, path)) } catch { return null }
+          }
+
+          const [superNew, superLeg] = await Promise.all([
+            safeGet(`/superAdmins/${firebaseUser.uid}`),
+            safeGet(`/config/superAdmins/${firebaseUser.uid}`),
           ])
+          const isSA = (superNew?.exists()  && superNew.val()  === true)
+                    || (superLeg?.exists() && superLeg.val() === true)
 
-          const isAdm = (adminSnap.exists() && adminSnap.val() === true)
-                      || (superSnap.exists() && superSnap.val() === true)
+          // ── Verificação de admin ─────────────────────────────────────────
+          let isAdm = isSA
+          if (!isAdm) {
+            const adminLeg = await safeGet(`/config/admins/${firebaseUser.uid}`)
+            if (adminLeg?.exists() && adminLeg.val() === true) isAdm = true
+          }
+          if (!isAdm) {
+            const campSnap = await safeGet('/campeonatos')
+            const campeonatos = campSnap?.val() ?? {}
 
-          setIsSuperAdmin(superSnap.exists() && superSnap.val() === true)
+            // Admins confirmados por UID
+            const adminIds = Object.keys(campeonatos).filter(id =>
+              campeonatos[id]?.admins?.[firebaseUser.uid] === true
+            )
+
+            // Convites pendentes por email — promove automaticamente
+            const sanitized = sanitizeEmail(firebaseUser.email ?? '')
+            const promotedIds = []
+            for (const [cid, camp] of Object.entries(campeonatos)) {
+              if (camp?.adminsPendentes?.[sanitized]) {
+                try {
+                  await set(ref(db,    `/campeonatos/${cid}/admins/${firebaseUser.uid}`), true)
+                  await remove(ref(db, `/campeonatos/${cid}/adminsPendentes/${sanitized}`))
+                  promotedIds.push(cid)
+                } catch {
+                  promotedIds.push(cid) // sem permissão de escrita, mas concede acesso UI
+                }
+              }
+            }
+
+            const allIds = [...new Set([...adminIds, ...promotedIds])]
+            if (allIds.length > 0) {
+              isAdm = true
+              setAdminCampeonatoIds(allIds)
+            }
+          }
+
+          setIsSuperAdmin(isSA)
           setIsAdmin(isAdm)
 
-          // Se não é admin, verifica se é capitão (UID vinculado a algum time)
+          // ── Verificação de capitão ───────────────────────────────────────
           if (!isAdm) {
-            const teamsSnap = await get(ref(db, '/teams'))
-            const teams = teamsSnap.val() ?? {}
-            const entry = Object.entries(teams).find(([, t]) => t.capitaoUid === firebaseUser.uid)
-            setCapitao(entry ? { teamId: entry[0], ...entry[1] } : null)
+            const teamsLeg = await safeGet('/teams')
+            const teamsOld = teamsLeg?.val() ?? {}
+            const legEntry = Object.entries(teamsOld)
+              .find(([, t]) => t.capitaoUid === firebaseUser.uid)
+
+            if (legEntry) {
+              setCapitao({ teamId: legEntry[0], ...legEntry[1] })
+            } else {
+              const campSnap = await safeGet('/campeonatos')
+              const campeonatos = campSnap?.val() ?? {}
+              let found = null
+              for (const [cid, camp] of Object.entries(campeonatos)) {
+                if (!camp.info?.principal) continue
+                const teams = camp.teams ?? {}
+                const entry = Object.entries(teams)
+                  .find(([, t]) => t.capitaoUid === firebaseUser.uid)
+                if (entry) {
+                  found = { teamId: entry[0], campeonatoId: cid, ...entry[1] }
+                  break
+                }
+              }
+              setCapitao(found)
+            }
           } else {
             setCapitao(null)
           }
@@ -48,11 +112,13 @@ export function useAuth() {
           setIsAdmin(false)
           setIsSuperAdmin(false)
           setCapitao(null)
+          setAdminCampeonatoIds([])
         }
       } else {
         setIsAdmin(false)
         setIsSuperAdmin(false)
         setCapitao(null)
+        setAdminCampeonatoIds([])
       }
       setAdminChecked(true)
     })
@@ -60,6 +126,5 @@ export function useAuth() {
   }, [])
 
   const loading = !adminChecked
-
-  return { user, isAdmin, isSuperAdmin, capitao, loading }
+  return { user, isAdmin, isSuperAdmin, capitao, adminCampeonatoIds, loading }
 }

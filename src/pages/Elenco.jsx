@@ -2,17 +2,20 @@ import { useState, useEffect } from 'react'
 import { ref, onValue } from 'firebase/database'
 import { db } from '../firebase/database'
 import { useModules } from '../hooks/useConfig'
+import { useCampeonato } from '../contexts/CampeonatoContext'
+import { teamPath, confrontosPath } from '../utils/campeonatoPaths'
 import { STATUS_CONFRONTO, TIPO_CONFRONTO } from '../utils/scheduling'
 import './Elenco.css'
 
 export default function Elenco() {
+  const { idPublico } = useCampeonato()
   const { privacidadeAtiva } = useModules()
   const [teams,      setTeams]      = useState({})
   const [confrontos, setConfrontos] = useState({})
   const [busca,      setBusca]      = useState('')
 
-  useEffect(() => onValue(ref(db, '/teams'),      snap => setTeams(snap.val()      ?? {})), [])
-  useEffect(() => onValue(ref(db, '/confrontos'), snap => setConfrontos(snap.val() ?? {})), [])
+  useEffect(() => onValue(ref(db, teamPath(idPublico)),      snap => setTeams(snap.val()      ?? {})), [idPublico])
+  useEffect(() => onValue(ref(db, confrontosPath(idPublico)), snap => setConfrontos(snap.val() ?? {})), [idPublico])
 
   // Calcula W/L para cada time (só fase regular e desempate)
   function calcWL(teamId) {

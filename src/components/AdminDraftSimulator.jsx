@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { ref, onValue, update } from 'firebase/database'
 import { db } from '../firebase/database'
+import { useCampeonato } from '../contexts/CampeonatoContext'
+import { draftSessionPath, playerOverridesPath, configDraftPath } from '../utils/campeonatoPaths'
 
 const DEFAULT_STATE  = { status: 'aguardando', turnoAtual: null, turnoExtra: null, rodada: 1 }
 const DEFAULT_CONFIG = { moedas: 15, minPlayers: 5, maxPlayers: 7, rouboAtivo: true }
@@ -19,6 +21,7 @@ function proximoCom(sortedCaptains, captains, currentId, myNewSize, maxPlayers) 
 }
 
 export default function AdminDraftSimulator() {
+  const { campeonatoId } = useCampeonato()
   const [captains,    setCaptains]    = useState({})
   const [draftState,  setDraftState]  = useState(DEFAULT_STATE)
   const [playerState, setPlayerState] = useState({})
@@ -33,13 +36,13 @@ export default function AdminDraftSimulator() {
   const [expanded,   setExpanded]   = useState(false)
 
   useEffect(() => {
-    const u1 = onValue(ref(db, '/draftSession/captains'),    s => setCaptains(s.val() ?? {}))
-    const u2 = onValue(ref(db, '/draftSession/state'),       s => setDraftState(s.exists() ? { ...DEFAULT_STATE, ...s.val() } : DEFAULT_STATE))
-    const u3 = onValue(ref(db, '/draftSession/playerState'), s => setPlayerState(s.val() ?? {}))
-    const u4 = onValue(ref(db, '/playerOverrides'),          s => setOverrides(s.val() ?? {}))
-    const u5 = onValue(ref(db, '/config/draft'),             s => { if (s.exists()) setDraftConfig(c => ({ ...c, ...s.val() })) })
+    const u1 = onValue(ref(db, `${draftSessionPath(campeonatoId)}/captains`),    s => setCaptains(s.val() ?? {}))
+    const u2 = onValue(ref(db, `${draftSessionPath(campeonatoId)}/state`),       s => setDraftState(s.exists() ? { ...DEFAULT_STATE, ...s.val() } : DEFAULT_STATE))
+    const u3 = onValue(ref(db, `${draftSessionPath(campeonatoId)}/playerState`), s => setPlayerState(s.val() ?? {}))
+    const u4 = onValue(ref(db, playerOverridesPath(campeonatoId)),               s => setOverrides(s.val() ?? {}))
+    const u5 = onValue(ref(db, configDraftPath(campeonatoId)),                   s => { if (s.exists()) setDraftConfig(c => ({ ...c, ...s.val() })) })
     return () => { u1(); u2(); u3(); u4(); u5() }
-  }, [])
+  }, [campeonatoId])
 
   useEffect(() => {
     fetch(import.meta.env.VITE_SHEETS_WEBAPP_URL)
@@ -95,11 +98,11 @@ export default function AdminDraftSimulator() {
       const isExtraTurn = draftState.turnoExtra === actingAs
       const updates     = {}
 
-      updates[`/draftSession/captains/${actingAs}/roster/${player.id}`] = { discord: player.discord, preco, isCaptain: false }
-      updates[`/draftSession/playerState/${player.id}/preco`]           = preco + 1
-      updates[`/draftSession/playerState/${player.id}/ownedBy`]         = actingAs
-      updates[`/draftSession/captains/${actingAs}/moedas`]              = myCap.moedas - preco
-      updates[`/draftSession/state/lastAction`] = {
+      updates[`${draftSessionPath(campeonatoId)}/captains/${actingAs}/roster/${player.id}`] = { discord: player.discord, preco, isCaptain: false }
+      updates[`${draftSessionPath(campeonatoId)}/playerState/${player.id}/preco`]           = preco + 1
+      updates[`${draftSessionPath(campeonatoId)}/playerState/${player.id}/ownedBy`]         = actingAs
+      updates[`${draftSessionPath(campeonatoId)}/captains/${actingAs}/moedas`]              = myCap.moedas - preco
+      updates[`${draftSessionPath(campeonatoId)}/state/lastAction`] = {
         type: 'buy', playerDiscord: player.discord,
         playerElo: player.elo, playerRole: player.rolePrimaria,
         byTeamId: actingAs, byTeamNome: myCap.nome, byTeamEmoji: myCap.emoji, byTeamCor: myCap.cor,
@@ -107,16 +110,16 @@ export default function AdminDraftSimulator() {
       }
 
       if (isExtraTurn) {
-        updates[`/draftSession/state/turnoExtra`] = null
+        updates[`${draftSessionPath(campeonatoId)}/state/turnoExtra`] = null
       } else {
         const myNewSize = rosterSize + 1
         const next = proximoCom(sortedCaptains, captains, actingAs, myNewSize, draftConfig.maxPlayers)
         if (!next) {
-          updates[`/draftSession/state/status`] = 'encerrado'
+          updates[`${draftSessionPath(campeonatoId)}/state/status`] = 'encerrado'
           addLog(`[SIM] ${myCap.nome} comprou ${player.discord} por ${preco}🪙 → leilão encerrado automaticamente`, 'ok')
         } else {
-          updates[`/draftSession/state/turnoAtual`] = next.id
-          if (next.novaRodada) updates[`/draftSession/state/rodada`] = (draftState.rodada ?? 1) + 1
+          updates[`${draftSessionPath(campeonatoId)}/state/turnoAtual`] = next.id
+          if (next.novaRodada) updates[`${draftSessionPath(campeonatoId)}/state/rodada`] = (draftState.rodada ?? 1) + 1
         }
       }
 
@@ -156,14 +159,14 @@ export default function AdminDraftSimulator() {
       const paguei      = fromCap?.roster?.[player.id]?.preco ?? 0
       const updates     = {}
 
-      updates[`/draftSession/captains/${fromId}/roster/${player.id}`]   = null
-      updates[`/draftSession/captains/${actingAs}/roster/${player.id}`] = { discord: player.discord, preco, isCaptain: false }
-      updates[`/draftSession/playerState/${player.id}/preco`]           = preco + 1
-      updates[`/draftSession/playerState/${player.id}/ownedBy`]         = actingAs
-      updates[`/draftSession/captains/${actingAs}/moedas`]              = myCap.moedas - preco
-      updates[`/draftSession/captains/${fromId}/moedas`]                = (fromCap?.moedas ?? 0) + paguei
-      updates[`/draftSession/state/turnoExtra`]                         = fromId
-      updates[`/draftSession/state/lastAction`] = {
+      updates[`${draftSessionPath(campeonatoId)}/captains/${fromId}/roster/${player.id}`]   = null
+      updates[`${draftSessionPath(campeonatoId)}/captains/${actingAs}/roster/${player.id}`] = { discord: player.discord, preco, isCaptain: false }
+      updates[`${draftSessionPath(campeonatoId)}/playerState/${player.id}/preco`]           = preco + 1
+      updates[`${draftSessionPath(campeonatoId)}/playerState/${player.id}/ownedBy`]         = actingAs
+      updates[`${draftSessionPath(campeonatoId)}/captains/${actingAs}/moedas`]              = myCap.moedas - preco
+      updates[`${draftSessionPath(campeonatoId)}/captains/${fromId}/moedas`]                = (fromCap?.moedas ?? 0) + paguei
+      updates[`${draftSessionPath(campeonatoId)}/state/turnoExtra`]                         = fromId
+      updates[`${draftSessionPath(campeonatoId)}/state/lastAction`] = {
         type: 'steal', playerDiscord: player.discord,
         playerElo: player.elo, playerRole: player.rolePrimaria,
         byTeamId: actingAs, byTeamNome: myCap.nome, byTeamEmoji: myCap.emoji, byTeamCor: myCap.cor,
@@ -174,8 +177,8 @@ export default function AdminDraftSimulator() {
       if (!isExtraTurn) {
         const myNewSize = rosterSize + 1
         const next = proximoCom(sortedCaptains, captains, actingAs, myNewSize, draftConfig.maxPlayers)
-        updates[`/draftSession/state/turnoAtual`] = next?.id ?? fromId
-        if (next?.novaRodada) updates[`/draftSession/state/rodada`] = (draftState.rodada ?? 1) + 1
+        updates[`${draftSessionPath(campeonatoId)}/state/turnoAtual`] = next?.id ?? fromId
+        if (next?.novaRodada) updates[`${draftSessionPath(campeonatoId)}/state/rodada`] = (draftState.rodada ?? 1) + 1
       }
 
       await update(ref(db), updates)

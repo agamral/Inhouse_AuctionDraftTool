@@ -146,5 +146,56 @@
     "players_count": "{{n}} players",
     "spent": "spent",
     "remaining": "Remaining coins:"
+  },
+  "home_mestre": {
+    "subtitle": "Heroes of the Storm",
+    "next_event": "Next Event",
+    "status_running": "In Progress",
+    "status_draft": "Auction",
+    "status_open": "Registrations Open",
+    "status_ended": "Ended",
+    "status_waiting": "Waiting",
+    "cta_view": "View championship →",
+    "cta_history": "View history →",
+    "history_link": "See all previous editions →",
+    "empty": "No championships available yet."
+  },
+  "historico": {
+    "title": "History",
+    "subtitle": "All Copa Inhouse editions.",
+    "empty": "No editions archived yet.",
+    "view_details": "View details →",
+    "back": "← History",
+    "not_found": "Edition not found",
+    "teams": "teams",
+    "matches": "matches",
+    "no_data": "No detailed data for this edition.",
+    "section_teams": "Teams",
+    "section_matches": "Matches",
+    "round_label": "Round",
+    "closed_on": "Ended on",
+    "cap_badge": "CAP",
+    "no_roster": "No roster recorded."
+  },
+  "hero_draft": {
+    "loading": "Loading draft...",
+    "not_found": "Session not found.",
+    "waiting_admin": "Waiting for admin to start the Hero Draft...",
+    "countdown_label": "DRAFT STARTING IN",
+    "turn_ban": "Ban a hero",
+    "turn_pick": "Choose a hero",
+    "waiting_opponent": "Waiting for opponent...",
+    "confirm": "Confirm",
+    "draft_waiting": "Waiting for draft to start...",
+    "draft_ended": "Draft over!"
+  },
+  "hero_espectador": {
+    "connecting": "Connecting to draft...",
+    "no_draft": "No active draft.",
+    "countdown_label": "DRAFT STARTING IN",
+    "action_ban": "BAN",
+    "action_pick": "PICK",
+    "draft_waiting": "Waiting for draft to start...",
+    "draft_ended": "DRAFT ENDED"
   }
 }

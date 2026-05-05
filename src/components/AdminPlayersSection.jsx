@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import { ref, onValue, set, remove } from 'firebase/database'
 import { db } from '../firebase/database'
+import { useCampeonato } from '../contexts/CampeonatoContext'
+import { playerOverridesPath } from '../utils/campeonatoPaths'
 import RoleIcon from './RoleIcon'
 import EloIcon, { ELO_CONFIG } from './EloIcon'
 
@@ -17,6 +19,7 @@ const FILTER_LABELS = {
 }
 
 export default function AdminPlayersSection() {
+  const { campeonatoId } = useCampeonato()
   const [players, setPlayers]     = useState([])
   const [overrides, setOverrides] = useState({})
   const [loading, setLoading]     = useState(true)
@@ -33,16 +36,16 @@ export default function AdminPlayersSection() {
 
   // Escuta overrides do Firebase em tempo real
   useEffect(() => {
-    const unsub = onValue(ref(db, '/playerOverrides'), (snap) => {
+    const unsub = onValue(ref(db, playerOverridesPath(campeonatoId)), (snap) => {
       setOverrides(snap.val() ?? {})
     })
     return unsub
-  }, [])
+  }, [campeonatoId])
 
   async function setOverride(playerId, field, value) {
     const current = overrides[playerId] ?? {}
     const updated = { ...current, [field]: value }
-    await set(ref(db, `/playerOverrides/${playerId}`), updated)
+    await set(ref(db, `${playerOverridesPath(campeonatoId)}/${playerId}`), updated)
   }
 
   async function toggleConfirm(playerId) {
