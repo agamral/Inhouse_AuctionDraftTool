@@ -3,8 +3,10 @@ import { useTranslation } from 'react-i18next'
 import { ref, onValue } from 'firebase/database'
 import { db } from '../firebase/database'
 import { useModules } from '../hooks/useConfig'
+import { useAuth } from '../hooks/useAuth'
 import RoleIcon from '../components/RoleIcon'
 import EloIcon, { ELO_CONFIG } from '../components/EloIcon'
+import PaginaInativa from '../components/PaginaInativa'
 import './Inscritos.css'
 
 const PAISES_FLAG = {
@@ -36,7 +38,8 @@ function paisFlag(pais) {
 
 export default function Inscritos() {
   const { t } = useTranslation()
-  const { privacidadeAtiva } = useModules()
+  const { privacidadeAtiva, inscricaoAberta } = useModules()
+  const { isAdmin, capitao } = useAuth()
   const [players,   setPlayers]   = useState([])
   const [overrides, setOverrides] = useState({})
   const [loading,   setLoading]   = useState(true)
@@ -59,6 +62,10 @@ export default function Inscritos() {
     })
     return unsub
   }, [])
+
+  if (!isAdmin && !capitao && !inscricaoAberta) {
+    return <PaginaInativa icone="📋" titulo="Lista em preparação" descricao="A lista de inscritos será aberta pelos organizadores em breve." />
+  }
 
   return (
     <main className="page">

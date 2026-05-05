@@ -3,6 +3,7 @@ import { ref, onValue } from 'firebase/database'
 import { db } from '../firebase/database'
 import { useTranslation } from 'react-i18next'
 import { useModules } from '../hooks/useConfig'
+import { useAuth } from '../hooks/useAuth'
 import { useCampeonato } from '../contexts/CampeonatoContext'
 import { draftSessionPath, playerOverridesPath } from '../utils/campeonatoPaths'
 import EloIcon, { ELO_CONFIG } from '../components/EloIcon'
@@ -13,7 +14,8 @@ const DEFAULT_STATE = { status: 'aguardando', turnoAtual: null, turnoExtra: null
 
 export default function Espectador() {
   const { t } = useTranslation()
-  const { privacidadeAtiva } = useModules()
+  const { privacidadeAtiva, espectadorAtivo } = useModules()
+  const { isAdmin } = useAuth()
   const { idPublico } = useCampeonato()
 
   const [captains,    setCaptains]    = useState({})
@@ -50,6 +52,10 @@ export default function Espectador() {
       setAnnounceKey(ts)
     }
   }, [draftState.lastAction?.ts])
+
+  if (!isAdmin && !espectadorAtivo) {
+    return <PaginaInativa icone="📺" titulo="Espectador indisponível" descricao="O modo espectador será aberto quando o leilão estiver em andamento." />
+  }
 
   const sortedCaptains   = Object.entries(captains).sort(([, a], [, b]) => a.seed - b.seed)
   const mid              = Math.ceil(sortedCaptains.length / 2)

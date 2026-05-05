@@ -2,14 +2,17 @@ import { useState, useEffect } from 'react'
 import { ref, onValue } from 'firebase/database'
 import { db } from '../firebase/database'
 import { useModules } from '../hooks/useConfig'
+import { useAuth } from '../hooks/useAuth'
 import { useCampeonato } from '../contexts/CampeonatoContext'
+import PaginaInativa from '../components/PaginaInativa'
 import { teamPath, confrontosPath } from '../utils/campeonatoPaths'
 import { STATUS_CONFRONTO, TIPO_CONFRONTO } from '../utils/scheduling'
 import './Elenco.css'
 
 export default function Elenco() {
   const { idPublico } = useCampeonato()
-  const { privacidadeAtiva } = useModules()
+  const { privacidadeAtiva, campeonatoAtivo } = useModules()
+  const { isAdmin } = useAuth()
   const [teams,      setTeams]      = useState({})
   const [confrontos, setConfrontos] = useState({})
   const [busca,      setBusca]      = useState('')
@@ -45,6 +48,10 @@ export default function Elenco() {
       }
     })
     return { v, d }
+  }
+
+  if (!isAdmin && !campeonatoAtivo) {
+    return <PaginaInativa icone="👥" titulo="Elenco em preparação" descricao="Os elencos dos times serão publicados quando o campeonato iniciar." />
   }
 
   const timesArr = Object.entries(teams)

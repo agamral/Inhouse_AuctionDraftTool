@@ -2,14 +2,19 @@ import { useState, useEffect } from 'react'
 import { ref, onValue } from 'firebase/database'
 import { db } from '../firebase/database'
 import { useTranslation } from 'react-i18next'
+import { useAuth } from '../hooks/useAuth'
+import { useModules } from '../hooks/useConfig'
 import { useCampeonato } from '../contexts/CampeonatoContext'
 import { draftSessionPath } from '../utils/campeonatoPaths'
 import EloIcon, { ELO_CONFIG } from '../components/EloIcon'
 import RoleIcon from '../components/RoleIcon'
+import PaginaInativa from '../components/PaginaInativa'
 import './Resultados.css'
 
 export default function Resultados() {
   const { t } = useTranslation()
+  const { isAdmin } = useAuth()
+  const modules = useModules()
   const { idPublico, campeonatoPublico } = useCampeonato()
   const [captains,   setCaptains]   = useState({})
   const [draftState, setDraftState] = useState(null)
@@ -32,6 +37,10 @@ export default function Resultados() {
       .then(data => { if (data.ok) setPlayers(data.players) })
       .catch(() => {})
   }, [])
+
+  if (!isAdmin && !modules.campeonatoAtivo) {
+    return <PaginaInativa icone="🏆" titulo="Resultados em breve" descricao="Os times formados serão exibidos aqui quando o campeonato começar." />
+  }
 
   if (loading) return (
     <main className="page">

@@ -3,7 +3,7 @@ import { ref, onValue, update, set } from 'firebase/database'
 import { db } from '../firebase/database'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../hooks/useAuth'
-import { useConteudo } from '../hooks/useConfig'
+import { useConteudo, useModules } from '../hooks/useConfig'
 import { useCampeonato } from '../contexts/CampeonatoContext'
 import { draftSessionPath, playerOverridesPath } from '../utils/campeonatoPaths'
 import RoleIcon from '../components/RoleIcon'
@@ -18,6 +18,7 @@ export default function Draft() {
   const { t } = useTranslation()
   const { isAdmin, capitao } = useAuth()
   const conteudo = useConteudo()
+  const modules = useModules()
   const { idPublico } = useCampeonato()
 
   const [captainSession, setCaptainSession] = useState(() => {
@@ -76,6 +77,10 @@ export default function Draft() {
   function handleLogout() {
     sessionStorage.removeItem('captainSession')
     setCaptainSession(null)
+  }
+
+  if (!isAdmin && !capitao && !modules.draftAtivo) {
+    return <PaginaInativa icone="⚔️" titulo="Leilão não iniciado" descricao="O leilão de times ainda não foi aberto pelos organizadores." />
   }
 
   // Só mostra tela de PIN se não está logado via Firebase Auth nem como admin

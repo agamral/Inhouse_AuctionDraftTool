@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react'
 import { ref, onValue } from 'firebase/database'
 import { db } from '../firebase/database'
+import { useAuth } from '../hooks/useAuth'
+import { useModules } from '../hooks/useConfig'
 import { useCampeonato } from '../contexts/CampeonatoContext'
+import PaginaInativa from '../components/PaginaInativa'
 import { teamPath, rodadasPath, confrontosPath } from '../utils/campeonatoPaths'
 import {
   BRACKET_UPPER, BRACKET_LOWER, BRACKET_LABELS,
@@ -36,6 +39,8 @@ function calcPositions(rounds) {
 
 // ── Componente principal ───────────────────────────────────────────────────────
 export default function Chave() {
+  const { isAdmin } = useAuth()
+  const modules = useModules()
   const { idPublico } = useCampeonato()
   const [confrontos, setConfrontos] = useState({})
   const [rodadas,    setRodadas]    = useState({})
@@ -51,6 +56,10 @@ export default function Chave() {
   ), [idPublico])
   useEffect(() => onValue(ref(db, rodadasPath(idPublico)), snap => setRodadas(snap.val() ?? {})), [idPublico])
   useEffect(() => onValue(ref(db, teamPath(idPublico)),    snap => setTimes(snap.val()   ?? {})), [idPublico])
+
+  if (!isAdmin && !modules.campeonatoAtivo) {
+    return <PaginaInativa icone="🏅" titulo="Chave em preparação" descricao="O bracket do campeonato será publicado quando as partidas começarem." />
+  }
 
   if (loading) return (
     <div className="chave-root">

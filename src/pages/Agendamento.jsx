@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { ref, onValue, set, update } from 'firebase/database'
 import { db } from '../firebase/database'
 import { useAuth } from '../hooks/useAuth'
-import { useConteudo } from '../hooks/useConfig'
+import { useConteudo, useModules } from '../hooks/useConfig'
+import PaginaInativa from '../components/PaginaInativa'
 import { useCampeonato } from '../contexts/CampeonatoContext'
 import { teamPath, rodadasPath, confrontosPath, disponibilidadePath } from '../utils/campeonatoPaths'
 import HeroDraftAlerta from '../components/HeroDraftAlerta'
@@ -143,6 +144,7 @@ function PartidaCard({ c, teams }) {
 export default function Agendamento() {
   const { user, isAdmin, capitao } = useAuth()
   const conteudo = useConteudo()
+  const modules = useModules()
   const { idPublico } = useCampeonato()
 
   const [teams,        setTeams]    = useState({})
@@ -255,6 +257,10 @@ export default function Agendamento() {
       setSaving(null)
     }
   }, [confrontos, selecoes, dispon, teamSel]) // eslint-disable-line
+
+  if (!isAdmin && !capitao && !modules.campeonatoAtivo) {
+    return <PaginaInativa icone="📅" titulo="Agenda em preparação" descricao="A agenda de partidas estará disponível quando o campeonato começar." />
+  }
 
   // ── Render ──────────────────────────────────────────────────────────────────
 

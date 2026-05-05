@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react'
 import { ref, onValue } from 'firebase/database'
 import { db } from '../firebase/database'
+import { useAuth } from '../hooks/useAuth'
+import { useModules } from '../hooks/useConfig'
 import { useCampeonato } from '../contexts/CampeonatoContext'
+import PaginaInativa from '../components/PaginaInativa'
 import { teamPath, rodadasPath, confrontosPath } from '../utils/campeonatoPaths'
 import {
   calcularClassificacao, calcularPontos,
@@ -11,6 +14,8 @@ import {
 import './Tabela.css'
 
 export default function Tabela() {
+  const { isAdmin } = useAuth()
+  const modules = useModules()
   const { idPublico } = useCampeonato()
   const [rodadas,    setRodadas]    = useState({})
   const [confrontos, setConfrontos] = useState({})
@@ -70,6 +75,10 @@ export default function Tabela() {
         return 'E'
       })
       .reverse() // mais antigo primeiro
+  }
+
+  if (!isAdmin && !modules.campeonatoAtivo) {
+    return <PaginaInativa icone="📊" titulo="Classificação em breve" descricao="A tabela de classificação estará disponível quando o campeonato começar." />
   }
 
   // ── Render ─────────────────────────────────────────────────────────────────
