@@ -6,8 +6,10 @@ import { useModules } from '../hooks/useConfig'
 import { useAuth } from '../hooks/useAuth'
 import { useCampeonato } from '../contexts/CampeonatoContext'
 import { draftSessionPath, playerOverridesPath } from '../utils/campeonatoPaths'
+import { useConteudo } from '../hooks/useConfig'
 import EloIcon, { ELO_CONFIG } from '../components/EloIcon'
 import RoleIcon from '../components/RoleIcon'
+import PaginaInativa from '../components/PaginaInativa'
 import './Espectador.css'
 
 const DEFAULT_STATE = { status: 'aguardando', turnoAtual: null, turnoExtra: null, rodada: 1, lastAction: null }
@@ -17,14 +19,16 @@ export default function Espectador() {
   const { privacidadeAtiva, espectadorAtivo, loading: modulesLoading } = useModules()
   const { isAdmin } = useAuth()
   const { idPublico } = useCampeonato()
+  const conteudo = useConteudo()
 
   const [captains,    setCaptains]    = useState({})
   const [draftState,  setDraftState]  = useState(DEFAULT_STATE)
   const [playerState, setPlayerState] = useState({})
   const [overrides,   setOverrides]   = useState({})
   const [players,     setPlayers]     = useState([])
-  const [cupName,     setCupName]     = useState('Copa Inhouse')
   const [announceKey, setAnnounceKey] = useState(null)
+
+  const cupName = conteudo.cupName || 'Copa Inhouse'
 
   const prevActionTs = useRef(null)
 
@@ -33,8 +37,7 @@ export default function Espectador() {
     const u2 = onValue(ref(db, `${draftSessionPath(idPublico)}/state`),       s => setDraftState(s.exists() ? { ...DEFAULT_STATE, ...s.val() } : DEFAULT_STATE))
     const u3 = onValue(ref(db, `${draftSessionPath(idPublico)}/playerState`), s => setPlayerState(s.val() ?? {}))
     const u4 = onValue(ref(db, playerOverridesPath(idPublico)),               s => setOverrides(s.val() ?? {}))
-    const u5 = onValue(ref(db, '/config/settings/cupName'),                   s => { if (s.exists()) setCupName(s.val()) })
-    return () => { u1(); u2(); u3(); u4(); u5() }
+    return () => { u1(); u2(); u3(); u4() }
   }, [idPublico])
 
   useEffect(() => {

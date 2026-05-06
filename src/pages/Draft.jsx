@@ -60,7 +60,10 @@ export default function Draft() {
   // Se capitão está logado via Firebase Auth, identifica automaticamente no draftSession
   useEffect(() => {
     if (!capitao || captainSession || Object.keys(captains).length === 0) return
-    const match = Object.entries(captains).find(([, c]) => c.nome === capitao.nome)
+    const match = Object.entries(captains).find(([, c]) =>
+      (c.capitaoNome && c.capitaoNome === capitao.capitaoNome) ||
+      c.nome === capitao.nome
+    )
     if (match) {
       setCaptainSession({ captainId: match[0], captainName: match[1].capitaoNome, viaAuth: true })
     }
@@ -153,8 +156,10 @@ export default function Draft() {
     const ps = playerState[player.id]
     if (!ps?.ownedBy || ps.ownedBy === myId) return
 
-    const preco   = ps.preco                              // custo do roubo = preço atual
+    const preco      = ps.preco                           // custo do roubo = preço atual
     if (myCap.moedas < preco) return
+    const rosterAtual = Object.keys(myCap.roster ?? {}).length + 1
+    if (rosterAtual >= draftConfig.maxPlayers) return
 
     const fromId  = ps.ownedBy
     const fromCap = captains[fromId]
@@ -370,7 +375,9 @@ export default function Draft() {
                     const ps       = playerState[p.id]
                     const preco    = ps?.preco ?? 0
                     const owner    = captains[ps?.ownedBy]
-                    const canSteal = isMyTurn && (myCap?.moedas ?? 0) >= preco
+                    const canSteal = isMyTurn &&
+                                     (myCap?.moedas ?? 0) >= preco &&
+                                     Object.keys(myCap?.roster ?? {}).length + 1 < draftConfig.maxPlayers
                     return (
                       <PlayerRow
                         key={p.id} player={p} preco={preco}
