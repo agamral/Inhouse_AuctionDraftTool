@@ -11,7 +11,7 @@ import './Elenco.css'
 
 export default function Elenco() {
   const { idPublico } = useCampeonato()
-  const { privacidadeAtiva, campeonatoAtivo } = useModules()
+  const { privacidadeAtiva, campeonatoAtivo, loading: modulesLoading } = useModules()
   const { isAdmin } = useAuth()
   const [teams,      setTeams]      = useState({})
   const [confrontos, setConfrontos] = useState({})
@@ -50,7 +50,7 @@ export default function Elenco() {
     return { v, d }
   }
 
-  if (!isAdmin && !campeonatoAtivo) {
+  if (!modulesLoading && !isAdmin && !campeonatoAtivo) {
     return <PaginaInativa icone="👥" titulo="Elenco em preparação" descricao="Os elencos dos times serão publicados quando o campeonato iniciar." />
   }
 

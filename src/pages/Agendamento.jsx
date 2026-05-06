@@ -258,7 +258,7 @@ export default function Agendamento() {
     }
   }, [confrontos, selecoes, dispon, teamSel]) // eslint-disable-line
 
-  if (!isAdmin && !capitao && !modules.campeonatoAtivo) {
+  if (!modules.loading && !isAdmin && !capitao && !modules.campeonatoAtivo) {
     return <PaginaInativa icone="📅" titulo="Agenda em preparação" descricao="A agenda de partidas estará disponível quando o campeonato começar." />
   }
 

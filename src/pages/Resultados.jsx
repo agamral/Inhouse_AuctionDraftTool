@@ -38,7 +38,7 @@ export default function Resultados() {
       .catch(() => {})
   }, [])
 
-  if (!isAdmin && !modules.campeonatoAtivo) {
+  if (!modules.loading && !isAdmin && !modules.campeonatoAtivo) {
     return <PaginaInativa icone="🏆" titulo="Resultados em breve" descricao="Os times formados serão exibidos aqui quando o campeonato começar." />
   }
 

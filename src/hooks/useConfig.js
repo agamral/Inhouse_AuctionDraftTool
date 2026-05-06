@@ -79,17 +79,20 @@ export function useModules(campeonatoId = undefined) {
   const idPublico = useIdPublico()
   const id = campeonatoId === undefined ? idPublico : campeonatoId
   const [modules, setModules] = useState(DEFAULT_MODULES)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    setLoading(true)
     const path = configPath(id, 'modules')
     const unsub = onValue(ref(db, path), (snap) => {
       if (snap.exists()) setModules({ ...DEFAULT_MODULES, ...snap.val() })
       else setModules(DEFAULT_MODULES)
+      setLoading(false)
     })
     return unsub
   }, [id])
 
-  return modules
+  return { ...modules, loading }
 }
 
 /**

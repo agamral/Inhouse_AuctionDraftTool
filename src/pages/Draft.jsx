@@ -79,7 +79,7 @@ export default function Draft() {
     setCaptainSession(null)
   }
 
-  if (!isAdmin && !capitao && !modules.draftAtivo) {
+  if (!modules.loading && !isAdmin && !capitao && !modules.draftAtivo) {
     return <PaginaInativa icone="⚔️" titulo="Leilão não iniciado" descricao="O leilão de times ainda não foi aberto pelos organizadores." />
   }
 

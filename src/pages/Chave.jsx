@@ -57,7 +57,7 @@ export default function Chave() {
   useEffect(() => onValue(ref(db, rodadasPath(idPublico)), snap => setRodadas(snap.val() ?? {})), [idPublico])
   useEffect(() => onValue(ref(db, teamPath(idPublico)),    snap => setTimes(snap.val()   ?? {})), [idPublico])
 
-  if (!isAdmin && !modules.campeonatoAtivo) {
+  if (!modules.loading && !isAdmin && !modules.campeonatoAtivo) {
     return <PaginaInativa icone="🏅" titulo="Chave em preparação" descricao="O bracket do campeonato será publicado quando as partidas começarem." />
   }
 

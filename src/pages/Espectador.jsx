@@ -14,7 +14,7 @@ const DEFAULT_STATE = { status: 'aguardando', turnoAtual: null, turnoExtra: null
 
 export default function Espectador() {
   const { t } = useTranslation()
-  const { privacidadeAtiva, espectadorAtivo } = useModules()
+  const { privacidadeAtiva, espectadorAtivo, loading: modulesLoading } = useModules()
   const { isAdmin } = useAuth()
   const { idPublico } = useCampeonato()
 
@@ -53,7 +53,7 @@ export default function Espectador() {
     }
   }, [draftState.lastAction?.ts])
 
-  if (!isAdmin && !espectadorAtivo) {
+  if (!modulesLoading && !isAdmin && !espectadorAtivo) {
     return <PaginaInativa icone="📺" titulo="Espectador indisponível" descricao="O modo espectador será aberto quando o leilão estiver em andamento." />
   }
 

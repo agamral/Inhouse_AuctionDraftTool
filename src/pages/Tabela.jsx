@@ -77,7 +77,7 @@ export default function Tabela() {
       .reverse() // mais antigo primeiro
   }
 
-  if (!isAdmin && !modules.campeonatoAtivo) {
+  if (!modules.loading && !isAdmin && !modules.campeonatoAtivo) {
     return <PaginaInativa icone="📊" titulo="Classificação em breve" descricao="A tabela de classificação estará disponível quando o campeonato começar." />
   }
 
