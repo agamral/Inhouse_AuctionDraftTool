@@ -19,6 +19,7 @@ function useIdPublico() {
 
 export const DEFAULT_MODULES = {
   inscricaoAberta:  false,
+  inscritosAbertos: false,
   draftAtivo:       false,
   espectadorAtivo:  false,
   campeonatoAtivo:  false,

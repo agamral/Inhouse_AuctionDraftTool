@@ -38,7 +38,7 @@ function paisFlag(pais) {
 
 export default function Inscritos() {
   const { t } = useTranslation()
-  const { privacidadeAtiva, inscricaoAberta, loading: modulesLoading } = useModules()
+  const { privacidadeAtiva, inscritosAbertos, loading: modulesLoading } = useModules()
   const { isAdmin, capitao } = useAuth()
   const [players,   setPlayers]   = useState([])
   const [overrides, setOverrides] = useState({})
@@ -63,7 +63,7 @@ export default function Inscritos() {
     return unsub
   }, [])
 
-  if (!modulesLoading && !isAdmin && !capitao && !inscricaoAberta) {
+  if (!modulesLoading && !isAdmin && !capitao && !inscritosAbertos) {
     return <PaginaInativa icone="📋" titulo="Lista em preparação" descricao="A lista de inscritos será aberta pelos organizadores em breve." />
   }
 

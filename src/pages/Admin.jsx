@@ -53,6 +53,7 @@ export default function Admin() {
 
   const [modules, setModules] = useState({
     inscricaoAberta:   false,
+    inscritosAbertos:  false,  // Lista de inscritos visível publicamente
     draftAtivo:        false,  // Leilão ativo
     espectadorAtivo:   false,  // Espectador do leilão
     campeonatoAtivo:   false,  // Campeonato iniciado (agendamento, tabela, chave, elenco)
@@ -190,10 +191,11 @@ export default function Admin() {
         {/* Status rápido dos módulos */}
         <div className="admin-dash-status">
           {[
-            { key: 'inscricaoAberta', label: 'Inscrições' },
-            { key: 'draftAtivo',      label: 'Leilão'     },
-            { key: 'campeonatoAtivo', label: 'Campeonato' },
-            { key: 'heroDraftAtivo',  label: 'Hero Draft' },
+            { key: 'inscricaoAberta',  label: 'Inscrições' },
+            { key: 'inscritosAbertos', label: 'Inscritos'  },
+            { key: 'draftAtivo',       label: 'Leilão'     },
+            { key: 'campeonatoAtivo',  label: 'Campeonato' },
+            { key: 'heroDraftAtivo',   label: 'Hero Draft' },
           ].map(({ key, label }) => (
             <span key={key} className={`admin-status-pill ${modules[key] ? 'on' : 'off'}`}>
               <span className="admin-status-dot" />
@@ -232,6 +234,12 @@ export default function Admin() {
                   desc="Exibe o link de inscrição no nav e permite novos envios"
                   checked={modules.inscricaoAberta}
                   onChange={() => toggleModule('inscricaoAberta')}
+                />
+                <ToggleRow
+                  label="Lista de inscritos visível"
+                  desc="Libera a página de inscritos para acesso público"
+                  checked={modules.inscritosAbertos}
+                  onChange={() => toggleModule('inscritosAbertos')}
                 />
                 <ToggleRow
                   label="Leilão ativo"
