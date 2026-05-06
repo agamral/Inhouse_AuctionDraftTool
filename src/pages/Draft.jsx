@@ -5,11 +5,12 @@ import { useTranslation } from 'react-i18next'
 import { useAuth } from '../hooks/useAuth'
 import { useConteudo, useModules } from '../hooks/useConfig'
 import { useCampeonato } from '../contexts/CampeonatoContext'
-import { draftSessionPath, playerOverridesPath } from '../utils/campeonatoPaths'
+import { draftSessionPath, playerOverridesPath, configDraftPath } from '../utils/campeonatoPaths'
 import RoleIcon from '../components/RoleIcon'
 import EloIcon, { ELO_CONFIG } from '../components/EloIcon'
 import CaptainLogin from '../components/CaptainLogin'
 import HeroDraftAlerta from '../components/HeroDraftAlerta'
+import PaginaInativa from '../components/PaginaInativa'
 
 const DEFAULT_STATE  = { status: 'aguardando', turnoAtual: null, turnoExtra: null, rodada: 1 }
 const DEFAULT_CONFIG = { moedas: 15, minPlayers: 5, maxPlayers: 7 }
@@ -44,7 +45,7 @@ export default function Draft() {
     const u2 = onValue(ref(db, `${draftSessionPath(idPublico)}/state`),       s => { setDraftState(s.exists() ? { ...DEFAULT_STATE, ...s.val() } : DEFAULT_STATE); done() })
     const u3 = onValue(ref(db, `${draftSessionPath(idPublico)}/playerState`), s => { setPlayerState(s.val() ?? {}); done() })
     const u4 = onValue(ref(db, playerOverridesPath(idPublico)),               s => { setOverrides(s.val() ?? {}); done() })
-    const u5 = onValue(ref(db, '/config/draft'),                              s => { if (s.exists()) setDraftConfig(c => ({ ...c, ...s.val() })) })
+    const u5 = onValue(ref(db, configDraftPath(idPublico)),                   s => { if (s.exists()) setDraftConfig(c => ({ ...c, ...s.val() })) })
 
     return () => { u1(); u2(); u3(); u4(); u5() }
   }, [idPublico])
@@ -116,12 +117,13 @@ export default function Draft() {
     const rosterSize = Object.keys(myCap.roster ?? {}).length + 1
     if (rosterSize >= draftConfig.maxPlayers) return
 
+    const ses = draftSessionPath(idPublico)
     const updates = {}
-    updates[`/draftSession/captains/${myId}/roster/${player.id}`] = { discord: player.discord, preco, isCaptain: false }
-    updates[`/draftSession/playerState/${player.id}/preco`]   = preco + 1
-    updates[`/draftSession/playerState/${player.id}/ownedBy`] = myId
-    updates[`/draftSession/captains/${myId}/moedas`]          = myCap.moedas - preco
-    updates[`/draftSession/state/lastAction`] = {
+    updates[`${ses}/captains/${myId}/roster/${player.id}`] = { discord: player.discord, preco, isCaptain: false }
+    updates[`${ses}/playerState/${player.id}/preco`]   = preco + 1
+    updates[`${ses}/playerState/${player.id}/ownedBy`] = myId
+    updates[`${ses}/captains/${myId}/moedas`]          = myCap.moedas - preco
+    updates[`${ses}/state/lastAction`] = {
       type: 'buy', playerDiscord: player.discord,
       playerElo: player.elo, playerRole: player.rolePrimaria,
       byTeamId: myId, byTeamNome: myCap.nome, byTeamEmoji: myCap.emoji, byTeamCor: myCap.cor,
@@ -129,15 +131,15 @@ export default function Draft() {
     }
 
     if (isExtraTurn) {
-      updates[`/draftSession/state/turnoExtra`] = null
+      updates[`${ses}/state/turnoExtra`] = null
     } else {
       const myNewSize = rosterSize + 1
       const next = proximoCom(sortedCaptains, captains, myId, myNewSize, draftConfig.maxPlayers)
       if (!next) {
-        updates[`/draftSession/state/status`] = 'encerrado'
+        updates[`${ses}/state/status`] = 'encerrado'
       } else {
-        updates[`/draftSession/state/turnoAtual`] = next.id
-        if (next.novaRodada) updates[`/draftSession/state/rodada`] = (draftState.rodada ?? 1) + 1
+        updates[`${ses}/state/turnoAtual`] = next.id
+        if (next.novaRodada) updates[`${ses}/state/rodada`] = (draftState.rodada ?? 1) + 1
       }
     }
 
@@ -158,23 +160,24 @@ export default function Draft() {
     const fromCap = captains[fromId]
     const paguei  = fromCap?.roster?.[player.id]?.preco ?? 0 // o que o dono pagou (reembolso)
 
+    const ses = draftSessionPath(idPublico)
     const updates = {}
 
     // Move o jogador de roster
-    updates[`/draftSession/captains/${fromId}/roster/${player.id}`] = null
-    updates[`/draftSession/captains/${myId}/roster/${player.id}`]   = { discord: player.discord, preco, isCaptain: false }
+    updates[`${ses}/captains/${fromId}/roster/${player.id}`] = null
+    updates[`${ses}/captains/${myId}/roster/${player.id}`]   = { discord: player.discord, preco, isCaptain: false }
 
     // Preço sobe +1
-    updates[`/draftSession/playerState/${player.id}/preco`]   = preco + 1
-    updates[`/draftSession/playerState/${player.id}/ownedBy`] = myId
+    updates[`${ses}/playerState/${player.id}/preco`]   = preco + 1
+    updates[`${ses}/playerState/${player.id}/ownedBy`] = myId
 
     // Transação de moedas
-    updates[`/draftSession/captains/${myId}/moedas`]   = myCap.moedas - preco
-    updates[`/draftSession/captains/${fromId}/moedas`] = (fromCap?.moedas ?? 0) + paguei
+    updates[`${ses}/captains/${myId}/moedas`]   = myCap.moedas - preco
+    updates[`${ses}/captains/${fromId}/moedas`] = (fromCap?.moedas ?? 0) + paguei
 
     // Turno extra para o capitão roubado
-    updates[`/draftSession/state/turnoExtra`] = fromId
-    updates[`/draftSession/state/lastAction`] = {
+    updates[`${ses}/state/turnoExtra`] = fromId
+    updates[`${ses}/state/lastAction`] = {
       type: 'steal', playerDiscord: player.discord,
       playerElo: player.elo, playerRole: player.rolePrimaria,
       byTeamId: myId, byTeamNome: myCap.nome, byTeamEmoji: myCap.emoji, byTeamCor: myCap.cor,
@@ -189,8 +192,8 @@ export default function Draft() {
       const myNewSize  = rosterSize + 1
       const next = proximoCom(sortedCaptains, captains, myId, myNewSize, draftConfig.maxPlayers)
       // Mesmo sem próximo "normal", o turnoExtra garante continuidade
-      updates[`/draftSession/state/turnoAtual`] = next?.id ?? fromId
-      if (next?.novaRodada) updates[`/draftSession/state/rodada`] = (draftState.rodada ?? 1) + 1
+      updates[`${ses}/state/turnoAtual`] = next?.id ?? fromId
+      if (next?.novaRodada) updates[`${ses}/state/rodada`] = (draftState.rodada ?? 1) + 1
     }
 
     await update(ref(db), updates)
@@ -222,7 +225,7 @@ export default function Draft() {
           </div>
         )}
         {captainSession && <SessionBadge session={captainSession} onLogout={handleLogout} />}
-        {isAdmin && <AdminDraftBar draftState={draftState} sortedCaptains={sortedCaptains} captains={captains} draftConfig={draftConfig} />}
+        {isAdmin && <AdminDraftBar draftState={draftState} sortedCaptains={sortedCaptains} captains={captains} draftConfig={draftConfig} idPublico={idPublico} />}
       </div>
     )
   }
@@ -242,7 +245,7 @@ export default function Draft() {
           </div>
         )}
         {captainSession && <SessionBadge session={captainSession} onLogout={handleLogout} />}
-        {isAdmin && <AdminDraftBar draftState={draftState} sortedCaptains={sortedCaptains} captains={captains} draftConfig={draftConfig} />}
+        {isAdmin && <AdminDraftBar draftState={draftState} sortedCaptains={sortedCaptains} captains={captains} draftConfig={draftConfig} idPublico={idPublico} />}
       </div>
     )
   }
@@ -287,7 +290,7 @@ export default function Draft() {
               🪙 {myCap.moedas} {t('draft.coins')}
             </div>
           )}
-          {isAdmin && <AdminDraftBar draftState={draftState} sortedCaptains={sortedCaptains} captains={captains} draftConfig={draftConfig} compact />}
+          {isAdmin && <AdminDraftBar draftState={draftState} sortedCaptains={sortedCaptains} captains={captains} draftConfig={draftConfig} idPublico={idPublico} compact />}
         </div>
       </div>
 
@@ -522,10 +525,11 @@ function TeamCard({ id, team, isActive, isMyTeam, maxPlayers = 7 }) {
 
 // ── Painel admin inline no draft ─────────────────────────────
 
-function AdminDraftBar({ draftState, sortedCaptains, captains, draftConfig, compact }) {
+function AdminDraftBar({ draftState, sortedCaptains, captains, draftConfig, idPublico, compact }) {
   const [open, setOpen] = useState(false)
   const [confirmReset, setConfirmReset] = useState(false)
 
+  const ses = draftSessionPath(idPublico)
   const min = draftConfig?.minCaptains ?? 2
   const podeIniciar = sortedCaptains.length >= min && draftState.status === 'aguardando'
 
@@ -533,42 +537,42 @@ function AdminDraftBar({ draftState, sortedCaptains, captains, draftConfig, comp
     if (!podeIniciar) return
     const primeiro = sortedCaptains[0]?.[0]
     if (!primeiro) return
-    await set(ref(db, '/draftSession/state'), { status: 'rodando', turnoAtual: primeiro, turnoExtra: null, rodada: 1 })
+    await set(ref(db, `${ses}/state`), { status: 'rodando', turnoAtual: primeiro, turnoExtra: null, rodada: 1 })
   }
 
   async function encerrarDraft() {
-    await update(ref(db, '/draftSession/state'), { status: 'encerrado' })
+    await update(ref(db, `${ses}/state`), { status: 'encerrado' })
   }
 
   async function retomar() {
-    await update(ref(db, '/draftSession/state'), { status: 'rodando' })
+    await update(ref(db, `${ses}/state`), { status: 'rodando' })
   }
 
   async function avancarTurno() {
-    const currentId  = draftState.turnoExtra ?? draftState.turnoAtual
-    const currentCap = captains[currentId] ?? {}
+    const currentId   = draftState.turnoExtra ?? draftState.turnoAtual
+    const currentCap  = captains[currentId] ?? {}
     const currentSize = Object.keys(currentCap.roster ?? {}).length + 1
     const next = proximoCom(sortedCaptains, captains, currentId, currentSize, draftConfig?.maxPlayers ?? 7)
     if (!next) {
-      await update(ref(db, '/draftSession/state'), { status: 'encerrado' })
+      await update(ref(db, `${ses}/state`), { status: 'encerrado' })
       return
     }
     const updates = {
-      '/draftSession/state/turnoAtual': next.id,
-      '/draftSession/state/turnoExtra': null,
+      [`${ses}/state/turnoAtual`]: next.id,
+      [`${ses}/state/turnoExtra`]: null,
     }
-    if (next.novaRodada) updates['/draftSession/state/rodada'] = (draftState.rodada ?? 1) + 1
+    if (next.novaRodada) updates[`${ses}/state/rodada`] = (draftState.rodada ?? 1) + 1
     await update(ref(db), updates)
   }
 
   async function resetarDraft() {
     const updates = {}
     sortedCaptains.forEach(([id]) => {
-      updates[`/draftSession/captains/${id}/roster`] = null
-      updates[`/draftSession/captains/${id}/moedas`] = draftConfig?.moedas ?? 15
+      updates[`${ses}/captains/${id}/roster`] = null
+      updates[`${ses}/captains/${id}/moedas`] = draftConfig?.moedas ?? 15
     })
-    updates['/draftSession/playerState'] = null
-    updates['/draftSession/state']       = { status: 'aguardando', turnoAtual: null, turnoExtra: null, rodada: 1 }
+    updates[`${ses}/playerState`] = null
+    updates[`${ses}/state`]       = { status: 'aguardando', turnoAtual: null, turnoExtra: null, rodada: 1 }
     await update(ref(db), updates)
     setConfirmReset(false)
     setOpen(false)
