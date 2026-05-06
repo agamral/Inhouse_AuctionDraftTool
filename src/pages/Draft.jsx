@@ -92,18 +92,32 @@ export default function Draft() {
   if (loading) return <main className="page"><p style={{ color: 'var(--text2)' }}>Carregando draft...</p></main>
 
   // ── Dados computados ──────────────────────────────────────
+  const fase           = draftState.fase ?? 'titulares'
   const sortedCaptains = Object.entries(captains).sort(([, a], [, b]) => a.seed - b.seed)
-  const mid = Math.ceil(sortedCaptains.length / 2)
-  const leftTeams  = sortedCaptains.slice(0, mid)
-  const rightTeams = sortedCaptains.slice(mid)
+  const mid            = Math.ceil(sortedCaptains.length / 2)
+  const leftTeams      = sortedCaptains.slice(0, mid)
+  const rightTeams     = sortedCaptains.slice(mid)
 
   const teamCaptainNames = new Set(Object.values(captains).map(c => c.capitaoNome).filter(Boolean))
 
+  // Pool disponível — sem dono e não descartado
   const availablePlayers = players.filter(p =>
     !overrides[p.id]?.descartado &&
     !teamCaptainNames.has(p.discord) &&
     !playerState[p.id]?.ownedBy
   )
+
+  // Roubáveis: dependem da fase
+  const stealablePlayers = players.filter(p => {
+    const ps = playerState[p.id]
+    if (!ps?.ownedBy || ps.ownedBy === myId) return false
+    if (overrides[p.id]?.descartado || teamCaptainNames.has(p.discord)) return false
+    if (fase === 'reservas') {
+      // Só reservas, e dono não pode ter saído
+      return ps.tipoPosse === 'reserva' && !captains[ps.ownedBy]?.exitou
+    }
+    return true // titulares: todos os comprados são roubáveis
+  })
 
   const myId        = captainSession?.captainId ?? null
   const myCap       = myId ? captains[myId] : null
@@ -133,13 +147,16 @@ export default function Draft() {
       preco, ts: Date.now(),
     }
 
+    updates[`${ses}/playerState/${player.id}/tipoPosse`] = 'titular'
     if (isExtraTurn) {
       updates[`${ses}/state/turnoExtra`] = null
     } else {
       const myNewSize = rosterSize + 1
-      const next = proximoCom(sortedCaptains, captains, myId, myNewSize, draftConfig.maxPlayers)
+      const next = proximoCom(sortedCaptains, captains, myId, myNewSize, draftConfig, 'titulares')
       if (!next) {
-        updates[`${ses}/state/status`] = 'encerrado'
+        updates[`${ses}/state/status`]     = 'entre_fases'
+        updates[`${ses}/state/turnoAtual`] = null
+        updates[`${ses}/state/turnoExtra`] = null
       } else {
         updates[`${ses}/state/turnoAtual`] = next.id
         if (next.novaRodada) updates[`${ses}/state/rodada`] = (draftState.rodada ?? 1) + 1
@@ -195,13 +212,132 @@ export default function Draft() {
     } else {
       const rosterSize = Object.keys(myCap.roster ?? {}).length + 1
       const myNewSize  = rosterSize + 1
-      const next = proximoCom(sortedCaptains, captains, myId, myNewSize, draftConfig.maxPlayers)
-      // Mesmo sem próximo "normal", o turnoExtra garante continuidade
+      const next = proximoCom(sortedCaptains, captains, myId, myNewSize, draftConfig, 'titulares')
       updates[`${ses}/state/turnoAtual`] = next?.id ?? fromId
       if (next?.novaRodada) updates[`${ses}/state/rodada`] = (draftState.rodada ?? 1) + 1
     }
 
     await update(ref(db), updates)
+  }
+
+  // ── Fase de Reservas: ações ──────────────────────────────
+  async function comprarReserva(player) {
+    if (!isMyTurn || !myCap || isExtraTurn) return
+    const preco = playerState[player.id]?.preco ?? 0
+    if (myCap.moedas < preco) return
+    const reservasCount = Object.keys(myCap.reservas ?? {}).length
+    if (reservasCount >= 2) return
+
+    const ses = draftSessionPath(idPublico)
+    const updates = {}
+    updates[`${ses}/captains/${myId}/reservas/${player.id}`] = { discord: player.discord, preco }
+    updates[`${ses}/playerState/${player.id}/preco`]         = preco + 1
+    updates[`${ses}/playerState/${player.id}/ownedBy`]       = myId
+    updates[`${ses}/playerState/${player.id}/tipoPosse`]     = 'reserva'
+    updates[`${ses}/captains/${myId}/moedas`]                = myCap.moedas - preco
+    updates[`${ses}/state/lastAction`] = {
+      type: 'buy', playerDiscord: player.discord,
+      playerElo: player.elo, playerRole: player.rolePrimaria,
+      byTeamId: myId, byTeamNome: myCap.nome, byTeamEmoji: myCap.emoji, byTeamCor: myCap.cor,
+      preco, ts: Date.now(),
+    }
+
+    const myNewReservas = reservasCount + 1
+    const next = proximoCom(sortedCaptains, captains, myId, myNewReservas, draftConfig, 'reservas')
+    if (!next) {
+      updates[`${ses}/state/status`] = 'encerrado'
+    } else {
+      updates[`${ses}/state/turnoAtual`] = next.id
+      if (next.novaRodada) updates[`${ses}/state/rodada`] = (draftState.rodada ?? 1) + 1
+    }
+    await update(ref(db), updates)
+  }
+
+  async function roubarReserva(player) {
+    if (!isMyTurn || !myCap) return
+    if (!draftConfig.rouboAtivo) return
+    const ps = playerState[player.id]
+    if (!ps?.ownedBy || ps.ownedBy === myId || ps.tipoPosse !== 'reserva') return
+    const fromId  = ps.ownedBy
+    const fromCap = captains[fromId]
+    if (fromCap?.exitou) return
+
+    const preco = ps.preco
+    if (myCap.moedas < preco) return
+    const reservasAtual = Object.keys(myCap.reservas ?? {}).length
+    if (reservasAtual >= 2) return
+
+    const paguei = fromCap?.reservas?.[player.id]?.preco ?? 0
+    const ses    = draftSessionPath(idPublico)
+    const updates = {}
+    updates[`${ses}/captains/${fromId}/reservas/${player.id}`] = null
+    updates[`${ses}/captains/${myId}/reservas/${player.id}`]   = { discord: player.discord, preco }
+    updates[`${ses}/playerState/${player.id}/preco`]     = preco + 1
+    updates[`${ses}/playerState/${player.id}/ownedBy`]   = myId
+    updates[`${ses}/captains/${myId}/moedas`]            = myCap.moedas - preco
+    updates[`${ses}/captains/${fromId}/moedas`]          = (fromCap?.moedas ?? 0) + paguei
+    updates[`${ses}/state/turnoExtra`]                   = fromId
+    updates[`${ses}/state/lastAction`] = {
+      type: 'steal', playerDiscord: player.discord,
+      playerElo: player.elo, playerRole: player.rolePrimaria,
+      byTeamId: myId, byTeamNome: myCap.nome, byTeamEmoji: myCap.emoji, byTeamCor: myCap.cor,
+      fromTeamId: fromId, fromTeamNome: fromCap?.nome, fromTeamEmoji: fromCap?.emoji, fromTeamCor: fromCap?.cor,
+      preco, ts: Date.now(),
+    }
+
+    if (!isExtraTurn) {
+      const myNewReservas = reservasAtual + 1
+      const next = proximoCom(sortedCaptains, captains, myId, myNewReservas, draftConfig, 'reservas')
+      updates[`${ses}/state/turnoAtual`] = next?.id ?? fromId
+      if (next?.novaRodada) updates[`${ses}/state/rodada`] = (draftState.rodada ?? 1) + 1
+    }
+    await update(ref(db), updates)
+  }
+
+  async function sairDraft() {
+    if (!isMyTurn || !myCap || isExtraTurn) return
+    const ses = draftSessionPath(idPublico)
+    const updates = {}
+    updates[`${ses}/captains/${myId}/exitou`] = true
+    // passa myNewSize=2 para forçar skip do capitão atual em proximoCom
+    const next = proximoCom(sortedCaptains, captains, myId, 2, draftConfig, 'reservas')
+    if (!next) {
+      updates[`${ses}/state/status`] = 'encerrado'
+    } else {
+      updates[`${ses}/state/turnoAtual`] = next.id
+      if (next.novaRodada) updates[`${ses}/state/rodada`] = (draftState.rodada ?? 1) + 1
+    }
+    await update(ref(db), updates)
+  }
+
+  // ── Entre fases ───────────────────────────────────────────
+  if (draftState.status === 'entre_fases') {
+    return (
+      <div style={{ minHeight: 'calc(100vh - 65px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20, padding: 32 }}>
+        <div style={{ fontSize: 48 }}>🏆</div>
+        <h2 style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 24, color: 'var(--gold2)', margin: 0 }}>
+          Fase de Titulares Encerrada
+        </h2>
+        <p style={{ color: 'var(--text2)', fontSize: 14, margin: 0 }}>Todos os times formados. Aguardando início do Leilão de Reservas.</p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center', maxWidth: 720, marginTop: 8 }}>
+          {sortedCaptains.map(([id, team]) => (
+            <div key={id} style={{ border: `1px solid ${team.cor}44`, borderRadius: 10, padding: '12px 20px', background: team.cor + '0a', minWidth: 160 }}>
+              <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 15, color: team.cor, marginBottom: 6 }}>
+                {team.emoji} {team.nome}
+              </div>
+              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 12, color: 'var(--gold)', marginBottom: 4 }}>
+                {team.capitaoNome} ⚑ · 🪙 {team.moedas}
+              </div>
+              {Object.values(team.roster ?? {}).map((r, i) => (
+                <div key={i} style={{ fontSize: 12, color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif" }}>{r.discord}</div>
+              ))}
+            </div>
+          ))}
+        </div>
+        {captainSession && <SessionBadge session={captainSession} onLogout={handleLogout} />}
+        {isAdmin && <AdminDraftBar draftState={draftState} sortedCaptains={sortedCaptains} captains={captains} draftConfig={draftConfig} idPublico={idPublico} />}
+      </div>
+    )
   }
 
   // ── Tela de espera ────────────────────────────────────────
@@ -311,16 +447,34 @@ export default function Draft() {
             <TeamCard key={id} id={id} team={team}
               isActive={activeTurnId === id}
               isMyTeam={id === myId}
+              minPlayers={draftConfig.minPlayers}
               maxPlayers={draftConfig.maxPlayers}
+              fase={fase}
             />
           ))}
         </div>
 
         {/* Centro — jogadores */}
         <div style={{ overflowY: 'auto', padding: '20px 24px' }}>
-          {isMyTurn && (
-            <div style={{ marginBottom: '16px', padding: '10px 16px', borderRadius: '8px', background: 'rgba(76,175,125,0.08)', border: '1px solid rgba(76,175,125,0.25)', fontFamily: "'Barlow Condensed', sans-serif", fontSize: '13px', color: 'var(--green)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              {isExtraTurn ? '⚔️ Turno extra! Você foi roubado — escolha um jogador.' : '✓ É a sua vez! Escolha um jogador.'}
+          {/* Badge de fase */}
+          <div style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', padding: '3px 10px', borderRadius: 4, fontWeight: 700,
+              ...(fase === 'reservas'
+                ? { color: 'var(--purple)', background: 'rgba(155,110,232,0.1)', border: '1px solid rgba(155,110,232,0.3)' }
+                : { color: 'var(--gold)', background: 'rgba(201,168,76,0.1)', border: '1px solid rgba(201,168,76,0.3)' })
+            }}>
+              {fase === 'reservas' ? '🛡 Leilão de Reservas' : '⚔ Leilão de Titulares'}
+            </span>
+          </div>
+
+          {isMyTurn && !myCap?.exitou && (
+            <div style={{ marginBottom: '16px', padding: '10px 16px', borderRadius: '8px', background: 'rgba(76,175,125,0.08)', border: '1px solid rgba(76,175,125,0.25)', fontFamily: "'Barlow Condensed', sans-serif", fontSize: '13px', color: 'var(--green)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+              <span>{isExtraTurn ? '⚔️ Turno extra! Você foi roubado — escolha um jogador.' : '✓ É a sua vez! Escolha um jogador.'}</span>
+              {fase === 'reservas' && !isExtraTurn && (
+                <button onClick={sairDraft} style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 11, padding: '3px 10px', borderRadius: 4, border: '1px solid rgba(138,134,128,0.4)', background: 'rgba(138,134,128,0.08)', color: 'var(--text2)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                  Encerrar participação
+                </button>
+              )}
             </div>
           )}
 
@@ -332,30 +486,24 @@ export default function Draft() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px' }}>
             {availablePlayers.map((p) => {
               const preco  = playerState[p.id]?.preco ?? 0
-              const canBuy = isMyTurn &&
-                             (myCap?.moedas ?? 0) >= preco &&
-                             Object.keys(myCap?.roster ?? {}).length + 1 < draftConfig.maxPlayers
-              return <PlayerRow key={p.id} player={p} preco={preco} canAct={canBuy} onAct={() => comprar(p)} t={t} />
+              const canBuy = isMyTurn && !myCap?.exitou &&
+                (fase === 'reservas'
+                  ? (myCap?.moedas ?? 0) >= preco && Object.keys(myCap?.reservas ?? {}).length < 2
+                  : (myCap?.moedas ?? 0) >= preco && Object.keys(myCap?.roster ?? {}).length + 1 < draftConfig.maxPlayers)
+              const onAct  = fase === 'reservas' ? () => comprarReserva(p) : () => comprar(p)
+              return <PlayerRow key={p.id} player={p} preco={preco} canAct={canBuy} onAct={onAct} t={t} />
             })}
           </div>
 
-          {/* Em times (roubáveis) */}
-          {draftConfig.rouboAtivo && (() => {
-            const ownedPlayers = players.filter(p =>
-              playerState[p.id]?.ownedBy &&
-              playerState[p.id]?.ownedBy !== myId &&
-              !teamCaptainNames.has(p.discord) &&
-              !overrides[p.id]?.descartado
-            )
-            if (ownedPlayers.length === 0) return null
+          {/* Roubáveis */}
+          {draftConfig.rouboAtivo && stealablePlayers.length > 0 && (() => {
             return (
               <>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                  <SectionLabel accent="red">{t('draft.steal')} ({ownedPlayers.length})</SectionLabel>
+                  <SectionLabel accent="red">{t('draft.steal')} ({stealablePlayers.length})</SectionLabel>
                   <button
                     onClick={() => setGuiaAberto(v => !v)}
                     style={{ background: 'none', border: '1px solid var(--border2)', borderRadius: 10, padding: '1px 8px', fontSize: 11, color: 'var(--text2)', cursor: 'pointer', fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.04em' }}
-                    title="Como funciona o roubo?"
                   >
                     ? regras
                   </button>
@@ -367,21 +515,24 @@ export default function Draft() {
                     <div>• O dono anterior recebe de volta o que pagou originalmente</div>
                     <div>• O dono anterior ganha um <strong>turno extra</strong> imediatamente</div>
                     <div>• A cada roubo, o preço do jogador sobe +1</div>
-                    <div>• No turno extra: pode comprar, roubar de volta ou roubar outro</div>
+                    {fase === 'reservas' && <div>• Apenas reservas podem ser roubadas nesta fase</div>}
                   </div>
                 )}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {ownedPlayers.map((p) => {
+                  {stealablePlayers.map((p) => {
                     const ps       = playerState[p.id]
                     const preco    = ps?.preco ?? 0
                     const owner    = captains[ps?.ownedBy]
-                    const canSteal = isMyTurn &&
-                                     (myCap?.moedas ?? 0) >= preco &&
-                                     Object.keys(myCap?.roster ?? {}).length + 1 < draftConfig.maxPlayers
+                    const rosterOk = fase === 'reservas'
+                      ? Object.keys(myCap?.reservas ?? {}).length < 2
+                      : Object.keys(myCap?.roster ?? {}).length + 1 < draftConfig.maxPlayers
+                    const canSteal = isMyTurn && !myCap?.exitou &&
+                                     (myCap?.moedas ?? 0) >= preco && rosterOk
+                    const onSteal  = fase === 'reservas' ? () => roubarReserva(p) : () => roubar(p)
                     return (
                       <PlayerRow
                         key={p.id} player={p} preco={preco}
-                        canAct={canSteal} onAct={() => roubar(p)}
+                        canAct={canSteal} onAct={onSteal}
                         isSteal owner={owner} t={t}
                       />
                     )
@@ -399,7 +550,9 @@ export default function Draft() {
             <TeamCard key={id} id={id} team={team}
               isActive={activeTurnId === id}
               isMyTeam={id === myId}
+              minPlayers={draftConfig.minPlayers}
               maxPlayers={draftConfig.maxPlayers}
+              fase={fase}
             />
           ))}
 
@@ -433,21 +586,33 @@ export default function Draft() {
 }
 
 // ── Lógica de turno ──────────────────────────────────────────
-// Retorna o próximo capitão que ainda tem vaga, ou null se todos estão completos.
-// myNewSize: tamanho do time atual APÓS a compra que acabou de acontecer.
-function proximoCom(sortedCaptains, captains, currentId, myNewSize, maxPlayers) {
+// fase 'titulares': pula capitão com >= minPlayers no roster (inclui capitão)
+// fase 'reservas':  pula capitão que saiu ou já tem 2 reservas
+// myNewSize: contagem do capitão atual APÓS a ação (evita usar state desatualizado)
+function proximoCom(sortedCaptains, captains, currentId, myNewSize, config, fase) {
+  const { minPlayers = 5 } = config ?? {}
   const idx = sortedCaptains.findIndex(([id]) => id === currentId)
   for (let i = 1; i <= sortedCaptains.length; i++) {
-    const nextIdx   = (idx + i) % sortedCaptains.length
-    const [nId, nCap] = sortedCaptains[nextIdx]
-    const size = nId === currentId
-      ? myNewSize
-      : Object.keys(nCap.roster ?? {}).length + 1
-    if (size < maxPlayers) {
+    const nextIdx      = (idx + i) % sortedCaptains.length
+    const [nId, nCap]  = sortedCaptains[nextIdx]
+
+    if (fase === 'reservas') {
+      if (nCap.exitou) continue
+      const count = nId === currentId
+        ? myNewSize
+        : Object.keys(nCap.reservas ?? {}).length
+      if (count >= 2) continue
       return { id: nId, novaRodada: nextIdx <= idx }
+    } else {
+      const size = nId === currentId
+        ? myNewSize
+        : Object.keys(nCap.roster ?? {}).length + 1
+      if (size < minPlayers) {
+        return { id: nId, novaRodada: nextIdx <= idx }
+      }
     }
   }
-  return null // todos completos
+  return null // fase encerrada
 }
 
 // ── Componentes auxiliares ────────────────────────────────────
@@ -477,10 +642,12 @@ function SessionBadge({ session, onLogout, small }) {
   )
 }
 
-function TeamCard({ id, team, isActive, isMyTeam, maxPlayers = 7 }) {
-  const roster     = Object.entries(team.roster ?? {})
-  const totalSlots = roster.length + (team.capitaoNome ? 1 : 0)
-  const isFull     = totalSlots >= maxPlayers
+function TeamCard({ id, team, isActive, isMyTeam, minPlayers = 5, maxPlayers = 7, fase = 'titulares' }) {
+  const roster    = Object.entries(team.roster ?? {})
+  const reservas  = Object.entries(team.reservas ?? {})
+  const titTotal  = roster.length + (team.capitaoNome ? 1 : 0)
+  const titFull   = titTotal >= minPlayers
+  const exitou    = team.exitou
 
   return (
     <div style={{
@@ -489,15 +656,21 @@ function TeamCard({ id, team, isActive, isMyTeam, maxPlayers = 7 }) {
       background: isMyTeam ? team.cor + '0a' : 'var(--bg3)',
       overflow: 'hidden',
       marginBottom: '10px',
-      opacity: isFull && !isMyTeam ? 0.7 : 1,
+      opacity: exitou && !isMyTeam ? 0.55 : 1,
     }}>
+      {/* Header */}
       <div style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border)' }}>
         <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
           <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: team.cor, flexShrink: 0 }} />
           <span>{team.emoji}</span>
           <span style={{ color: team.cor }}>{team.nome}</span>
-          {isMyTeam && !isFull && <span style={{ fontSize: '10px', fontFamily: "'Barlow Condensed', sans-serif", color: team.cor, opacity: 0.7 }}>MEU</span>}
-          {isFull && (
+          {isMyTeam && !exitou && <span style={{ fontSize: '10px', fontFamily: "'Barlow Condensed', sans-serif", color: team.cor, opacity: 0.7 }}>MEU</span>}
+          {exitou && (
+            <span style={{ fontSize: '10px', fontFamily: "'Barlow Condensed', sans-serif", color: 'var(--green)', background: 'rgba(76,175,125,0.12)', border: '1px solid rgba(76,175,125,0.3)', padding: '1px 6px', borderRadius: '3px' }}>
+              PRONTO
+            </span>
+          )}
+          {!exitou && titFull && fase === 'titulares' && (
             <span style={{ fontSize: '10px', fontFamily: "'Barlow Condensed', sans-serif", color: 'var(--green)', background: 'rgba(76,175,125,0.12)', border: '1px solid rgba(76,175,125,0.3)', padding: '1px 6px', borderRadius: '3px' }}>
               COMPLETO
             </span>
@@ -507,7 +680,9 @@ function TeamCard({ id, team, isActive, isMyTeam, maxPlayers = 7 }) {
           🪙 {team.moedas}
         </div>
       </div>
-      <div style={{ padding: '8px 14px' }}>
+
+      {/* Titulares */}
+      <div style={{ padding: '8px 14px', background: 'rgba(201,168,76,0.04)', borderBottom: fase === 'reservas' ? '1px solid var(--border)' : 'none' }}>
         {team.capitaoNome && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px', borderRadius: '4px', background: 'rgba(201,168,76,0.08)', fontSize: '12px', color: 'var(--gold)', fontFamily: "'Barlow Condensed', sans-serif", marginBottom: '2px' }}>
             <span>⚑ {team.capitaoNome}</span>
@@ -517,15 +692,32 @@ function TeamCard({ id, team, isActive, isMyTeam, maxPlayers = 7 }) {
         {roster.map(([pid, entry]) => (
           <div key={pid} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px', borderRadius: '4px', fontSize: '12px', color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif" }}>
             <span>{entry.discord}</span>
-            <span>{entry.preco}🪙</span>
+            <span style={{ color: 'var(--gold)', fontSize: 11 }}>{entry.preco}🪙</span>
           </div>
         ))}
-        {totalSlots === 0 && (
+        {titTotal === 0 && (
           <div style={{ fontSize: '11px', color: 'var(--text3)', fontFamily: "'Barlow Condensed', sans-serif", padding: '4px 6px', fontStyle: 'italic' }}>
-            Sem jogadores
+            Sem titulares
           </div>
         )}
       </div>
+
+      {/* Reservas — só exibe na fase de reservas */}
+      {fase === 'reservas' && (
+        <div style={{ padding: '6px 14px 8px', background: 'rgba(138,134,128,0.05)' }}>
+          {reservas.length === 0 && !exitou && (
+            <div style={{ fontSize: '11px', color: 'var(--text3)', fontFamily: "'Barlow Condensed', sans-serif", padding: '4px 6px', fontStyle: 'italic' }}>
+              Sem reservas
+            </div>
+          )}
+          {reservas.map(([pid, entry]) => (
+            <div key={pid} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px', borderRadius: '4px', fontSize: '12px', color: 'var(--text3)', fontFamily: "'Barlow Condensed', sans-serif" }}>
+              <span>{entry.discord}</span>
+              <span style={{ fontSize: 11 }}>{entry.preco}🪙</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -536,15 +728,31 @@ function AdminDraftBar({ draftState, sortedCaptains, captains, draftConfig, idPu
   const [open, setOpen] = useState(false)
   const [confirmReset, setConfirmReset] = useState(false)
 
-  const ses = draftSessionPath(idPublico)
-  const min = draftConfig?.minCaptains ?? 2
+  const ses       = draftSessionPath(idPublico)
+  const fase      = draftState.fase ?? 'titulares'
+  const min       = draftConfig?.minCaptains ?? 2
   const podeIniciar = sortedCaptains.length >= min && draftState.status === 'aguardando'
 
   async function iniciarDraft() {
     if (!podeIniciar) return
     const primeiro = sortedCaptains[0]?.[0]
     if (!primeiro) return
-    await set(ref(db, `${ses}/state`), { status: 'rodando', turnoAtual: primeiro, turnoExtra: null, rodada: 1 })
+    await set(ref(db, `${ses}/state`), { status: 'rodando', fase: 'titulares', turnoAtual: primeiro, turnoExtra: null, rodada: 1 })
+  }
+
+  async function iniciarReservas() {
+    const updates = {}
+    sortedCaptains.forEach(([id, cap]) => {
+      updates[`${ses}/captains/${id}/moedas`] = Math.max(cap.moedas ?? 0, 6)
+    })
+    const primeiro = sortedCaptains[0]?.[0]
+    updates[`${ses}/state/status`]    = 'rodando'
+    updates[`${ses}/state/fase`]      = 'reservas'
+    updates[`${ses}/state/rodada`]    = 1
+    updates[`${ses}/state/turnoAtual`]= primeiro ?? null
+    updates[`${ses}/state/turnoExtra`]= null
+    await update(ref(db), updates)
+    setOpen(false)
   }
 
   async function encerrarDraft() {
@@ -552,16 +760,19 @@ function AdminDraftBar({ draftState, sortedCaptains, captains, draftConfig, idPu
   }
 
   async function retomar() {
-    await update(ref(db, `${ses}/state`), { status: 'rodando' })
+    const primeiro = sortedCaptains[0]?.[0]
+    await update(ref(db, `${ses}/state`), { status: 'rodando', turnoAtual: primeiro ?? null })
   }
 
   async function avancarTurno() {
-    const currentId   = draftState.turnoExtra ?? draftState.turnoAtual
-    const currentCap  = captains[currentId] ?? {}
-    const currentSize = Object.keys(currentCap.roster ?? {}).length + 1
-    const next = proximoCom(sortedCaptains, captains, currentId, currentSize, draftConfig?.maxPlayers ?? 7)
+    const currentId  = draftState.turnoExtra ?? draftState.turnoAtual
+    const currentCap = captains[currentId] ?? {}
+    const currentSize = fase === 'reservas'
+      ? Object.keys(currentCap.reservas ?? {}).length
+      : Object.keys(currentCap.roster ?? {}).length + 1
+    const next = proximoCom(sortedCaptains, captains, currentId, currentSize, draftConfig, fase)
     if (!next) {
-      await update(ref(db, `${ses}/state`), { status: 'encerrado' })
+      await update(ref(db, `${ses}/state`), { status: fase === 'titulares' ? 'entre_fases' : 'encerrado' })
       return
     }
     const updates = {
@@ -575,11 +786,13 @@ function AdminDraftBar({ draftState, sortedCaptains, captains, draftConfig, idPu
   async function resetarDraft() {
     const updates = {}
     sortedCaptains.forEach(([id]) => {
-      updates[`${ses}/captains/${id}/roster`] = null
-      updates[`${ses}/captains/${id}/moedas`] = draftConfig?.moedas ?? 15
+      updates[`${ses}/captains/${id}/roster`]  = null
+      updates[`${ses}/captains/${id}/reservas`] = null
+      updates[`${ses}/captains/${id}/exitou`]   = null
+      updates[`${ses}/captains/${id}/moedas`]   = draftConfig?.moedas ?? 15
     })
     updates[`${ses}/playerState`] = null
-    updates[`${ses}/state`]       = { status: 'aguardando', turnoAtual: null, turnoExtra: null, rodada: 1 }
+    updates[`${ses}/state`]       = { status: 'aguardando', fase: 'titulares', turnoAtual: null, turnoExtra: null, rodada: 1 }
     await update(ref(db), updates)
     setConfirmReset(false)
     setOpen(false)
@@ -611,7 +824,13 @@ function AdminDraftBar({ draftState, sortedCaptains, captains, draftConfig, idPu
             {draftState.status === 'aguardando' && (
               <button style={{ ...btnBase, color: podeIniciar ? 'var(--green)' : 'var(--text2)', borderColor: podeIniciar ? 'rgba(76,175,125,0.4)' : 'var(--border)', opacity: podeIniciar ? 1 : 0.45, width: '100%', padding: '8px' }}
                 disabled={!podeIniciar} onClick={iniciarDraft}>
-                ▶ Iniciar Draft
+                ▶ Iniciar Leilão de Titulares
+              </button>
+            )}
+            {draftState.status === 'entre_fases' && (
+              <button style={{ ...btnBase, color: 'var(--purple)', borderColor: 'rgba(155,110,232,0.4)', width: '100%', padding: '8px' }}
+                onClick={iniciarReservas}>
+                ▶ Iniciar Leilão de Reservas
               </button>
             )}
             {draftState.status === 'rodando' && (
