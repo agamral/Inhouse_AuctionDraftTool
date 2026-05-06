@@ -60,15 +60,54 @@ export default function Espectador() {
     return <PaginaInativa icone="📺" titulo="Espectador indisponível" descricao="O modo espectador será aberto quando o leilão estiver em andamento." />
   }
 
-  const sortedCaptains   = Object.entries(captains).sort(([, a], [, b]) => a.seed - b.seed)
-  const mid              = Math.ceil(sortedCaptains.length / 2)
-  const leftTeams        = sortedCaptains.slice(0, mid)
-  const rightTeams       = sortedCaptains.slice(mid)
+  const fase           = draftState.fase ?? 'titulares'
+  const sortedCaptains = Object.entries(captains).sort(([, a], [, b]) => a.seed - b.seed)
+  const mid            = Math.ceil(sortedCaptains.length / 2)
+  const leftTeams      = sortedCaptains.slice(0, mid)
+  const rightTeams     = sortedCaptains.slice(mid)
   const teamCaptainNames = new Set(Object.values(captains).map(c => c.capitaoNome).filter(Boolean))
 
   const activeTurnId   = draftState.turnoExtra ?? draftState.turnoAtual
   const currentTurnCap = captains[activeTurnId]
   const lastAction     = draftState.lastAction
+
+  // ── Entre fases ───────────────────────────────────────────
+  if (draftState.status === 'entre_fases') {
+    return (
+      <div className="espectador">
+        <div className="espectador-waiting" style={{ gap: 24, padding: '40px 24px' }}>
+          <div style={{ fontSize: 52 }}>🏆</div>
+          <div className="espectador-logo" style={{ fontSize: 28, color: 'var(--gold2)' }}>
+            Fase de Titulares Encerrada
+          </div>
+          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 13, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.2em', textTransform: 'uppercase' }}>
+            Aguardando início do Leilão de Reservas
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, justifyContent: 'center', maxWidth: 800, marginTop: 8 }}>
+            {sortedCaptains.map(([id, team]) => (
+              <div key={id} style={{ border: `1px solid ${team.cor}44`, borderRadius: 10, minWidth: 160, overflow: 'hidden' }}>
+                <div style={{ padding: '10px 16px', background: team.cor + '12', borderBottom: `1px solid ${team.cor}33` }}>
+                  <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 15, color: team.cor }}>
+                    {team.emoji} {team.nome}
+                  </div>
+                  <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>
+                    {team.capitaoNome} · 🪙 {team.moedas}
+                  </div>
+                </div>
+                <div style={{ padding: '8px 16px', background: 'rgba(201,168,76,0.04)' }}>
+                  {Object.values(team.roster ?? {}).map((r, i) => (
+                    <div key={i} style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 12, color: 'var(--text2)', padding: '2px 0' }}>
+                      {r.discord}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   // ── Tela de espera ────────────────────────────────────────
   if (draftState.status === 'aguardando') {
@@ -119,7 +158,16 @@ export default function Espectador() {
           ⚔️ <span>{cupName}</span>
         </div>
         <div className="espectador-topbar-center">
-          <div className="espectador-round">{t('espectador.round')} {draftState.rodada}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div className="espectador-round">{t('espectador.round')} {draftState.rodada}</div>
+            <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', padding: '2px 8px', borderRadius: 3, fontWeight: 700,
+              ...(fase === 'reservas'
+                ? { color: 'var(--purple)', background: 'rgba(155,110,232,0.12)', border: '1px solid rgba(155,110,232,0.3)' }
+                : { color: 'var(--gold)', background: 'rgba(201,168,76,0.1)', border: '1px solid rgba(201,168,76,0.25)' })
+            }}>
+              {fase === 'reservas' ? '🛡 Reservas' : '⚔ Titulares'}
+            </span>
+          </div>
           {draftState.turnoExtra && (
             <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: '11px', color: 'var(--red)', border: '1px solid rgba(224,85,85,0.35)', padding: '2px 8px', borderRadius: '4px', background: 'rgba(224,85,85,0.1)', letterSpacing: '0.1em' }}>
               {t('espectador.extra_turn')}
@@ -143,7 +191,7 @@ export default function Espectador() {
         {/* Left teams */}
         <div className="espectador-panel">
           {leftTeams.map(([id, team]) => (
-            <SpectatorTeam key={id} team={team} isActive={activeTurnId === id} players={players} privacidade={privacidadeAtiva} />
+            <SpectatorTeam key={id} team={team} isActive={activeTurnId === id} players={players} privacidade={privacidadeAtiva} fase={fase} />
           ))}
         </div>
 
@@ -166,6 +214,7 @@ export default function Espectador() {
             sortedCaptains={sortedCaptains}
             activeTurnId={activeTurnId}
             turnoExtra={draftState.turnoExtra}
+            fase={fase}
           />
 
           <PlayerPool
@@ -174,13 +223,14 @@ export default function Espectador() {
             playerState={playerState}
             teamCaptainNames={teamCaptainNames}
             privacidade={privacidadeAtiva}
+            fase={fase}
           />
         </div>
 
         {/* Right teams */}
         <div className="espectador-panel right">
           {rightTeams.map(([id, team]) => (
-            <SpectatorTeam key={id} team={team} isActive={activeTurnId === id} players={players} privacidade={privacidadeAtiva} />
+            <SpectatorTeam key={id} team={team} isActive={activeTurnId === id} players={players} privacidade={privacidadeAtiva} fase={fase} />
           ))}
         </div>
 
@@ -275,22 +325,29 @@ function SpotlightCard({ action, privacidade }) {
 }
 
 // ── Turn strip ────────────────────────────────────────────────
-function TurnStrip({ sortedCaptains, activeTurnId, turnoExtra }) {
+function TurnStrip({ sortedCaptains, activeTurnId, turnoExtra, fase }) {
   return (
     <div className="turn-strip">
       {sortedCaptains.map(([id, cap], i) => {
         const isActive = activeTurnId === id
+        const pronto   = fase === 'reservas' && cap.exitou
         return (
           <div key={id} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             {i > 0 && <div className="turn-arrow">›</div>}
             <div
               className={`t-pip ${isActive ? 'active' : ''}`}
-              style={isActive ? { borderColor: cap.cor + '88', background: cap.cor + '18', color: cap.cor } : {}}
+              style={{
+                ...(isActive ? { borderColor: cap.cor + '88', background: cap.cor + '18', color: cap.cor } : {}),
+                ...(pronto   ? { opacity: 0.35, textDecoration: 'line-through' } : {}),
+              }}
             >
               <div className="t-pip-dot" />
               {cap.emoji} {cap.capitaoNome || cap.nome}
               {turnoExtra === id && (
                 <span style={{ fontSize: '9px', marginLeft: '2px', opacity: 0.75 }}>+1</span>
+              )}
+              {pronto && (
+                <span style={{ fontSize: '9px', marginLeft: '3px', color: 'var(--green)', opacity: 1, textDecoration: 'none' }}>✓</span>
               )}
             </div>
           </div>
@@ -301,20 +358,26 @@ function TurnStrip({ sortedCaptains, activeTurnId, turnoExtra }) {
 }
 
 // ── Player pool ───────────────────────────────────────────────
-function PlayerPool({ players, overrides, playerState, teamCaptainNames, privacidade }) {
-  const { t }     = useTranslation()
-  const visible   = players.filter(p => !overrides[p.id]?.descartado && !teamCaptainNames.has(p.discord))
+function PlayerPool({ players, overrides, playerState, teamCaptainNames, privacidade, fase }) {
+  const { t }   = useTranslation()
+  const visible = players.filter(p => !overrides[p.id]?.descartado && !teamCaptainNames.has(p.discord))
+
+  // Na fase de reservas, titulares são "sold" e não voltam para a pool visível
   const available = visible.filter(p => !playerState[p.id]?.ownedBy).length
+  const label     = fase === 'reservas' ? 'Pool de Reservas' : t('espectador.available')
 
   return (
     <div className="player-pool">
       <div className="pool-label">
-        {t('espectador.available')}: {available}
+        {label}: {available}
       </div>
       <div className="pool-chips">
         {visible.map((p, idx) => {
-          const sold    = !!playerState[p.id]?.ownedBy
+          const ps      = playerState[p.id]
+          const sold    = !!ps?.ownedBy
           const premium = !!overrides[p.id]?.premium && !sold
+          // Na fase de reservas, titulares ficam ocultos da pool
+          if (fase === 'reservas' && sold && ps?.tipoPosse === 'titular') return null
           return (
             <div
               key={p.id}
@@ -330,74 +393,86 @@ function PlayerPool({ players, overrides, playerState, teamCaptainNames, privaci
 }
 
 // ── Team card ─────────────────────────────────────────────────
-function SpectatorTeam({ team, isActive, players, privacidade }) {
+function SpectatorTeam({ team, isActive, players, privacidade, fase = 'titulares' }) {
   const { t } = useTranslation()
-  const roster     = Object.entries(team.roster ?? {})
-  const totalSlots = roster.length + (team.capitaoNome ? 1 : 0)
-  const maxSlots   = 7
+  const roster   = Object.entries(team.roster ?? {})
+  const reservas = Object.entries(team.reservas ?? {})
+  const titTotal = roster.length + (team.capitaoNome ? 1 : 0)
+  const exitou   = team.exitou
 
   const playerByDiscord = Object.fromEntries(players.map(p => [p.discord, p]))
+
+  function RosterEntry({ entry, idx, dimmed }) {
+    const info        = playerByDiscord[entry.discord]
+    const eloColor    = ELO_CONFIG[info?.elo]?.color ?? 'rgba(255,255,255,0.4)'
+    const nomeExibido = privacidade ? `Jogador #${idx + 1}` : entry.discord
+    return (
+      <div className="spec-roster-entry" style={dimmed ? { opacity: 0.5 } : {}}>
+        <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {nomeExibido}
+        </span>
+        <div className="spec-roster-right">
+          {info?.elo && (
+            <span className="spec-elo-badge" style={{ color: eloColor, background: eloColor + '18', border: `1px solid ${eloColor}33` }}>
+              {info.elo}
+            </span>
+          )}
+          {info?.rolePrimaria && <span className="spec-role-badge">{info.rolePrimaria}</span>}
+          <span className="spec-roster-price">🪙{entry.preco}</span>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div
       className={`spec-team ${isActive ? 'active' : ''}`}
-      style={{ borderColor: isActive ? team.cor + '55' : undefined }}
+      style={{ borderColor: isActive ? team.cor + '55' : undefined, opacity: exitou && !isActive ? 0.6 : 1 }}
     >
-      <div className="spec-team-color-bar" style={{ background: team.cor }} />
+      <div className="spec-team-color-bar" style={{ background: exitou ? 'var(--text3)' : team.cor }} />
       <div className="spec-team-header">
         <div className="spec-team-emoji">{team.emoji}</div>
-        <div className="spec-team-name" style={{ color: team.cor }}>{team.nome}</div>
-        {team.capitaoNome && (
-          <div className="spec-team-captain">⚑ {team.capitaoNome}</div>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div className="spec-team-name" style={{ color: exitou ? 'var(--text2)' : team.cor }}>{team.nome}</div>
+          {exitou && (
+            <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 9, color: 'var(--green)', background: 'rgba(76,175,125,0.12)', border: '1px solid rgba(76,175,125,0.3)', padding: '1px 5px', borderRadius: 3 }}>
+              PRONTO
+            </span>
+          )}
+        </div>
+        {team.capitaoNome && <div className="spec-team-captain">⚑ {team.capitaoNome}</div>}
         <div className="spec-team-coins-row">
           <div className="spec-team-coins">🪙 {team.moedas}</div>
-          <div className="spec-team-slots">{totalSlots}/{maxSlots}</div>
+          <div className="spec-team-slots">{titTotal}/5</div>
         </div>
       </div>
+
+      {/* Barra de progresso dos titulares */}
       <div className="spec-team-progress">
-        <div
-          className="spec-team-progress-fill"
-          style={{ width: `${(totalSlots / maxSlots) * 100}%`, background: team.cor }}
-        />
+        <div className="spec-team-progress-fill" style={{ width: `${Math.min(titTotal / 5, 1) * 100}%`, background: exitou ? 'var(--text3)' : team.cor }} />
       </div>
-      <div className="spec-roster">
+
+      {/* Titulares — fundo dourado */}
+      <div className="spec-roster" style={{ background: 'rgba(201,168,76,0.04)', borderBottom: fase === 'reservas' ? '1px solid var(--border)' : 'none' }}>
         {team.capitaoNome && (
           <div className="spec-roster-entry captain">
             <span>⚑ {team.capitaoNome}</span>
             <span className="spec-cap-tag">CAP</span>
           </div>
         )}
-        {roster.map(([pid, entry], idx) => {
-          const info     = playerByDiscord[entry.discord]
-          const eloColor = ELO_CONFIG[info?.elo]?.color ?? 'rgba(255,255,255,0.4)'
-          const nomeExibido = privacidade ? `Jogador #${idx + 1}` : entry.discord
-          return (
-            <div key={pid} className="spec-roster-entry">
-              <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {nomeExibido}
-              </span>
-              <div className="spec-roster-right">
-                {info?.elo && (
-                  <span
-                    className="spec-elo-badge"
-                    style={{ color: eloColor, background: eloColor + '18', border: `1px solid ${eloColor}33` }}
-                  >
-                    {info.elo}
-                  </span>
-                )}
-                {info?.rolePrimaria && (
-                  <span className="spec-role-badge">{info.rolePrimaria}</span>
-                )}
-                <span className="spec-roster-price">🪙{entry.preco}</span>
-              </div>
-            </div>
-          )
-        })}
-        {totalSlots === 0 && (
-          <div className="spec-roster-empty">{t('espectador.no_players')}</div>
-        )}
+        {roster.map(([pid, entry], idx) => <RosterEntry key={pid} entry={entry} idx={idx} />)}
+        {titTotal === 0 && <div className="spec-roster-empty">{t('espectador.no_players')}</div>}
       </div>
+
+      {/* Reservas — fundo prata, só na fase de reservas */}
+      {fase === 'reservas' && (
+        <div className="spec-roster" style={{ background: 'rgba(138,134,128,0.05)' }}>
+          {reservas.length === 0
+            ? <div className="spec-roster-empty" style={{ opacity: 0.4 }}>{exitou ? '—' : 'Aguardando...'}</div>
+            : reservas.map(([pid, entry], idx) => <RosterEntry key={pid} entry={entry} idx={idx} />)
+          }
+        </div>
+      )}
     </div>
   )
 }
