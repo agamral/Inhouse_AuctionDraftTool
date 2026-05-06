@@ -5,6 +5,7 @@ import { ref, set, update, get } from 'firebase/database'
 import { db } from '../firebase/database'
 import { useAuth } from '../hooks/useAuth'
 import { useModules, useConteudo } from '../hooks/useConfig'
+import { useCampeonato } from '../contexts/CampeonatoContext'
 import { loginWithGoogle } from '../firebase/auth'
 import './Inscricao.css'
 import '../styles/elo.css'
@@ -58,6 +59,7 @@ export default function Inscricao() {
   const { user, loading: authLoading } = useAuth()
   const { inscricaoAberta } = useModules()
   const conteudo = useConteudo()
+  const { idPublico } = useCampeonato()
   const [form, setForm] = useState(INITIAL)
   const [errors, setErrors] = useState({})
   const [submitted, setSubmitted] = useState(false)
@@ -68,15 +70,23 @@ export default function Inscricao() {
 
   useEffect(() => {
     if (!user) return
-    get(ref(db, `/players/${user.uid}`)).then((snap) => {
-      if (snap.exists()) setJaInscrito(true)
+    const legacyPath = `/players/${user.uid}`
+    const newPath    = idPublico ? `/campeonatos/${idPublico}/players/${user.uid}` : null
+    const checks = [get(ref(db, legacyPath))]
+    if (newPath) checks.push(get(ref(db, newPath)))
+    Promise.all(checks).then(snaps => {
+      if (snaps.some(s => s.exists())) setJaInscrito(true)
     })
-  }, [user])
+  }, [user, idPublico])
 
   // Pré-preenche o form ao entrar no modo edição
   useEffect(() => {
     if (!editando || !user) return
-    get(ref(db, `/players/${user.uid}`)).then((snap) => {
+    const newPath    = idPublico ? `/campeonatos/${idPublico}/players/${user.uid}` : null
+    const legacyPath = `/players/${user.uid}`
+    const primary = newPath ?? legacyPath
+    get(ref(db, primary)).then(async (snap) => {
+      if (!snap.exists() && newPath) snap = await get(ref(db, legacyPath))
       if (!snap.exists()) return
       const d = snap.val()
       setForm({
@@ -143,24 +153,29 @@ export default function Inscricao() {
       querCapitao:    form.querCapitao,
       titularReserva: form.titularReserva,
     }
+    const legacyPath = `/players/${user.uid}`
+    const newPath    = idPublico ? `/campeonatos/${idPublico}/players/${user.uid}` : null
     try {
       if (editando) {
         // Atualiza apenas os campos editáveis — preserva premium, precoBase, etc.
-        await update(ref(db, `/players/${user.uid}`), {
-          ...payload,
-          atualizadoEm: Date.now(),
-        })
+        const updateData = { ...payload, atualizadoEm: Date.now() }
+        const writes = [update(ref(db, legacyPath), updateData)]
+        if (newPath) writes.push(update(ref(db, newPath), updateData))
+        await Promise.all(writes)
         setEditando(false)
         setSubmitted(true)
       } else {
-        await set(ref(db, `/players/${user.uid}`), {
+        const fullData = {
           ...payload,
           premium: false,
           precoBase: 0,
           confirmado: false,
           inscritoEm: Date.now(),
           origem: 'site',
-        })
+        }
+        const writes = [set(ref(db, legacyPath), fullData)]
+        if (newPath) writes.push(set(ref(db, newPath), fullData))
+        await Promise.all(writes)
         fetch(import.meta.env.VITE_SHEETS_WEBAPP_URL, {
           method: 'POST',
           mode: 'no-cors',
