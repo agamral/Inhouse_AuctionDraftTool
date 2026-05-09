@@ -25,6 +25,7 @@ export default function AdminCaptainsSection({ draftConfig }) {
   const [novoEmoji, setNovoEmoji]     = useState(EMOJIS[0])
   const [novaCor, setNovaCor]         = useState(CORES[0])
   const [msg, setMsg]                 = useState('')
+  const [copied, setCopied]           = useState(null)
 
   const max = draftConfig?.maxCaptains ?? 8
   const min = draftConfig?.minCaptains ?? 2
@@ -115,6 +116,14 @@ export default function AdminCaptainsSection({ draftConfig }) {
     setTimeout(() => setMsg(''), 2500)
   }
 
+  function copiarLink(id) {
+    const url = `${window.location.origin}/campeonatos/${campeonatoId}/draft`
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(id)
+      setTimeout(() => setCopied(null), 2000)
+    })
+  }
+
   return (
     <div className="admin-section admin-players-section" style={{ marginBottom: '28px' }}>
       <div className="admin-section-title">Capitães do Leilão</div>
@@ -165,6 +174,14 @@ export default function AdminCaptainsSection({ draftConfig }) {
                 <button className="ap-btn" onClick={() => moverSeed(id, -1)} disabled={idx === 0} title="Subir">↑</button>
                 <button className="ap-btn" onClick={() => moverSeed(id, 1)} disabled={idx === list.length - 1} title="Descer">↓</button>
                 <button className="ap-btn" onClick={() => regenerarPin(id)} title="Novo PIN">🔄 PIN</button>
+                <button
+                  className="ap-btn"
+                  onClick={() => copiarLink(id)}
+                  title="Copiar link do leilão para o capitão"
+                  style={{ color: copied === id ? 'var(--green)' : 'var(--text2)' }}
+                >
+                  {copied === id ? '✓ Copiado' : '🔗 Link'}
+                </button>
                 <button className="ap-btn ap-btn-discard" onClick={() => removerCapitao(id)}>✕</button>
               </div>
             </div>
