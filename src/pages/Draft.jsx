@@ -152,6 +152,19 @@ export default function Draft() {
     updates[`${ses}/playerState/${player.id}/tipoPosse`] = 'titular'
     if (isExtraTurn) {
       updates[`${ses}/state/turnoExtra`] = null
+      // Turno extra acontece quando turnoAtual ficou null (roubo com todos já no mínimo).
+      // Após usar o turno extra, verificar se a fase encerrou.
+      if (!draftState.turnoAtual) {
+        const myNewSize2 = rosterSize + 1
+        const next2 = proximoCom(sortedCaptains, captains, myId, myNewSize2, draftConfig, 'titulares')
+        if (!next2) {
+          updates[`${ses}/state/status`]     = 'entre_fases'
+          updates[`${ses}/state/turnoAtual`] = null
+        } else {
+          updates[`${ses}/state/turnoAtual`] = next2.id
+          if (next2.novaRodada) updates[`${ses}/state/rodada`] = (draftState.rodada ?? 1) + 1
+        }
+      }
     } else {
       const myNewSize = rosterSize + 1
       const next = proximoCom(sortedCaptains, captains, myId, myNewSize, draftConfig, 'titulares')
@@ -215,8 +228,14 @@ export default function Draft() {
       const rosterSize = Object.keys(myCap.roster ?? {}).length + 1
       const myNewSize  = rosterSize + 1
       const next = proximoCom(sortedCaptains, captains, myId, myNewSize, draftConfig, 'titulares')
-      updates[`${ses}/state/turnoAtual`] = next?.id ?? fromId
-      if (next?.novaRodada) updates[`${ses}/state/rodada`] = (draftState.rodada ?? 1) + 1
+      if (next) {
+        updates[`${ses}/state/turnoAtual`] = next.id
+        if (next.novaRodada) updates[`${ses}/state/rodada`] = (draftState.rodada ?? 1) + 1
+      } else {
+        // Todos os times já têm o mínimo — o roubado recebe só o turno extra,
+        // sem turno normal extra. turnoAtual=null sinaliza isso para o comprar.
+        updates[`${ses}/state/turnoAtual`] = null
+      }
     }
 
     await update(ref(db), updates)
@@ -246,6 +265,17 @@ export default function Draft() {
 
     if (isExtraTurn) {
       updates[`${ses}/state/turnoExtra`] = null
+      if (!draftState.turnoAtual) {
+        const myNewReservas2 = reservasCount + 1
+        const next2 = proximoCom(sortedCaptains, captains, myId, myNewReservas2, draftConfig, 'reservas')
+        if (!next2) {
+          updates[`${ses}/state/status`]     = 'encerrado'
+          updates[`${ses}/state/turnoAtual`] = null
+        } else {
+          updates[`${ses}/state/turnoAtual`] = next2.id
+          if (next2.novaRodada) updates[`${ses}/state/rodada`] = (draftState.rodada ?? 1) + 1
+        }
+      }
     } else {
       const myNewReservas = reservasCount + 1
       const next = proximoCom(sortedCaptains, captains, myId, myNewReservas, draftConfig, 'reservas')
@@ -294,8 +324,12 @@ export default function Draft() {
     if (!isExtraTurn) {
       const myNewReservas = reservasAtual + 1
       const next = proximoCom(sortedCaptains, captains, myId, myNewReservas, draftConfig, 'reservas')
-      updates[`${ses}/state/turnoAtual`] = next?.id ?? fromId
-      if (next?.novaRodada) updates[`${ses}/state/rodada`] = (draftState.rodada ?? 1) + 1
+      if (next) {
+        updates[`${ses}/state/turnoAtual`] = next.id
+        if (next.novaRodada) updates[`${ses}/state/rodada`] = (draftState.rodada ?? 1) + 1
+      } else {
+        updates[`${ses}/state/turnoAtual`] = null
+      }
     }
     await update(ref(db), updates)
   }
