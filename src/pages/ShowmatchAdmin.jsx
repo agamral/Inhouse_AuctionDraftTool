@@ -367,20 +367,25 @@ export default function ShowmatchAdmin() {
                   </div>
                 )
               })}
-              {!isConfrontoMode && (
-                <div>
-                  <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 4 }}>Espectador (público)</div>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <code style={{ flex: 1, background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 6, padding: '7px 12px', fontSize: 12, color: 'var(--text)' }}>
-                      {baseUrl}/showmatch/espectador?sessao={sessaoId}
-                    </code>
-                    <button className="btn" style={{ fontSize: 12, padding: '6px 12px', whiteSpace: 'nowrap' }}
-                      onClick={() => { navigator.clipboard.writeText(`${baseUrl}/showmatch/espectador?sessao=${sessaoId}`); flash('Link espectador copiado!') }}>
-                      Copiar
-                    </button>
-                  </div>
-                </div>
-              )}
+              <div>
+                <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 4 }}>Espectador (público)</div>
+                {(() => {
+                  const espUrl = isConfrontoMode
+                    ? `${baseUrl}/campeonatos/${campeonatoId}/hero-draft/espectador?sessao=${sessaoId}`
+                    : `${baseUrl}/showmatch/espectador?sessao=${sessaoId}`
+                  return (
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <code style={{ flex: 1, background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 6, padding: '7px 12px', fontSize: 12, color: 'var(--text)', wordBreak: 'break-all' }}>
+                        {espUrl}
+                      </code>
+                      <button className="btn" style={{ fontSize: 12, padding: '6px 12px', whiteSpace: 'nowrap' }}
+                        onClick={() => { navigator.clipboard.writeText(espUrl); flash('Link espectador copiado!') }}>
+                        Copiar
+                      </button>
+                    </div>
+                  )
+                })()}
+              </div>
             </div>
           </div>
 
