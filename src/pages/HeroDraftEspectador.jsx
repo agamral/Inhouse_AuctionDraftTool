@@ -11,10 +11,10 @@ import { useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import './HeroDraftEspectador.css'
 
-const SHOWMATCH_DRAFT_PATH = 'showmatch/sessaoAtiva/heroDraft'
+const SHOWMATCH_DRAFT_PATH_LEGACY = 'showmatch/sessaoAtiva/heroDraft'
 
 // URL: /campeonatos/:id/hero-draft/espectador?sessao=semifinal-1
-// URL: /showmatch/espectador  (reutiliza este componente)
+// URL: /showmatch/espectador?sessao=smXXXXX  (com ID único)
 export default function HeroDraftEspectador() {
   const { t } = useTranslation()
   const [params]  = useSearchParams()
@@ -24,7 +24,9 @@ export default function HeroDraftEspectador() {
   const isShowmatch   = location.pathname.startsWith('/showmatch')
 
   const pathOverride = isShowmatch
-    ? SHOWMATCH_DRAFT_PATH
+    ? (sessaoId !== 'default' && sessaoId !== 'showmatch'
+        ? `showmatch/sessions/${sessaoId}/heroDraft`
+        : SHOWMATCH_DRAFT_PATH_LEGACY)
     : (idPublico ? `${heroDraftPath(idPublico)}/${sessaoId}` : null)
 
   const { estado, loading, erro } = useHeroDraft(

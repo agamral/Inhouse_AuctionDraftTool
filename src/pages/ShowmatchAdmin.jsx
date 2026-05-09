@@ -8,8 +8,9 @@ import { MAPAS } from '../utils/mapPool'
 import { HEROES } from '../utils/heroPool'
 import { teamPath, confrontosPath } from '../utils/campeonatoPaths'
 
-const SHOWMATCH_PATH = 'showmatch/sessaoAtiva'
-const HERO_DRAFT_PATH = 'showmatch/sessaoAtiva/heroDraft'
+function gerarSessaoId() {
+  return `sm${Date.now().toString(36).slice(-5)}${Math.random().toString(36).slice(2, 6)}`
+}
 
 // Sequências compactas (criarEstadoInicial chama expandirSequencia internamente)
 const SEQUENCIAS = {
@@ -48,10 +49,18 @@ export default function ShowmatchAdmin() {
   const confrontoId  = searchParams.get('confronto')  || null
   const campeonatoId = searchParams.get('campeonato') || null
 
-  const [sessao,   setSessao]   = useState(undefined)
+  // ID único por sessão — showmatch gera um novo; confronto reutiliza
+  const [sessaoId, setSessaoId] = useState(gerarSessaoId)
+  const isConfrontoMode = !!(confrontoId && campeonatoId)
+
+  // Caminhos dinâmicos — confronto usa heroDraft do campeonato; showmatch usa caminho próprio
+  const sessaoPath     = isConfrontoMode ? null                                              : `showmatch/sessions/${sessaoId}`
+  const heroDraftPath  = isConfrontoMode ? `campeonatos/${campeonatoId}/heroDraft/${sessaoId}` : `showmatch/sessions/${sessaoId}/heroDraft`
+
+  const [sessao,   setSessao]   = useState(isConfrontoMode ? null : undefined)
   const [msg,      setMsg]      = useState(null)
   const [confirmEnd, setConfirmEnd] = useState(false)
-  const [confrontoCtx, setConfrontoCtx] = useState(null) // dados do confronto vinculado
+  const [confrontoCtx, setConfrontoCtx] = useState(null)
 
   // Form for creating a showmatch
   const [nomeA,      setNomeA]      = useState('Time A')
@@ -74,9 +83,9 @@ export default function ShowmatchAdmin() {
   // Quem começa: 'A' | 'B'
   const [primeiroTime, setPrimeiroTime] = useState('A')
 
-  // Hero Draft hook — uses showmatch path via pathOverride
+  // Hero Draft hook — usa caminho dinâmico (showmatch ou confronto)
   const { estado: draftEstado, iniciar: _iniciarDraft, iniciarComContagem, encerrar: encerrarDraft, desfazer: desfazerDraft } = useHeroDraft(
-    null, 'admin', HERO_DRAFT_PATH
+    null, 'admin', heroDraftPath
   )
 
   // Auto-transição countdown → rodando
@@ -87,10 +96,11 @@ export default function ShowmatchAdmin() {
     return () => clearTimeout(t)
   }, [draftEstado?.status, draftEstado?.countdownEndsAt]) // eslint-disable-line
 
+  // Listener de sessão — só para showmatch (confronto deriva de confrontoCtx)
   useEffect(() => {
-    const unsub = onValue(ref(db, SHOWMATCH_PATH), (snap) => {
+    if (!sessaoPath) return
+    const unsub = onValue(ref(db, sessaoPath), (snap) => {
       const val = snap.val()
-      // Filter out heroDraft sub-node from session display
       if (val) {
         const { heroDraft: _, ...rest } = val
         setSessao(rest)
@@ -99,7 +109,7 @@ export default function ShowmatchAdmin() {
       }
     })
     return unsub
-  }, [])
+  }, [sessaoPath]) // eslint-disable-line
 
   useEffect(() => {
     setDraftCriado(!!draftEstado)
@@ -118,16 +128,24 @@ export default function ShowmatchAdmin() {
       if (!conf) return
       const tA = teams[conf.timeA] ?? {}
       const tB = teams[conf.timeB] ?? {}
-      setConfrontoCtx({ conf, tA, tB })
-      setNomeA(tA.nome || 'Time A')
-      setNomeB(tB.nome || 'Time B')
-      // Pré-preenche jogadores a partir do roster do leilão
+      const nA = tA.nome || 'Time A'
+      const nB = tB.nome || 'Time B'
       const rosA = Object.values(tA.roster ?? {}).map(r => r.discord).filter(Boolean)
       const rosB = Object.values(tB.roster ?? {}).map(r => r.discord).filter(Boolean)
       if (tA.capitaoNome) rosA.unshift(tA.capitaoNome)
       if (tB.capitaoNome) rosB.unshift(tB.capitaoNome)
+
+      setConfrontoCtx({ conf, tA, tB })
+      setNomeA(nA)
+      setNomeB(nB)
       setJogadoresA(rosA.join('\n'))
       setJogadoresB(rosB.join('\n'))
+      // Em modo confronto, sessao é derivada localmente (não há sessão Firebase de showmatch)
+      setSessao({
+        timeA: { nome: nA, jogadores: rosA },
+        timeB: { nome: nB, jogadores: rosB },
+        status: 'configurando',
+      })
     }
     carregar()
   }, [confrontoId, campeonatoId]) // eslint-disable-line
@@ -138,9 +156,12 @@ export default function ShowmatchAdmin() {
   }
 
   async function criarShowmatch() {
+    // Gera novo ID para cada showmatch criado
+    const novoId = gerarSessaoId()
+    setSessaoId(novoId)
     const listaA = jogadoresA.split('\n').map(s => s.trim()).filter(Boolean)
     const listaB = jogadoresB.split('\n').map(s => s.trim()).filter(Boolean)
-    await set(ref(db, SHOWMATCH_PATH), {
+    await set(ref(db, `showmatch/sessions/${novoId}`), {
       criadoEm: Date.now(),
       status: 'configurando',
       timeA: { nome: nomeA.trim() || 'Time A', jogadores: listaA },
@@ -167,8 +188,8 @@ export default function ShowmatchAdmin() {
         pickDuplo: Number(timerPickDuplo) || DEFAULT_TIMER_CONFIG.pickDuplo,
       },
     })
-    await set(ref(db, HERO_DRAFT_PATH), estado)
-    await update(ref(db, SHOWMATCH_PATH), { status: 'heroDraft' })
+    await set(ref(db, heroDraftPath), estado)
+    if (sessaoPath) await update(ref(db, sessaoPath), { status: 'heroDraft' })
     flash('Hero Draft criado — clique em Iniciar para começar.')
   }
 
@@ -194,9 +215,11 @@ export default function ShowmatchAdmin() {
   }
 
   async function encerrarShowmatch() {
-    await remove(ref(db, SHOWMATCH_PATH))
+    if (sessaoPath) await remove(ref(db, sessaoPath))
+    if (isConfrontoMode) await remove(ref(db, heroDraftPath))
     setConfirmEnd(false)
-    flash('Showmatch encerrado e apagado.')
+    setSessao(isConfrontoMode ? null : null)
+    flash(isConfrontoMode ? 'Draft encerrado.' : 'Showmatch encerrado e apagado.')
   }
 
   const baseUrl = window.location.origin
@@ -324,7 +347,9 @@ export default function ShowmatchAdmin() {
             <div className="admin-section-title">Links dos Capitães</div>
             <div style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
               {['A', 'B'].map(t => {
-                const url = `${baseUrl}/showmatch/draft?time=${t}&sessao=showmatch`
+                const url = isConfrontoMode
+                  ? `${baseUrl}/campeonatos/${campeonatoId}/hero-draft?sessao=${sessaoId}&time=${t}`
+                  : `${baseUrl}/showmatch/draft?time=${t}&sessao=${sessaoId}`
                 return (
                   <div key={t}>
                     <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 4 }}>
@@ -342,18 +367,20 @@ export default function ShowmatchAdmin() {
                   </div>
                 )
               })}
-              <div>
-                <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 4 }}>Espectador (público)</div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <code style={{ flex: 1, background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 6, padding: '7px 12px', fontSize: 12, color: 'var(--text)' }}>
-                    {baseUrl}/showmatch/espectador
-                  </code>
-                  <button className="btn" style={{ fontSize: 12, padding: '6px 12px', whiteSpace: 'nowrap' }}
-                    onClick={() => { navigator.clipboard.writeText(`${baseUrl}/showmatch/espectador`); flash('Link espectador copiado!') }}>
-                    Copiar
-                  </button>
+              {!isConfrontoMode && (
+                <div>
+                  <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 4 }}>Espectador (público)</div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <code style={{ flex: 1, background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 6, padding: '7px 12px', fontSize: 12, color: 'var(--text)' }}>
+                      {baseUrl}/showmatch/espectador?sessao={sessaoId}
+                    </code>
+                    <button className="btn" style={{ fontSize: 12, padding: '6px 12px', whiteSpace: 'nowrap' }}
+                      onClick={() => { navigator.clipboard.writeText(`${baseUrl}/showmatch/espectador?sessao=${sessaoId}`); flash('Link espectador copiado!') }}>
+                      Copiar
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
 
@@ -551,7 +578,7 @@ export default function ShowmatchAdmin() {
             {!confirmEnd ? (
               <button className="btn" style={{ fontSize: 13, padding: '8px 18px', color: 'var(--red)', borderColor: 'rgba(224,85,85,0.3)' }}
                 onClick={() => setConfirmEnd(true)}>
-                Encerrar e apagar showmatch
+                {isConfrontoMode ? 'Encerrar e apagar draft' : 'Encerrar e apagar showmatch'}
               </button>
             ) : (
               <>
