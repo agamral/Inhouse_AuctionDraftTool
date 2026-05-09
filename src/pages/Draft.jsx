@@ -100,6 +100,13 @@ export default function Draft() {
 
   const teamCaptainNames = new Set(Object.values(captains).map(c => c.capitaoNome).filter(Boolean))
 
+  const myId        = captainSession?.captainId ?? null
+  const myCap       = myId ? captains[myId] : null
+  const isExtraTurn = myId ? draftState.turnoExtra === myId : false
+  const isMyTurn    = myId ? (draftState.turnoAtual === myId || isExtraTurn) : false
+  const activeTurnId   = draftState.turnoExtra ?? draftState.turnoAtual
+  const currentTurnCap = captains[activeTurnId]
+
   // Pool disponível — sem dono e não descartado
   const availablePlayers = players.filter(p =>
     !overrides[p.id]?.descartado &&
@@ -113,18 +120,10 @@ export default function Draft() {
     if (!ps?.ownedBy || ps.ownedBy === myId) return false
     if (overrides[p.id]?.descartado || teamCaptainNames.has(p.discord)) return false
     if (fase === 'reservas') {
-      // Só reservas, e dono não pode ter saído
       return ps.tipoPosse === 'reserva' && !captains[ps.ownedBy]?.exitou
     }
-    return true // titulares: todos os comprados são roubáveis
+    return true
   })
-
-  const myId        = captainSession?.captainId ?? null
-  const myCap       = myId ? captains[myId] : null
-  const isExtraTurn = myId ? draftState.turnoExtra === myId : false
-  const isMyTurn    = myId ? (draftState.turnoAtual === myId || isExtraTurn) : false
-  const activeTurnId   = draftState.turnoExtra ?? draftState.turnoAtual
-  const currentTurnCap = captains[activeTurnId]
 
   // ── Ação de compra ────────────────────────────────────────
   async function comprar(player) {
