@@ -147,6 +147,12 @@ export default function Agendamento() {
   const modules = useModules()
   const { idPublico } = useCampeonato()
 
+  // Capitão via PIN (sessionStorage do leilão) — fallback quando não tem Firebase Auth
+  const pinSession = (() => {
+    try { return JSON.parse(sessionStorage.getItem('captainSession')) } catch { return null }
+  })()
+  const capitaoEfetivo = capitao ?? (pinSession?.captainId ? pinSession : null)
+
   const [teams,        setTeams]    = useState({})
   const [confrontos,   setConfrs]   = useState({})
   const [dispon,       setDispon]   = useState({})
@@ -157,7 +163,15 @@ export default function Agendamento() {
   const [saving,       setSaving]   = useState(null)
   const [feedback,     setFeedback] = useState({})
 
-  const teamSel = isAdmin ? teamSelAdmin : (capitao?.teamId ?? '')
+  // Para PIN capitão: encontra o time na tabela pelo nome (draftSession usa ID diferente do /teams)
+  const teamIdFromPin = pinSession && !capitao
+    ? Object.entries(teams).find(([, t]) =>
+        t.nome === pinSession.nome ||
+        t.capitaoNome === pinSession.capitaoNome
+      )?.[0] ?? ''
+    : ''
+
+  const teamSel = isAdmin ? teamSelAdmin : (capitao?.teamId ?? teamIdFromPin ?? '')
 
   useEffect(() => onValue(ref(db, teamPath(idPublico)),            s => setTeams(s.val()  ?? {})), [idPublico])
   useEffect(() => onValue(ref(db, confrontosPath(idPublico)),     s => setConfrs(s.val() ?? {})), [idPublico])
@@ -258,7 +272,7 @@ export default function Agendamento() {
     }
   }, [confrontos, selecoes, dispon, teamSel]) // eslint-disable-line
 
-  if (!modules.loading && !isAdmin && !capitao && !modules.campeonatoAtivo) {
+  if (!modules.loading && !isAdmin && !capitaoEfetivo && !modules.campeonatoAtivo) {
     return <PaginaInativa icone="📅" titulo="Agenda em preparação" descricao="A agenda de partidas estará disponível quando o campeonato começar." />
   }
 
@@ -291,17 +305,17 @@ export default function Agendamento() {
       )}
 
       {/* ── Área interativa (capitão / admin) ─────────────────────────────── */}
-      {user && (isAdmin || capitao) && (
+      {(isAdmin || capitaoEfetivo) && (
         <>
           <div className="ag-section-title" style={{ marginTop: '2.5rem' }}>
             {isAdmin ? 'Gerenciar Disponibilidade' : 'Minha Disponibilidade'}
           </div>
 
-          {capitao && !isAdmin && (
+          {capitaoEfetivo && !isAdmin && (
             <div className="ag-team-sel">
               <label className="ag-label">Você está jogando como:</label>
               <span className="ag-team-badge" style={{ background: (meuTime?.cor ?? 'var(--blue)') + '22', borderColor: meuTime?.cor ?? 'var(--blue)', color: meuTime?.cor ?? 'var(--blue)' }}>
-                {meuTime?.nome ?? capitao.nome}
+                {meuTime?.nome ?? capitaoEfetivo?.nome ?? capitaoEfetivo?.capitaoNome}
               </span>
               {meuTime?.fuso && (
                 <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 12, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -532,7 +546,7 @@ export default function Agendamento() {
         </>
       )}
 
-      {!user && (
+      {!user && !capitaoEfetivo && (
         <div className="ag-aviso" style={{ marginTop: '0.5rem', fontSize: 13 }}>
           <a href="/login-capitao" style={{ color: 'var(--blue)' }}>Faça login como capitão</a> para marcar sua disponibilidade.
         </div>
