@@ -282,15 +282,18 @@ export default function ShowmatchAdmin() {
   }
 
   async function registrarResultadoFinal() {
-    const base = `${confrontosPath(campeonatoId)}/${confrontoId}`
-    const isTie = winsA === winsB
-    const updates = {
-      [`${base}/status`]: isTie ? 'empate_pendente' : 'realizado',
+    const base   = `${confrontosPath(campeonatoId)}/${confrontoId}`
+    const isTie  = winsA === winsB
+    // resultado sempre necessário — tabela e bot leem c.resultado para pontuar
+    const resultado = {
+      tipo:  isTie ? 'empate' : 'normal',
+      timeA: winsA,
+      timeB: winsB,
     }
-    if (!isTie) {
-      updates[`${base}/resultado`] = { tipo: 'normal', timeA: winsA, timeB: winsB }
-    }
-    await update(ref(db), updates)
+    await update(ref(db), {
+      [`${base}/status`]:    isTie ? 'empate_pendente' : 'realizado',
+      [`${base}/resultado`]: resultado,
+    })
     setConfirmResultado(false)
     flash(isTie ? 'Empate registrado — desempate pendente.' : 'Resultado registrado!')
   }
