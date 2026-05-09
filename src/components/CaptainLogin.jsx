@@ -1,24 +1,28 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { ref, onValue } from 'firebase/database'
 import { db } from '../firebase/database'
 import { useTranslation } from 'react-i18next'
+import { useCampeonato } from '../contexts/CampeonatoContext'
+import { draftSessionPath } from '../utils/campeonatoPaths'
 
 export default function CaptainLogin({ onLogin }) {
   const { t } = useTranslation()
+  const { idPublico } = useCampeonato()
   const [captains, setCaptains] = useState({})
   const [loading, setLoading]   = useState(true)
-  const [selected, setSelected] = useState(null)   // captainId
+  const [selected, setSelected] = useState(null)
   const [pin, setPin]           = useState('')
   const [erro, setErro]         = useState('')
   const [tentando, setTentando] = useState(false)
 
   useEffect(() => {
-    const unsub = onValue(ref(db, '/draftSession/captains'), (snap) => {
+    const unsub = onValue(ref(db, `${draftSessionPath(idPublico)}/captains`), (snap) => {
       setCaptains(snap.val() ?? {})
       setLoading(false)
     })
     return unsub
-  }, [])
+  }, [idPublico])
 
   const list = Object.entries(captains).sort(([, a], [, b]) => (a.seed ?? 99) - (b.seed ?? 99))
 
@@ -78,10 +82,10 @@ export default function CaptainLogin({ onLogin }) {
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <div style={{ fontSize: '32px', marginBottom: '12px' }}>⚔️</div>
           <h1 style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: '26px', color: 'var(--text)', marginBottom: '6px' }}>
-            {t('captainLogin.title')}
+            {t('captainLogin.pin_title')}
           </h1>
           <p style={{ color: 'var(--text2)', fontSize: '14px' }}>
-            {t('captainLogin.subtitle')}
+            {t('captainLogin.pin_subtitle')}
           </p>
         </div>
 
@@ -198,6 +202,19 @@ export default function CaptainLogin({ onLogin }) {
             )}
 
           </form>
+        )}
+
+        {/* Opção Google */}
+        {idPublico && (
+          <p style={{ textAlign: 'center', marginTop: '28px', fontSize: '12px', color: 'var(--text3)' }}>
+            {t('captainLogin.google_option')}{' '}
+            <Link
+              to={`/campeonatos/${idPublico}/login-capitao`}
+              style={{ color: 'var(--text2)', textDecoration: 'none' }}
+            >
+              Entrar com Google →
+            </Link>
+          </p>
         )}
       </div>
     </div>
