@@ -47,12 +47,13 @@ export default function Espectador() {
       .catch(() => {})
   }, [])
 
-  // Trigger announce overlay only when a new action arrives
+  // Trigger announce overlay only when a new action arrives; auto-dismiss after animation
   useEffect(() => {
     const ts = draftState.lastAction?.ts
     if (ts && ts !== prevActionTs.current) {
       prevActionTs.current = ts
       setAnnounceKey(ts)
+      setTimeout(() => setAnnounceKey(null), 3500)
     }
   }, [draftState.lastAction?.ts])
 
