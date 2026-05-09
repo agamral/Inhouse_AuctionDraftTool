@@ -381,20 +381,64 @@ export default function Draft() {
 
   // ── Draft encerrado ───────────────────────────────────────
   if (draftState.status === 'encerrado') {
+    const playerByDiscord = Object.fromEntries(players.map(p => [p.discord, p]))
+    const myTeam          = myId ? captains[myId] : null
+    const otherTeams      = sortedCaptains.filter(([id]) => id !== myId)
+
     return (
-      <div style={{ minHeight: 'calc(100vh - 65px)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '16px', padding: '24px', maxWidth: 480, margin: '0 auto' }}>
-        <div style={{ fontSize: '48px' }}>🏁</div>
-        <h2 style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: '22px', color: 'var(--text)', margin: 0 }}>
-          Leilão encerrado!
-        </h2>
-        <p style={{ color: 'var(--text2)', fontSize: '14px', margin: 0 }}>Todos os times foram formados.</p>
-        {(capitao || captainSession) && (
-          <div style={{ width: '100%', marginTop: 8 }}>
-            <HeroDraftAlerta capitao={capitao} />
+      <div style={{ overflowY: 'auto', minHeight: 'calc(100vh - 65px)', padding: '32px 24px' }}>
+        <div style={{ maxWidth: 960, margin: '0 auto' }}>
+
+          {/* Header */}
+          <div style={{ textAlign: 'center', marginBottom: 32 }}>
+            <div style={{ fontSize: 44 }}>🏁</div>
+            <h2 style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 28, color: 'var(--text)', margin: '8px 0 4px' }}>
+              Leilão Encerrado
+            </h2>
+            <p style={{ color: 'var(--text2)', fontSize: 13, margin: 0 }}>Todos os times foram formados.</p>
           </div>
-        )}
-        {captainSession && <SessionBadge session={captainSession} onLogout={handleLogout} />}
-        {isAdmin && <AdminDraftBar draftState={draftState} sortedCaptains={sortedCaptains} captains={captains} draftConfig={draftConfig} idPublico={idPublico} />}
+
+          {/* Meu time em destaque */}
+          {myTeam && (
+            <div style={{ marginBottom: 28 }}>
+              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text2)', marginBottom: 10 }}>
+                Seu Time
+              </div>
+              <TeamFinalCard team={myTeam} playerByDiscord={playerByDiscord} large />
+            </div>
+          )}
+
+          {/* Times adversários */}
+          {otherTeams.length > 0 && (
+            <div>
+              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text2)', marginBottom: 10 }}>
+                {myTeam ? 'Times Adversários' : 'Times Formados'}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 14 }}>
+                {otherTeams.map(([id, team]) => (
+                  <TeamFinalCard key={id} team={team} playerByDiscord={playerByDiscord} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Admin sem time — mostra todos */}
+          {!myTeam && isAdmin && sortedCaptains.length > 0 && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 14 }}>
+              {sortedCaptains.map(([id, team]) => (
+                <TeamFinalCard key={id} team={team} playerByDiscord={playerByDiscord} />
+              ))}
+            </div>
+          )}
+
+          {/* Controles */}
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 12, marginTop: 28, flexWrap: 'wrap' }}>
+            {captainSession && <SessionBadge session={captainSession} onLogout={handleLogout} />}
+            {(capitao || captainSession) && <HeroDraftAlerta capitao={capitao} />}
+            {isAdmin && <AdminDraftBar draftState={draftState} sortedCaptains={sortedCaptains} captains={captains} draftConfig={draftConfig} idPublico={idPublico} />}
+          </div>
+
+        </div>
       </div>
     )
   }
@@ -873,6 +917,99 @@ function AdminDraftBar({ draftState, sortedCaptains, captains, draftConfig, idPu
               )}
             </div>
           </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Card de time para tela de encerramento ───────────────────
+function TeamFinalCard({ team, playerByDiscord, large = false }) {
+  const roster   = Object.entries(team.roster   ?? {})
+  const reservas = Object.entries(team.reservas ?? {})
+
+  const titulares = [
+    ...(team.capitaoNome ? [{ discord: team.capitaoNome, preco: null, isCaptain: true }] : []),
+    ...roster.map(([, e]) => ({ ...e, isCaptain: false })),
+  ]
+
+  return (
+    <div style={{
+      border: `1px solid ${large ? team.cor + '99' : team.cor + '44'}`,
+      borderRadius: large ? 12 : 8,
+      background: large ? team.cor + '0e' : team.cor + '06',
+      overflow: 'hidden',
+    }}>
+      {/* Header */}
+      <div style={{ padding: large ? '14px 18px' : '10px 14px', borderBottom: `1px solid ${team.cor}33`, background: team.cor + '14', display: 'flex', alignItems: 'center', gap: large ? 12 : 8 }}>
+        <span style={{ fontSize: large ? 28 : 20, lineHeight: 1 }}>{team.emoji}</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: large ? 20 : 15, color: team.cor, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {team.nome}
+          </div>
+          {team.capitaoNome && (
+            <div style={{ fontSize: large ? 12 : 10, color: 'var(--gold)', fontFamily: "'Barlow Condensed', sans-serif", marginTop: 1 }}>
+              ⚑ {team.capitaoNome}
+            </div>
+          )}
+        </div>
+        <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: large ? 12 : 11, color: 'var(--gold)', flexShrink: 0 }}>
+          {titulares.length}/{reservas.length > 0 ? `${titulares.length}+${reservas.length}` : titulares.length}
+        </div>
+      </div>
+
+      {/* Titulares */}
+      <div style={{ background: 'rgba(201,168,76,0.03)', padding: large ? '8px 0' : '4px 0' }}>
+        {titulares.map((entry, i) => {
+          const info = playerByDiscord[entry.discord]
+          const eloColor = ELO_CONFIG[info?.elo]?.color
+          return (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: large ? '5px 18px' : '3px 14px', background: entry.isCaptain ? 'rgba(201,168,76,0.06)' : 'transparent' }}>
+              {entry.isCaptain && <span style={{ color: 'var(--gold)', fontSize: large ? 12 : 10, flexShrink: 0 }}>⚑</span>}
+              <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: large ? 14 : 12, color: entry.isCaptain ? 'var(--gold)' : 'var(--text)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {entry.discord}
+              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                {info?.rolePrimaria && large && (
+                  <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 11, color: 'var(--text2)' }}>{info.rolePrimaria}</span>
+                )}
+                {eloColor && (
+                  <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: large ? 11 : 10, padding: '1px 5px', borderRadius: 3, color: eloColor, background: eloColor + '18', border: `1px solid ${eloColor}33` }}>
+                    {info.elo}
+                  </span>
+                )}
+                {!entry.isCaptain && entry.preco != null && (
+                  <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: large ? 11 : 10, color: 'var(--gold)', opacity: 0.7 }}>
+                    {entry.preco}🪙
+                  </span>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Reservas */}
+      {reservas.length > 0 && (
+        <div style={{ borderTop: '1px solid var(--border)', background: 'rgba(138,134,128,0.04)', padding: large ? '6px 0 8px' : '3px 0 5px' }}>
+          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)', padding: large ? '0 18px 4px' : '0 14px 2px' }}>
+            Reservas
+          </div>
+          {reservas.map(([, entry], i) => {
+            const info = playerByDiscord[entry.discord]
+            const eloColor = ELO_CONFIG[info?.elo]?.color
+            return (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: large ? '4px 18px' : '2px 14px' }}>
+                <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: large ? 13 : 11, color: 'var(--text2)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {entry.discord}
+                </span>
+                {eloColor && (
+                  <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 10, color: eloColor }}>{info.elo}</span>
+                )}
+                <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 10, color: 'var(--text3)' }}>{entry.preco}🪙</span>
+              </div>
+            )
+          })}
         </div>
       )}
     </div>
