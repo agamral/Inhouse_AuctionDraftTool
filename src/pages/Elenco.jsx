@@ -5,7 +5,7 @@ import { useModules } from '../hooks/useConfig'
 import { useAuth } from '../hooks/useAuth'
 import { useCampeonato } from '../contexts/CampeonatoContext'
 import PaginaInativa from '../components/PaginaInativa'
-import { teamPath, confrontosPath } from '../utils/campeonatoPaths'
+import { teamPath, confrontosPath, draftSessionPath } from '../utils/campeonatoPaths'
 import { STATUS_CONFRONTO, TIPO_CONFRONTO } from '../utils/scheduling'
 import './Elenco.css'
 
@@ -15,10 +15,12 @@ export default function Elenco() {
   const { isAdmin } = useAuth()
   const [teams,      setTeams]      = useState({})
   const [confrontos, setConfrontos] = useState({})
+  const [captains,   setCaptains]   = useState({})
   const [busca,      setBusca]      = useState('')
 
-  useEffect(() => onValue(ref(db, teamPath(idPublico)),      snap => setTeams(snap.val()      ?? {})), [idPublico])
-  useEffect(() => onValue(ref(db, confrontosPath(idPublico)), snap => setConfrontos(snap.val() ?? {})), [idPublico])
+  useEffect(() => onValue(ref(db, teamPath(idPublico)),                    snap => setTeams(snap.val()    ?? {})), [idPublico])
+  useEffect(() => onValue(ref(db, confrontosPath(idPublico)),              snap => setConfrontos(snap.val() ?? {})), [idPublico])
+  useEffect(() => onValue(ref(db, `${draftSessionPath(idPublico)}/captains`), snap => setCaptains(snap.val() ?? {})), [idPublico])
 
   // Calcula W/L para cada time (só fase regular e desempate)
   function calcWL(teamId) {
@@ -113,6 +115,10 @@ export default function Elenco() {
           const { v, d } = calcWL(id)
           const jogadores = team.jogadores ?? []
 
+          // Reservas: cruza com draftSession/captains pelo nome do time
+          const capEntry = Object.values(captains).find(c => c.nome === team.nome)
+          const reservas = capEntry ? Object.values(capEntry.reservas ?? {}) : []
+
           return (
             <div key={id} className="elenco-card" style={{ '--cor': team.cor ?? 'var(--blue)' }}>
               {/* Header */}
@@ -125,9 +131,9 @@ export default function Elenco() {
                 </div>
               </div>
 
-              {/* Roster */}
+              {/* Titulares */}
               {jogadores.length > 0 ? (
-                <ul className="elenco-roster">
+                <ul className="elenco-roster" style={{ background: 'rgba(201,168,76,0.03)' }}>
                   {jogadores.map((j, i) => {
                     const destaque = !privacidadeAtiva && buscaLower && j.nome?.toLowerCase().includes(buscaLower)
                     return (
@@ -143,6 +149,24 @@ export default function Elenco() {
                 </ul>
               ) : (
                 <p className="elenco-sem-roster">Roster a definir</p>
+              )}
+
+              {/* Reservas */}
+              {reservas.length > 0 && (
+                <>
+                  <div style={{ padding: '3px 12px 2px', fontFamily: "'Barlow Condensed', sans-serif", fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)', borderTop: '1px solid var(--border)' }}>
+                    Reservas
+                  </div>
+                  <ul className="elenco-roster" style={{ background: 'rgba(138,134,128,0.04)' }}>
+                    {reservas.map((r, i) => (
+                      <li key={i} className="elenco-player" style={{ opacity: 0.75 }}>
+                        <span className="elenco-player-nome">
+                          {privacidadeAtiva ? `Reserva #${i + 1}` : r.discord}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </>
               )}
             </div>
           )

@@ -438,6 +438,18 @@ export default function Agendamento() {
                       {advSlots.length === 0 && <span className="ag-leg ag-leg--wait">Aguardando adversário</span>}
                     </div>
 
+                    {/* Indicador do fuso ativo */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, fontSize: 11, fontFamily: "'Barlow Condensed', sans-serif", color: 'var(--text2)' }}>
+                      <span>🕐 Horários em: <strong style={{ color: 'var(--text)' }}>
+                        {fusoExibicao !== FUSO_PADRAO
+                          ? (FUSOS.find(f => f.id === fusoExibicao)?.label ?? fusoExibicao)
+                          : 'BRT (Horário de Brasília)'}
+                      </strong></span>
+                      {fusoExibicao !== FUSO_PADRAO && (
+                        <span style={{ opacity: 0.6 }}>· horário BRT também exibido</span>
+                      )}
+                    </div>
+
                     <div className="ag-grid">
                       {Object.entries(DIA_LABEL).map(([dia, diaLabel]) => {
                         const slotsHoje = SLOTS.filter(s => SLOT_DIA[s] === dia)
@@ -457,6 +469,9 @@ export default function Agendamento() {
                                     (cc.timeA === teamSel || cc.timeB === teamSel)
                                   )
                                 )
+                                const horarioLocal = slotHoraLocal(slot, fusoExibicao)
+                                const horarioBRT   = slot.split('-')[1]
+                                const mostraBRT    = fusoExibicao !== FUSO_PADRAO
 
                                 return (
                                   <button
@@ -478,11 +493,13 @@ export default function Agendamento() {
                                     title={ocupado ? 'Slot ocupado por outra partida confirmada' : backToBack ? '⚠ Back-to-back com outra partida' : slotLabelFuso(slot, fusoExibicao)}
                                   >
                                     <span className="ag-slot-hora">
-                                      {fusoExibicao !== FUSO_PADRAO
-                                        ? `${slotHoraLocal(slot, fusoExibicao)}h`
-                                        : slot.split('-')[1]
-                                      }
+                                      {mostraBRT ? `${horarioLocal}h` : `${horarioBRT}h`}
                                     </span>
+                                    {mostraBRT && (
+                                      <span style={{ fontSize: 9, opacity: 0.55, display: 'block', lineHeight: 1 }}>
+                                        {horarioBRT}h BRT
+                                      </span>
+                                    )}
                                     {backToBack && !euMarcei && <span className="ag-slot-warn">!</span>}
                                   </button>
                                 )
