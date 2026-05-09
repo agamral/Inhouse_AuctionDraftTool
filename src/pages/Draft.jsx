@@ -221,7 +221,7 @@ export default function Draft() {
 
   // ── Fase de Reservas: ações ──────────────────────────────
   async function comprarReserva(player) {
-    if (!isMyTurn || !myCap || isExtraTurn) return
+    if (!isMyTurn || !myCap) return
     const preco = playerState[player.id]?.preco ?? 0
     if (myCap.moedas < preco) return
     const reservasCount = Object.keys(myCap.reservas ?? {}).length
@@ -241,13 +241,17 @@ export default function Draft() {
       preco, ts: Date.now(),
     }
 
-    const myNewReservas = reservasCount + 1
-    const next = proximoCom(sortedCaptains, captains, myId, myNewReservas, draftConfig, 'reservas')
-    if (!next) {
-      updates[`${ses}/state/status`] = 'encerrado'
+    if (isExtraTurn) {
+      updates[`${ses}/state/turnoExtra`] = null
     } else {
-      updates[`${ses}/state/turnoAtual`] = next.id
-      if (next.novaRodada) updates[`${ses}/state/rodada`] = (draftState.rodada ?? 1) + 1
+      const myNewReservas = reservasCount + 1
+      const next = proximoCom(sortedCaptains, captains, myId, myNewReservas, draftConfig, 'reservas')
+      if (!next) {
+        updates[`${ses}/state/status`] = 'encerrado'
+      } else {
+        updates[`${ses}/state/turnoAtual`] = next.id
+        if (next.novaRodada) updates[`${ses}/state/rodada`] = (draftState.rodada ?? 1) + 1
+      }
     }
     await update(ref(db), updates)
   }
@@ -294,17 +298,22 @@ export default function Draft() {
   }
 
   async function sairDraft() {
-    if (!isMyTurn || !myCap || isExtraTurn) return
+    if (!isMyTurn || !myCap) return
     const ses = draftSessionPath(idPublico)
     const updates = {}
     updates[`${ses}/captains/${myId}/exitou`] = true
-    // passa myNewSize=2 para forçar skip do capitão atual em proximoCom
-    const next = proximoCom(sortedCaptains, captains, myId, 2, draftConfig, 'reservas')
-    if (!next) {
-      updates[`${ses}/state/status`] = 'encerrado'
+
+    if (isExtraTurn) {
+      updates[`${ses}/state/turnoExtra`] = null
     } else {
-      updates[`${ses}/state/turnoAtual`] = next.id
-      if (next.novaRodada) updates[`${ses}/state/rodada`] = (draftState.rodada ?? 1) + 1
+      // passa myNewSize=2 para forçar skip do capitão atual em proximoCom
+      const next = proximoCom(sortedCaptains, captains, myId, 2, draftConfig, 'reservas')
+      if (!next) {
+        updates[`${ses}/state/status`] = 'encerrado'
+      } else {
+        updates[`${ses}/state/turnoAtual`] = next.id
+        if (next.novaRodada) updates[`${ses}/state/rodada`] = (draftState.rodada ?? 1) + 1
+      }
     }
     await update(ref(db), updates)
   }
@@ -469,7 +478,7 @@ export default function Draft() {
           {isMyTurn && !myCap?.exitou && (
             <div style={{ marginBottom: '16px', padding: '10px 16px', borderRadius: '8px', background: 'rgba(76,175,125,0.08)', border: '1px solid rgba(76,175,125,0.25)', fontFamily: "'Barlow Condensed', sans-serif", fontSize: '13px', color: 'var(--green)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
               <span>{isExtraTurn ? '⚔️ Turno extra! Você foi roubado — escolha um jogador.' : '✓ É a sua vez! Escolha um jogador.'}</span>
-              {fase === 'reservas' && !isExtraTurn && (
+              {fase === 'reservas' && (
                 <button onClick={sairDraft} style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 11, padding: '3px 10px', borderRadius: 4, border: '1px solid rgba(138,134,128,0.4)', background: 'rgba(138,134,128,0.08)', color: 'var(--text2)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                   Encerrar participação
                 </button>
