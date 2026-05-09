@@ -83,6 +83,10 @@ export default function ShowmatchAdmin() {
   // Quem começa: 'A' | 'B'
   const [primeiroTime, setPrimeiroTime] = useState('A')
 
+  // Partidas (só confronto mode)
+  const [partidas, setPartidas] = useState({})
+  const [confirmResultado, setConfirmResultado] = useState(false)
+
   // Hero Draft hook — usa caminho dinâmico (showmatch ou confronto)
   const { estado: draftEstado, iniciar: _iniciarDraft, iniciarComContagem, encerrar: encerrarDraft, desfazer: desfazerDraft } = useHeroDraft(
     null, 'admin', heroDraftPath
@@ -114,6 +118,16 @@ export default function ShowmatchAdmin() {
   useEffect(() => {
     setDraftCriado(!!draftEstado)
   }, [draftEstado])
+
+  // Listener de partidas — só em modo confronto
+  useEffect(() => {
+    if (!confrontoId || !campeonatoId) return
+    const unsub = onValue(
+      ref(db, `${confrontosPath(campeonatoId)}/${confrontoId}/partidas`),
+      snap => setPartidas(snap.val() ?? {})
+    )
+    return unsub
+  }, [confrontoId, campeonatoId]) // eslint-disable-line
 
   // Auto-importar times quando vindo de um confronto
   useEffect(() => {
@@ -190,6 +204,19 @@ export default function ShowmatchAdmin() {
     })
     await set(ref(db, heroDraftPath), estado)
     if (sessaoPath) await update(ref(db, sessaoPath), { status: 'heroDraft' })
+
+    // Registra partida no confronto
+    if (isConfrontoMode && confrontoId && campeonatoId) {
+      const pNum = String(numAtual)
+      const base = `${confrontosPath(campeonatoId)}/${confrontoId}`
+      await update(ref(db), {
+        [`${base}/status`]:                    'em_jogo',
+        [`${base}/partidas/${pNum}/status`]:   'em_draft',
+        [`${base}/partidas/${pNum}/heroDraftId`]: sessaoId,
+        [`${base}/partidas/${pNum}/criadoEm`]: Date.now(),
+      })
+    }
+
     flash('Hero Draft criado — clique em Iniciar para começar.')
   }
 
@@ -212,6 +239,60 @@ export default function ShowmatchAdmin() {
   async function handleEncerrar() {
     const r = await encerrarDraft()
     r?.ok ? flash('Draft encerrado.') : flash(`Erro: ${r?.erro}`, 'err')
+  }
+
+  // ── Partidas (confronto mode) ──────────────────────────────────────────────
+
+  // Derivados de partidas
+  const partidasArr  = Object.entries(partidas).sort(([a], [b]) => Number(a) - Number(b))
+  const winsA        = partidasArr.filter(([, p]) => p.vencedor === 'timeA').length
+  const winsB        = partidasArr.filter(([, p]) => p.vencedor === 'timeB').length
+  const concluidas   = partidasArr.filter(([, p]) => p.status === 'concluida').length
+  const emDraftEntry = partidasArr.find(([, p]) => p.status === 'em_draft')
+  const formato      = confrontoCtx?.conf?.formato ?? 'MD2'
+  const maxVit       = formato === 'MD5' ? 3 : 2
+  const maxTotal     = formato === 'MD5' ? 5 : 2
+  const isDone       = winsA >= maxVit || winsB >= maxVit || concluidas >= maxTotal
+  const numAtual     = emDraftEntry ? Number(emDraftEntry[0]) : concluidas + 1
+
+  async function marcarVencedorPartida(time) {
+    if (!emDraftEntry) return
+    const [pNum] = emDraftEntry
+    const picks = { A: draftEstado?.timeA?.picks ?? [], B: draftEstado?.timeB?.picks ?? [] }
+    const bans  = { A: draftEstado?.timeA?.bans  ?? [], B: draftEstado?.timeB?.bans  ?? [] }
+    const updates = {}
+    const base = `${confrontosPath(campeonatoId)}/${confrontoId}`
+    updates[`${base}/partidas/${pNum}/status`]      = 'concluida'
+    updates[`${base}/partidas/${pNum}/vencedor`]    = time
+    updates[`${base}/partidas/${pNum}/picks`]       = picks
+    updates[`${base}/partidas/${pNum}/bans`]        = bans
+    updates[`${base}/partidas/${pNum}/encerradoEm`] = Date.now()
+    await update(ref(db), updates)
+    flash(`Partida ${pNum} encerrada!`)
+  }
+
+  async function iniciarProximaPartida() {
+    const novoId = gerarSessaoId()
+    setSessaoId(novoId)
+    setDraftCriado(false)
+    setGlobalBans([])
+    setMapaId('')
+    setPrimeiroTime('A')
+    flash(`Pronto para configurar a Partida ${concluidas + 1}.`)
+  }
+
+  async function registrarResultadoFinal() {
+    const base = `${confrontosPath(campeonatoId)}/${confrontoId}`
+    const isTie = winsA === winsB
+    const updates = {
+      [`${base}/status`]: isTie ? 'empate_pendente' : 'realizado',
+    }
+    if (!isTie) {
+      updates[`${base}/resultado`] = { tipo: 'normal', timeA: winsA, timeB: winsB }
+    }
+    await update(ref(db), updates)
+    setConfirmResultado(false)
+    flash(isTie ? 'Empate registrado — desempate pendente.' : 'Resultado registrado!')
   }
 
   async function encerrarShowmatch() {
@@ -531,48 +612,125 @@ export default function ShowmatchAdmin() {
                   </button>
                 </>
               ) : (
-                <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                  {draftEstado?.status === 'encerrado' && (
-                    <span style={{ fontSize: 13, color: 'var(--text2)' }}>✓ Encerrado</span>
-                  )}
-                  {draftEstado?.status === 'aguardando' && (
-                    <>
-                      {/* Presença dos capitães */}
-                      <div style={{ display: 'flex', gap: 16, marginBottom: 8, padding: '8px 12px', background: 'var(--bg2)', borderRadius: 6, border: '1px solid var(--border)' }}>
-                        {['A', 'B'].map(t => {
-                          const online = !!(draftEstado.presence?.[t]?.onlineEm)
-                          const nome = t === 'A' ? sessao?.timeA?.nome : sessao?.timeB?.nome
-                          return (
-                            <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
-                              <div style={{ width: 7, height: 7, borderRadius: '50%', background: online ? 'var(--green)' : 'var(--text3)', boxShadow: online ? '0 0 5px var(--green)' : 'none' }} />
-                              <span style={{ color: online ? 'var(--text)' : 'var(--text3)', fontFamily: "'Barlow Condensed'" }}>
-                                {nome ?? `Time ${t}`}: {online ? 'na sala' : 'aguardando...'}
-                              </span>
-                            </div>
-                          )
-                        })}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+                  {/* Placar + partida atual (confronto mode) */}
+                  {isConfrontoMode && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '10px 14px', background: 'var(--bg2)', borderRadius: 8, border: '1px solid var(--border)' }}>
+                      <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)' }}>
+                        {formato} · Partida {numAtual}/{maxTotal}
                       </div>
-                      <button className="btn primary" style={{ fontSize: 12, padding: '6px 14px' }} onClick={handleIniciar}>
-                        ▶ Iniciar Draft
-                      </button>
-                    </>
+                      <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 18, flex: 1, textAlign: 'center' }}>
+                        <span style={{ color: winsA > winsB ? 'var(--green)' : 'var(--text2)' }}>{sessao?.timeA?.nome ?? 'Time A'}</span>
+                        <span style={{ color: 'var(--text3)', margin: '0 10px' }}>{winsA} – {winsB}</span>
+                        <span style={{ color: winsB > winsA ? 'var(--green)' : 'var(--text2)' }}>{sessao?.timeB?.nome ?? 'Time B'}</span>
+                      </div>
+                      <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 11, color: isDone ? 'var(--gold)' : 'var(--text3)' }}>
+                        {isDone ? '🏁 Concluído' : ''}
+                      </div>
+                    </div>
                   )}
-                  {draftEstado?.status === 'countdown' && (
-                    <span style={{ fontSize: 13, color: 'var(--gold2)', fontFamily: "'Barlow Condensed'" }}>⏳ Contagem regressiva...</span>
-                  )}
-                  {draftEstado?.status === 'rodando' && (
-                    <>
-                      <span style={{ fontSize: 13, color: 'var(--green)' }}>● Em andamento</span>
-                      <button className="btn" style={{ fontSize: 12, padding: '6px 12px' }} onClick={handleDesfazer}
-                        disabled={!draftEstado?.historico?.length}>
-                        ↩ Desfazer
-                      </button>
-                      <button className="btn" style={{ fontSize: 12, padding: '6px 12px', color: 'var(--red)', borderColor: 'rgba(224,85,85,0.3)' }}
-                        onClick={handleEncerrar}>
-                        ⏹ Encerrar Draft
-                      </button>
-                    </>
-                  )}
+
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                    {/* Draft encerrado — marcar vencedor (confronto) ou exibir status (showmatch) */}
+                    {draftEstado?.status === 'encerrado' && (
+                      isConfrontoMode && emDraftEntry ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
+                          <span style={{ fontSize: 12, color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif" }}>
+                            Marcar vencedor da Partida {emDraftEntry[0]}:
+                          </span>
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            {[
+                              { key: 'timeA', nome: sessao?.timeA?.nome ?? 'Time A' },
+                              { key: 'timeB', nome: sessao?.timeB?.nome ?? 'Time B' },
+                            ].map(({ key, nome }) => (
+                              <button key={key} className="btn primary"
+                                style={{ flex: 1, fontSize: 13, padding: '8px 12px' }}
+                                onClick={() => marcarVencedorPartida(key)}>
+                                🏆 {nome}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <span style={{ fontSize: 13, color: 'var(--text2)' }}>✓ Encerrado</span>
+                      )
+                    )}
+
+                    {/* Draft encerrado + partida marcada: próxima partida ou registrar resultado */}
+                    {draftEstado?.status === 'encerrado' && isConfrontoMode && !emDraftEntry && (
+                      isDone ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
+                          {!confirmResultado ? (
+                            <button className="btn primary" style={{ fontSize: 13, padding: '9px 16px', alignSelf: 'flex-start', borderColor: 'var(--gold)', color: 'var(--gold)', background: 'rgba(201,168,76,0.08)' }}
+                              onClick={() => setConfirmResultado(true)}>
+                              ✓ Registrar Resultado Final
+                            </button>
+                          ) : (
+                            <div style={{ background: 'rgba(201,168,76,0.08)', border: '1px solid rgba(201,168,76,0.3)', borderRadius: 8, padding: '12px 16px' }}>
+                              <p style={{ fontSize: 13, color: 'var(--text)', margin: '0 0 10px' }}>
+                                Confirmar resultado:{' '}
+                                <strong>{sessao?.timeA?.nome ?? 'Time A'} {winsA} × {winsB} {sessao?.timeB?.nome ?? 'Time B'}</strong>?
+                                {winsA === winsB && <span style={{ color: 'var(--gold)', marginLeft: 6 }}>(Empate — desempate pendente)</span>}
+                              </p>
+                              <div style={{ display: 'flex', gap: 8 }}>
+                                <button className="btn primary" style={{ fontSize: 13, padding: '7px 16px' }} onClick={registrarResultadoFinal}>
+                                  Confirmar
+                                </button>
+                                <button className="btn" style={{ fontSize: 13, padding: '7px 12px' }} onClick={() => setConfirmResultado(false)}>
+                                  Cancelar
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <button className="btn primary" style={{ fontSize: 13, padding: '9px 16px', borderColor: 'var(--purple)', color: 'var(--purple)', background: 'rgba(155,110,232,0.08)' }}
+                          onClick={iniciarProximaPartida}>
+                          ▶ Iniciar Partida {concluidas + 1}
+                        </button>
+                      )
+                    )}
+
+                    {draftEstado?.status === 'aguardando' && (
+                      <>
+                        {/* Presença dos capitães */}
+                        <div style={{ display: 'flex', gap: 16, padding: '8px 12px', background: 'var(--bg2)', borderRadius: 6, border: '1px solid var(--border)' }}>
+                          {['A', 'B'].map(t => {
+                            const online = !!(draftEstado.presence?.[t]?.onlineEm)
+                            const nome = t === 'A' ? sessao?.timeA?.nome : sessao?.timeB?.nome
+                            return (
+                              <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+                                <div style={{ width: 7, height: 7, borderRadius: '50%', background: online ? 'var(--green)' : 'var(--text3)', boxShadow: online ? '0 0 5px var(--green)' : 'none' }} />
+                                <span style={{ color: online ? 'var(--text)' : 'var(--text3)', fontFamily: "'Barlow Condensed'" }}>
+                                  {nome ?? `Time ${t}`}: {online ? 'na sala' : 'aguardando...'}
+                                </span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                        <button className="btn primary" style={{ fontSize: 12, padding: '6px 14px' }} onClick={handleIniciar}>
+                          ▶ Iniciar Draft
+                        </button>
+                      </>
+                    )}
+                    {draftEstado?.status === 'countdown' && (
+                      <span style={{ fontSize: 13, color: 'var(--gold2)', fontFamily: "'Barlow Condensed'" }}>⏳ Contagem regressiva...</span>
+                    )}
+                    {draftEstado?.status === 'rodando' && (
+                      <>
+                        <span style={{ fontSize: 13, color: 'var(--green)' }}>● Em andamento</span>
+                        <button className="btn" style={{ fontSize: 12, padding: '6px 12px' }} onClick={handleDesfazer}
+                          disabled={!draftEstado?.historico?.length}>
+                          ↩ Desfazer
+                        </button>
+                        <button className="btn" style={{ fontSize: 12, padding: '6px 12px', color: 'var(--red)', borderColor: 'rgba(224,85,85,0.3)' }}
+                          onClick={handleEncerrar}>
+                          ⏹ Encerrar Draft
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               )}
             </div>

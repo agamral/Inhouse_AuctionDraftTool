@@ -419,6 +419,13 @@ function ConfrontoCard({ confrontoId, confronto: c, times, disponibilidade, onRe
   const emComum = encontrarSlotsEmComum(dispA, dispB)
   const temAlerta = c.alertas?.semOverlap || c.alertas?.prazoAusente?.timeA || c.alertas?.prazoAusente?.timeB
 
+  // Placar das partidas
+  const partidasArr = Object.values(c.partidas ?? {})
+  const winsA = partidasArr.filter(p => p.vencedor === 'timeA').length
+  const winsB = partidasArr.filter(p => p.vencedor === 'timeB').length
+  const temPartidas = partidasArr.length > 0
+  const emDraft = partidasArr.some(p => p.status === 'em_draft')
+
   return (
     <div style={{
       background: 'var(--bg3)', border: `1px solid ${temAlerta ? 'rgba(224,85,85,0.35)' : 'var(--border)'}`,
@@ -429,7 +436,13 @@ function ConfrontoCard({ confrontoId, confronto: c, times, disponibilidade, onRe
         <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 14, color: tA?.cor ?? 'var(--text)' }}>
           {tA?.nome ?? c.timeA}
         </span>
-        <span style={{ color: 'var(--text3)', fontSize: 12 }}>vs</span>
+        {temPartidas ? (
+          <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 16, color: 'var(--text)', padding: '0 4px', background: 'var(--bg2)', borderRadius: 4, border: '1px solid var(--border)' }}>
+            {winsA}–{winsB}
+          </span>
+        ) : (
+          <span style={{ color: 'var(--text3)', fontSize: 12 }}>vs</span>
+        )}
         <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 14, color: tB?.cor ?? 'var(--text)' }}>
           {tB?.nome ?? c.timeB}
         </span>
@@ -437,6 +450,12 @@ function ConfrontoCard({ confrontoId, confronto: c, times, disponibilidade, onRe
         <span style={{ fontSize: 10, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text3)', background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 3, padding: '1px 6px' }}>
           {c.tipo} · {c.formato}
         </span>
+
+        {emDraft && (
+          <span style={{ fontSize: 10, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, color: 'var(--purple)', background: 'rgba(155,110,232,0.12)', border: '1px solid rgba(155,110,232,0.35)', borderRadius: 3, padding: '1px 6px' }}>
+            DRAFT ATIVO
+          </span>
+        )}
 
         <span style={{ marginLeft: 'auto', fontSize: 11, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: STATUS_COR[c.status] }}>
           {STATUS_LABEL[c.status]}
