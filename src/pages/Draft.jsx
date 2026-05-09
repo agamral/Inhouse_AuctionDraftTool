@@ -93,6 +93,7 @@ export default function Draft() {
 
   // ── Dados computados ──────────────────────────────────────
   const fase           = draftState.fase ?? 'titulares'
+  const privacidade    = modules.privacidadeAtiva
   const sortedCaptains = Object.entries(captains).sort(([, a], [, b]) => a.seed - b.seed)
   const mid            = Math.ceil(sortedCaptains.length / 2)
   const leftTeams      = sortedCaptains.slice(0, mid)
@@ -108,10 +109,12 @@ export default function Draft() {
   const currentTurnCap = captains[activeTurnId]
 
   // Pool disponível — sem dono e não descartado
+  // Na fase titular: exclui jogadores inscritos como Reserva
   const availablePlayers = players.filter(p =>
     !overrides[p.id]?.descartado &&
     !teamCaptainNames.has(p.discord) &&
-    !playerState[p.id]?.ownedBy
+    !playerState[p.id]?.ownedBy &&
+    (fase === 'reservas' || p.titularReserva !== 'Reserva')
   )
 
   // Roubáveis: dependem da fase
@@ -502,6 +505,7 @@ export default function Draft() {
               minPlayers={draftConfig.minPlayers}
               maxPlayers={draftConfig.maxPlayers}
               fase={fase}
+              privacidade={privacidade}
             />
           ))}
         </div>
@@ -543,7 +547,7 @@ export default function Draft() {
                   ? (myCap?.moedas ?? 0) >= preco && Object.keys(myCap?.reservas ?? {}).length < 2
                   : (myCap?.moedas ?? 0) >= preco && Object.keys(myCap?.roster ?? {}).length + 1 < draftConfig.maxPlayers)
               const onAct  = fase === 'reservas' ? () => comprarReserva(p) : () => comprar(p)
-              return <PlayerRow key={p.id} player={p} preco={preco} canAct={canBuy} onAct={onAct} t={t} />
+              return <PlayerRow key={p.id} player={p} preco={preco} canAct={canBuy} onAct={onAct} privacidade={privacidade} t={t} />
             })}
           </div>
 
@@ -585,7 +589,7 @@ export default function Draft() {
                       <PlayerRow
                         key={p.id} player={p} preco={preco}
                         canAct={canSteal} onAct={onSteal}
-                        isSteal owner={owner} t={t}
+                        isSteal owner={owner} privacidade={privacidade} t={t}
                       />
                     )
                   })}
@@ -605,16 +609,17 @@ export default function Draft() {
               minPlayers={draftConfig.minPlayers}
               maxPlayers={draftConfig.maxPlayers}
               fase={fase}
+              privacidade={privacidade}
             />
           ))}
 
           {/* Log de ações */}
           {logAcoes.length > 0 && (
-            <div style={{ marginTop: 16, borderTop: '1px solid var(--border)' }}>
+            <div style={{ marginTop: 16, borderTop: '1px solid var(--border)', flexShrink: 0 }}>
               <div style={{ padding: '8px 6px 6px', fontFamily: "'Barlow Condensed', sans-serif", fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)' }}>
                 Histórico
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 220, overflowY: 'auto' }}>
                 {logAcoes.map((a, i) => (
                   <div key={a.ts} style={{ padding: '5px 6px', borderRadius: 5, background: i === 0 ? (a.type === 'steal' ? 'rgba(224,85,85,0.06)' : 'rgba(76,175,125,0.06)') : 'transparent', opacity: i === 0 ? 1 : 0.55 + (0.45 * (1 - i / logAcoes.length)) }}>
                     <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 11, color: a.type === 'steal' ? 'var(--red)' : 'var(--green)', fontWeight: 700 }}>
@@ -694,7 +699,7 @@ function SessionBadge({ session, onLogout, small }) {
   )
 }
 
-function TeamCard({ id, team, isActive, isMyTeam, minPlayers = 5, maxPlayers = 7, fase = 'titulares' }) {
+function TeamCard({ id, team, isActive, isMyTeam, minPlayers = 5, maxPlayers = 7, fase = 'titulares', privacidade = false }) {
   const roster    = Object.entries(team.roster ?? {})
   const reservas  = Object.entries(team.reservas ?? {})
   const titTotal  = roster.length + (team.capitaoNome ? 1 : 0)
@@ -741,9 +746,9 @@ function TeamCard({ id, team, isActive, isMyTeam, minPlayers = 5, maxPlayers = 7
             <span style={{ fontSize: '10px', opacity: 0.7 }}>CAP</span>
           </div>
         )}
-        {roster.map(([pid, entry]) => (
+        {roster.map(([pid, entry], idx) => (
           <div key={pid} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px', borderRadius: '4px', fontSize: '12px', color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif" }}>
-            <span>{entry.discord}</span>
+            <span>{privacidade ? `Jogador #${idx + 1}` : entry.discord}</span>
             <span style={{ color: 'var(--gold)', fontSize: 11 }}>{entry.preco}🪙</span>
           </div>
         ))}
@@ -762,9 +767,9 @@ function TeamCard({ id, team, isActive, isMyTeam, minPlayers = 5, maxPlayers = 7
               Sem reservas
             </div>
           )}
-          {reservas.map(([pid, entry]) => (
+          {reservas.map(([pid, entry], idx) => (
             <div key={pid} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px', borderRadius: '4px', fontSize: '12px', color: 'var(--text3)', fontFamily: "'Barlow Condensed', sans-serif" }}>
-              <span>{entry.discord}</span>
+              <span>{privacidade ? `Reserva #${idx + 1}` : entry.discord}</span>
               <span style={{ fontSize: 11 }}>{entry.preco}🪙</span>
             </div>
           ))}
@@ -1025,9 +1030,10 @@ function SectionLabel({ children, accent }) {
   )
 }
 
-function PlayerRow({ player, preco, canAct, onAct, isSteal, owner, t }) {
+function PlayerRow({ player, preco, canAct, onAct, isSteal, owner, privacidade, t }) {
   const borderColor = isSteal ? `${owner?.cor ?? 'var(--border)'}55` : 'var(--border)'
   const bgColor     = isSteal ? `${owner?.cor ?? 'transparent'}08`   : 'var(--bg2)'
+  const nomeExibido = privacidade ? `${player.rolePrimaria ?? 'Jogador'}` : player.discord
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderRadius: '6px', border: `1px solid ${borderColor}`, background: bgColor }}>
@@ -1037,7 +1043,7 @@ function PlayerRow({ player, preco, canAct, onAct, isSteal, owner, t }) {
         </div>
         <div>
           <div style={{ fontWeight: 600, fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            {player.discord}
+            {nomeExibido}
             {player.premium && (
               <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '3px', background: 'rgba(201,168,76,0.15)', border: '1px solid rgba(201,168,76,0.25)', color: 'var(--gold)', fontFamily: "'Barlow Condensed', sans-serif" }}>
                 PREMIUM

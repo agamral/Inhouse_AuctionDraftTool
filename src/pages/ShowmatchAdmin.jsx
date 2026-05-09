@@ -71,6 +71,9 @@ export default function ShowmatchAdmin() {
   const [timerPick,      setTimerPick]      = useState(30)
   const [timerPickDuplo, setTimerPickDuplo] = useState(50)
 
+  // Quem começa: 'A' | 'B'
+  const [primeiroTime, setPrimeiroTime] = useState('A')
+
   // Hero Draft hook — uses showmatch path via pathOverride
   const { estado: draftEstado, iniciar: _iniciarDraft, iniciarComContagem, encerrar: encerrarDraft, desfazer: desfazerDraft } = useHeroDraft(
     null, 'admin', HERO_DRAFT_PATH
@@ -148,7 +151,10 @@ export default function ShowmatchAdmin() {
 
   async function criarHeroDraft() {
     if (!sessao) return
-    const sequencia = SEQUENCIAS[numBans] ?? SEQUENCIAS[2]
+    const seqBase = SEQUENCIAS[numBans] ?? SEQUENCIAS[2]
+    const sequencia = primeiroTime === 'B'
+      ? seqBase.map(s => ({ ...s, time: s.time === 'A' ? 'B' : 'A' }))
+      : seqBase
     const estado = criarEstadoInicial({
       timeA:      { nome: sessao.timeA?.nome ?? 'Time A' },
       timeB:      { nome: sessao.timeB?.nome ?? 'Time B' },
@@ -202,20 +208,23 @@ export default function ShowmatchAdmin() {
   return (
     <main className="page">
 
-      {/* Red SHOWMATCH banner when active */}
+      {/* Banner de sessão ativa */}
       {sessao && (
         <div style={{
-          background: 'rgba(224,85,85,0.12)', border: '1px solid rgba(224,85,85,0.4)',
+          background: confrontoCtx ? 'rgba(155,110,232,0.1)' : 'rgba(224,85,85,0.12)',
+          border: `1px solid ${confrontoCtx ? 'rgba(155,110,232,0.4)' : 'rgba(224,85,85,0.4)'}`,
           borderRadius: 8, padding: '12px 20px', marginBottom: 24,
           display: 'flex', alignItems: 'center', gap: 12,
         }}>
-          <span style={{ fontSize: 20 }}>&#x26A1;</span>
+          <span style={{ fontSize: 20 }}>{confrontoCtx ? '⚔️' : '⚡'}</span>
           <div>
-            <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 16, color: 'var(--red)', letterSpacing: '0.05em' }}>
-              SHOWMATCH ATIVO
+            <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 16, color: confrontoCtx ? 'var(--purple)' : 'var(--red)', letterSpacing: '0.05em' }}>
+              {confrontoCtx ? 'PARTIDA ATIVA' : 'SHOWMATCH ATIVO'}
             </div>
             <div style={{ fontSize: 12, color: 'var(--text2)' }}>
-              Nada aqui afeta dados do campeonato oficial.
+              {confrontoCtx
+                ? `${confrontoCtx.tA?.nome ?? 'Time A'} vs ${confrontoCtx.tB?.nome ?? 'Time B'}`
+                : 'Nada aqui afeta dados do campeonato oficial.'}
             </div>
           </div>
         </div>
@@ -379,6 +388,30 @@ export default function ShowmatchAdmin() {
                     </div>
                     <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: "'Barlow Condensed', sans-serif", marginTop: 6 }}>
                       Pick Duplo = dois picks consecutivos do mesmo time (ex: B escolhe 2 heróis)
+                    </div>
+                  </div>
+
+                  {/* Quem começa */}
+                  <div>
+                    <div className="admin-toggle-label" style={{ marginBottom: 8 }}>Quem começa o draft</div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      {(['A', 'B']).map(t => {
+                        const nome = t === 'A' ? (sessao?.timeA?.nome ?? 'Time A') : (sessao?.timeB?.nome ?? 'Time B')
+                        return (
+                          <button key={t} onClick={() => setPrimeiroTime(t)} style={{
+                            padding: '6px 20px', borderRadius: 6, fontSize: 13, cursor: 'pointer',
+                            fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700,
+                            border: `1px solid ${primeiroTime === t ? 'var(--gold)' : 'var(--border2)'}`,
+                            background: primeiroTime === t ? 'rgba(201,168,76,0.12)' : 'var(--bg2)',
+                            color: primeiroTime === t ? 'var(--gold)' : 'var(--text2)',
+                          }}>
+                            {nome}
+                          </button>
+                        )
+                      })}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: "'Barlow Condensed', sans-serif", marginTop: 4 }}>
+                      O primeiro ban e o primeiro pick pertencem ao time selecionado.
                     </div>
                   </div>
 
