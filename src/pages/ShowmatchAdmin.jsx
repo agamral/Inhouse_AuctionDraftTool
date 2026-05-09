@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import { ref, onValue, get, set, update, remove } from 'firebase/database'
 import { db } from '../firebase/database'
 import { useHeroDraft } from '../hooks/useHeroDraft'
-import { criarEstadoInicial, SEQUENCIA_PADRAO } from '../utils/heroDraft'
+import { criarEstadoInicial, SEQUENCIA_PADRAO, DEFAULT_TIMER_CONFIG } from '../utils/heroDraft'
 import { MAPAS } from '../utils/mapPool'
 import { HEROES } from '../utils/heroPool'
 import { teamPath, confrontosPath } from '../utils/campeonatoPaths'
@@ -65,6 +65,11 @@ export default function ShowmatchAdmin() {
   const [globalBans,  setGlobalBans]  = useState([])
   const [buscaBan,    setBuscaBan]    = useState('')
   const [draftCriado, setDraftCriado] = useState(false)
+
+  // Timer config
+  const [timerBan,       setTimerBan]       = useState(30)
+  const [timerPick,      setTimerPick]      = useState(30)
+  const [timerPickDuplo, setTimerPickDuplo] = useState(50)
 
   // Hero Draft hook — uses showmatch path via pathOverride
   const { estado: draftEstado, iniciar: _iniciarDraft, iniciarComContagem, encerrar: encerrarDraft, desfazer: desfazerDraft } = useHeroDraft(
@@ -150,6 +155,11 @@ export default function ShowmatchAdmin() {
       sequencia,
       globalBans,
       mapaId:     mapaId || null,
+      timerConfig: {
+        ban:       Number(timerBan)       || DEFAULT_TIMER_CONFIG.ban,
+        pick:      Number(timerPick)      || DEFAULT_TIMER_CONFIG.pick,
+        pickDuplo: Number(timerPickDuplo) || DEFAULT_TIMER_CONFIG.pickDuplo,
+      },
     })
     await set(ref(db, HERO_DRAFT_PATH), estado)
     await update(ref(db, SHOWMATCH_PATH), { status: 'heroDraft' })
@@ -344,6 +354,34 @@ export default function ShowmatchAdmin() {
             <div style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 16 }}>
               {!draftCriado ? (
                 <>
+                  {/* Timer por ação */}
+                  <div>
+                    <div className="admin-toggle-label" style={{ marginBottom: 8 }}>Timer por ação <span style={{ color: 'var(--text3)', fontWeight: 400 }}>(segundos)</span></div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+                      {[
+                        { label: 'Ban', value: timerBan, set: setTimerBan },
+                        { label: 'Pick Simples', value: timerPick, set: setTimerPick },
+                        { label: 'Pick Duplo', value: timerPickDuplo, set: setTimerPickDuplo },
+                      ].map(({ label, value, set }) => (
+                        <div key={label}>
+                          <div style={{ fontSize: 11, fontFamily: "'Barlow Condensed', sans-serif", color: 'var(--text2)', marginBottom: 4 }}>{label}</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <button onClick={() => set(v => Math.max(5, Number(v) - 5))}
+                              style={{ width: 28, height: 28, borderRadius: 4, border: '1px solid var(--border2)', background: 'var(--bg2)', color: 'var(--text2)', cursor: 'pointer', fontSize: 14, lineHeight: 1 }}>−</button>
+                            <input type="number" min={5} max={300} value={value}
+                              onChange={e => set(Math.max(5, Math.min(300, Number(e.target.value))))}
+                              style={{ ...inputStyle, width: 54, textAlign: 'center', padding: '5px 6px' }} />
+                            <button onClick={() => set(v => Math.min(300, Number(v) + 5))}
+                              style={{ width: 28, height: 28, borderRadius: 4, border: '1px solid var(--border2)', background: 'var(--bg2)', color: 'var(--text2)', cursor: 'pointer', fontSize: 14, lineHeight: 1 }}>+</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: "'Barlow Condensed', sans-serif", marginTop: 6 }}>
+                      Pick Duplo = dois picks consecutivos do mesmo time (ex: B escolhe 2 heróis)
+                    </div>
+                  </div>
+
                   {/* Bans por time */}
                   <div>
                     <div className="admin-toggle-label" style={{ marginBottom: 8 }}>Bans por time</div>

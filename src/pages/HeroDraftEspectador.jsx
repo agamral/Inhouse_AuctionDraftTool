@@ -5,13 +5,12 @@ import { useCampeonato } from '../contexts/CampeonatoContext'
 import { heroDraftPath } from '../utils/campeonatoPaths'
 import { HEROES } from '../utils/heroPool'
 import { getHeroVideoUrl, getHeroImageUrl } from '../utils/heroVideos'
-import { passoAtual, ACOES, STATUS_DRAFT } from '../utils/heroDraft'
+import { passoAtual, getDuracao, ACOES, STATUS_DRAFT } from '../utils/heroDraft'
 import { getMapaById } from '../utils/mapPool'
 import { useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import './HeroDraftEspectador.css'
 
-const TEMPO_TURNO = 30
 const SHOWMATCH_DRAFT_PATH = 'showmatch/sessaoAtiva/heroDraft'
 
 // URL: /campeonatos/:id/hero-draft/espectador?sessao=semifinal-1
@@ -142,30 +141,32 @@ export default function HeroDraftEspectador() {
 
   // ── Timer de contagem regressiva por turno ────────────────────────────────
   const [turnoIniciadoEm, setTurnoIniciadoEm] = useState(null)
-  const [tempoRestante, setTempoRestante]     = useState(TEMPO_TURNO)
+  const [tempoRestante, setTempoRestante]     = useState(30)
   const prevPassoRef = useRef(null)
 
   // Sincroniza o timer com o timestamp gravado no Firebase —
   // qualquer espectador que entrar no meio do turno verá o tempo correto.
   useEffect(() => {
     if (!estado || estado.status !== STATUS_DRAFT.RODANDO) return
+    const duracao = getDuracao(estado)
     const ts = estado.turnoIniciadoEm ?? Date.now()
     if (estado.passoAtual !== prevPassoRef.current || !turnoIniciadoEm) {
       prevPassoRef.current = estado.passoAtual
       const decorrido = Math.floor((Date.now() - ts) / 1000)
       setTurnoIniciadoEm(ts)
-      setTempoRestante(Math.max(0, TEMPO_TURNO - decorrido))
+      setTempoRestante(Math.max(0, duracao - decorrido))
     }
   }, [estado?.passoAtual, estado?.status, estado?.turnoIniciadoEm]) // eslint-disable-line
 
   useEffect(() => {
     if (!turnoIniciadoEm || estado?.status !== STATUS_DRAFT.RODANDO) return
+    const duracao = getDuracao(estado)
     const tick = setInterval(() => {
       const decorrido = Math.floor((Date.now() - turnoIniciadoEm) / 1000)
-      setTempoRestante(Math.max(0, TEMPO_TURNO - decorrido))
+      setTempoRestante(Math.max(0, duracao - decorrido))
     }, 1000)
     return () => clearInterval(tick)
-  }, [turnoIniciadoEm, estado?.status])
+  }, [turnoIniciadoEm, estado?.status]) // eslint-disable-line
 
   // ── Countdown ─────────────────────────────────────────────────────────────
   const [countdown, setCountdown] = useState(null)

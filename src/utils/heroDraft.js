@@ -68,15 +68,41 @@ export function expandirSequencia(sequencia) {
   return acoes
 }
 
+// ── Configuração padrão de timer ─────────────────────────────────────────────
+
+export const DEFAULT_TIMER_CONFIG = {
+  ban:       30,
+  pick:      30,
+  pickDuplo: 50,
+}
+
+// Retorna quantos segundos o capitão tem para o passo atual.
+// Pick duplo = turns consecutivos do mesmo time (ex: B escolhe 2 heróis).
+export function getDuracao(estado) {
+  const cfg  = { ...DEFAULT_TIMER_CONFIG, ...(estado?.timerConfig ?? {}) }
+  const seq  = estado?.sequencia
+  const idx  = estado?.passoAtual ?? 0
+  const step = seq?.[idx]
+  if (!step) return cfg.pick
+  if (step.acao === 'ban') return cfg.ban
+  const prev = idx > 0 ? seq[idx - 1] : null
+  const next = seq?.[idx + 1]
+  const isInDuplo =
+    (next?.time === step.time && next?.acao === 'pick') ||
+    (prev?.time === step.time && prev?.acao === 'pick')
+  return isInDuplo ? cfg.pickDuplo : cfg.pick
+}
+
 // ── Estado inicial do draft ──────────────────────────────────────────────────
 
-export function criarEstadoInicial({ timeA, timeB, sequencia = SEQUENCIA_PADRAO, globalBans = [], mapaId = null }) {
+export function criarEstadoInicial({ timeA, timeB, sequencia = SEQUENCIA_PADRAO, globalBans = [], mapaId = null, timerConfig = null }) {
   return {
-    status:     STATUS_DRAFT.AGUARDANDO,
-    sequencia:  expandirSequencia(sequencia),
-    passoAtual: 0,
+    status:      STATUS_DRAFT.AGUARDANDO,
+    sequencia:   expandirSequencia(sequencia),
+    passoAtual:  0,
     globalBans,
     mapaId,
+    timerConfig: { ...DEFAULT_TIMER_CONFIG, ...(timerConfig ?? {}) },
     timeA: {
       nome:  timeA.nome,
       cor:   timeA.cor   ?? '#4a9eda',
