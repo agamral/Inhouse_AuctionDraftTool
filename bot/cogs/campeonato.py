@@ -169,7 +169,7 @@ class CampeonatoCog(commands.Cog):
 
         cache[cid] = new_c
 
-        if old_status is None or new_status == old_status:
+        if new_status == old_status:
             return
 
         teams   = db.reference(f"/campeonatos/{camp_id}/teams").get() or {}
@@ -192,7 +192,18 @@ class CampeonatoCog(commands.Cog):
         nome_b = tb.get("nome", "Time B")
         formato = c.get("formato", "MD2")
 
-        if new_status == "confirmado":
+        if old_status is None and new_status == "pendente":
+            embed = discord.Embed(title="⚔️  Confronto Definido!", color=BLUE)
+            embed.add_field(name="Confronto",    value=f"**{nome_a}** vs **{nome_b}**", inline=False)
+            embed.add_field(name="Rodada",       value=str(rnum), inline=True)
+            embed.add_field(name="Formato",      value=formato,   inline=True)
+            embed.add_field(name="Próximo passo",
+                            value="Acesse o site e marque sua disponibilidade para combinar o horário.",
+                            inline=False)
+            for ch in await self._channels("canal_agenda",     camp_id): await ch.send(embed=embed)
+            for ch in await self._channels("canal_campeonato", camp_id): await ch.send(embed=embed)
+
+        elif new_status == "confirmado":
             embed = discord.Embed(title="📅  Partida Confirmada!", color=GREEN)
             embed.add_field(name="Confronto", value=f"**{nome_a}** vs **{nome_b}**", inline=False)
             embed.add_field(name="Horário",   value=slot,      inline=True)
