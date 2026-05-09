@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
-import { ref, onValue, set, update, remove } from 'firebase/database'
+import { useSearchParams, useNavigate } from 'react-router-dom'
+import { ref, onValue, get, set, update, remove } from 'firebase/database'
 import { db } from '../firebase/database'
 import { useHeroDraft } from '../hooks/useHeroDraft'
 import { criarEstadoInicial, SEQUENCIA_PADRAO } from '../utils/heroDraft'
 import { MAPAS } from '../utils/mapPool'
 import { HEROES } from '../utils/heroPool'
+import { teamPath, confrontosPath } from '../utils/campeonatoPaths'
 
 const SHOWMATCH_PATH = 'showmatch/sessaoAtiva'
 const HERO_DRAFT_PATH = 'showmatch/sessaoAtiva/heroDraft'
@@ -41,9 +43,15 @@ const inputStyle = {
 }
 
 export default function ShowmatchAdmin() {
-  const [sessao,   setSessao]   = useState(undefined) // undefined=loading, null=none, obj=active
+  const [searchParams] = useSearchParams()
+  const navigate       = useNavigate()
+  const confrontoId  = searchParams.get('confronto')  || null
+  const campeonatoId = searchParams.get('campeonato') || null
+
+  const [sessao,   setSessao]   = useState(undefined)
   const [msg,      setMsg]      = useState(null)
   const [confirmEnd, setConfirmEnd] = useState(false)
+  const [confrontoCtx, setConfrontoCtx] = useState(null) // dados do confronto vinculado
 
   // Form for creating a showmatch
   const [nomeA,      setNomeA]      = useState('Time A')
@@ -88,6 +96,33 @@ export default function ShowmatchAdmin() {
   useEffect(() => {
     setDraftCriado(!!draftEstado)
   }, [draftEstado])
+
+  // Auto-importar times quando vindo de um confronto
+  useEffect(() => {
+    if (!confrontoId || !campeonatoId) return
+    async function carregar() {
+      const [confSnap, teamsSnap] = await Promise.all([
+        get(ref(db, `${confrontosPath(campeonatoId)}/${confrontoId}`)),
+        get(ref(db, teamPath(campeonatoId))),
+      ])
+      const conf  = confSnap.val()
+      const teams = teamsSnap.val() ?? {}
+      if (!conf) return
+      const tA = teams[conf.timeA] ?? {}
+      const tB = teams[conf.timeB] ?? {}
+      setConfrontoCtx({ conf, tA, tB })
+      setNomeA(tA.nome || 'Time A')
+      setNomeB(tB.nome || 'Time B')
+      // Pré-preenche jogadores a partir do roster do leilão
+      const rosA = Object.values(tA.roster ?? {}).map(r => r.discord).filter(Boolean)
+      const rosB = Object.values(tB.roster ?? {}).map(r => r.discord).filter(Boolean)
+      if (tA.capitaoNome) rosA.unshift(tA.capitaoNome)
+      if (tB.capitaoNome) rosB.unshift(tB.capitaoNome)
+      setJogadoresA(rosA.join('\n'))
+      setJogadoresB(rosB.join('\n'))
+    }
+    carregar()
+  }, [confrontoId, campeonatoId]) // eslint-disable-line
 
   function flash(text, tipo = 'ok') {
     setMsg({ text, tipo })
@@ -176,9 +211,39 @@ export default function ShowmatchAdmin() {
         </div>
       )}
 
-      <h1 className="page-title" style={{ marginBottom: 8 }}>Showmatch</h1>
+      {/* Banner de contexto quando vinculado a um confronto */}
+      {confrontoCtx && (
+        <div style={{
+          background: 'rgba(155,110,232,0.08)', border: '1px solid rgba(155,110,232,0.35)',
+          borderRadius: 8, padding: '12px 20px', marginBottom: 20,
+          display: 'flex', alignItems: 'center', gap: 12,
+        }}>
+          <span style={{ fontSize: 20 }}>⚔️</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 15, color: 'var(--purple)' }}>
+              Draft vinculado ao confronto
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text2)' }}>
+              <span style={{ color: confrontoCtx.tA?.cor }}>{confrontoCtx.tA?.nome ?? 'Time A'}</span>
+              {' vs '}
+              <span style={{ color: confrontoCtx.tB?.cor }}>{confrontoCtx.tB?.nome ?? 'Time B'}</span>
+              {' · Times importados automaticamente'}
+            </div>
+          </div>
+          <button
+            onClick={() => navigate(-1)}
+            style={{ background: 'none', border: '1px solid var(--border2)', borderRadius: 6, padding: '4px 12px', fontSize: 12, color: 'var(--text2)', cursor: 'pointer' }}
+          >
+            ← Voltar ao confronto
+          </button>
+        </div>
+      )}
+
+      <h1 className="page-title" style={{ marginBottom: 8 }}>
+        {confrontoCtx ? 'Draft de Heróis' : 'Showmatch'}
+      </h1>
       <p style={{ color: 'var(--text2)', fontSize: 13, marginBottom: 28 }}>
-        {sessao ? 'Gerencie a sessão ativa.' : 'Crie uma partida casual sem afetar nenhum campeonato.'}
+        {sessao ? 'Gerencie a sessão ativa.' : confrontoCtx ? 'Configure e inicie o draft para este confronto.' : 'Crie uma partida casual sem afetar nenhum campeonato.'}
       </p>
 
       {/* ── SEM SESSAO: formulário de criação ─────────────────────────── */}

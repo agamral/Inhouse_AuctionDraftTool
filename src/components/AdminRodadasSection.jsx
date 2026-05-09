@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { ref, onValue, set, update, remove, push } from 'firebase/database'
 import { db } from '../firebase/database'
 import { useCampeonato } from '../contexts/CampeonatoContext'
@@ -21,6 +22,7 @@ const inputStyle = {
 
 export default function AdminRodadasSection() {
   const { campeonatoId } = useCampeonato()
+  const navigate = useNavigate()
   const [rodadas, setRodadas]           = useState({})
   const [confrontos, setConfrontos]     = useState({})
   const [disponibilidade, setDisp]      = useState({})
@@ -324,6 +326,7 @@ export default function AdminRodadasSection() {
                   confirmandoDelete={confirmDelete === id}
                   onConfirmarDelete={() => deletarConfronto(id)}
                   onCancelarDelete={() => setConfirmDelete(null)}
+                  onIniciarDraft={() => navigate(`/showmatch?confronto=${id}&campeonato=${campeonatoId}`)}
                 />
               ))}
             </div>
@@ -408,7 +411,7 @@ function RodadaHeader({ rodada, rodadaId, onChange }) {
   )
 }
 
-function ConfrontoCard({ confrontoId, confronto: c, times, disponibilidade, onRegistrarResultado, onForcarSlot, onMudarStatus, onAgendarDesempate, onDeletar, confirmandoDelete, onConfirmarDelete, onCancelarDelete }) {
+function ConfrontoCard({ confrontoId, confronto: c, times, disponibilidade, onRegistrarResultado, onForcarSlot, onMudarStatus, onAgendarDesempate, onDeletar, confirmandoDelete, onConfirmarDelete, onCancelarDelete, onIniciarDraft }) {
   const tA = times[c.timeA]
   const tB = times[c.timeB]
   const dispA = disponibilidade[c.timeA]?.slots ?? []
@@ -495,6 +498,12 @@ function ConfrontoCard({ confrontoId, confronto: c, times, disponibilidade, onRe
 
       {/* Ações admin */}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {c.status === STATUS_CONFRONTO.CONFIRMADO && (
+          <button className="btn" style={{ fontSize: 11, padding: '4px 10px', borderColor: 'var(--purple)', color: 'var(--purple)', fontWeight: 700 }}
+            onClick={onIniciarDraft}>
+            ▶ Iniciar Draft
+          </button>
+        )}
         {c.status !== STATUS_CONFRONTO.REALIZADO && c.status !== STATUS_CONFRONTO.CANCELADO && (
           <button className="btn" style={{ fontSize: 11, padding: '4px 10px', borderColor: 'var(--green)', color: 'var(--green)' }}
             onClick={onRegistrarResultado}>
