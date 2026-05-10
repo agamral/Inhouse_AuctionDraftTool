@@ -49,9 +49,15 @@ export default function ShowmatchAdmin() {
   const confrontoId  = searchParams.get('confronto')  || null
   const campeonatoId = searchParams.get('campeonato') || null
 
-  // ID único por sessão — showmatch gera um novo; confronto reutiliza
-  const [sessaoId, setSessaoId] = useState(gerarSessaoId)
   const isConfrontoMode = !!(confrontoId && campeonatoId)
+
+  // ID de sessão:
+  // - Showmatch: lê do localStorage para sobreviver a reloads; gera novo se não houver
+  // - Confronto: começa com um ID temporário; substituído pelo heroDraftId ativo (se existir)
+  const [sessaoId, setSessaoId] = useState(() => {
+    if (isConfrontoMode) return gerarSessaoId() // será substituído ao carregar o confronto
+    return localStorage.getItem('showmatch_sessaoId') || gerarSessaoId()
+  })
 
   // Caminhos dinâmicos — confronto usa heroDraft do campeonato; showmatch usa caminho próprio
   const sessaoPath     = isConfrontoMode ? null                                              : `showmatch/sessions/${sessaoId}`
@@ -154,12 +160,18 @@ export default function ShowmatchAdmin() {
       setNomeB(nB)
       setJogadoresA(rosA.join('\n'))
       setJogadoresB(rosB.join('\n'))
-      // Em modo confronto, sessao é derivada localmente (não há sessão Firebase de showmatch)
       setSessao({
         timeA: { nome: nA, jogadores: rosA },
         timeB: { nome: nB, jogadores: rosB },
         status: 'configurando',
       })
+
+      // Reconecta ao draft ativo se a página foi recarregada no meio de uma partida
+      const partidas = conf.partidas ?? {}
+      const emDraft  = Object.values(partidas).find(p => p.status === 'em_draft')
+      if (emDraft?.heroDraftId) {
+        setSessaoId(emDraft.heroDraftId)
+      }
     }
     carregar()
   }, [confrontoId, campeonatoId]) // eslint-disable-line
@@ -170,9 +182,9 @@ export default function ShowmatchAdmin() {
   }
 
   async function criarShowmatch() {
-    // Gera novo ID para cada showmatch criado
     const novoId = gerarSessaoId()
     setSessaoId(novoId)
+    localStorage.setItem('showmatch_sessaoId', novoId)
     const listaA = jogadoresA.split('\n').map(s => s.trim()).filter(Boolean)
     const listaB = jogadoresB.split('\n').map(s => s.trim()).filter(Boolean)
     await set(ref(db, `showmatch/sessions/${novoId}`), {
@@ -279,6 +291,8 @@ export default function ShowmatchAdmin() {
     setMapaId('')
     setPrimeiroTime('A')
     flash(`Pronto para configurar a Partida ${concluidas + 1}.`)
+    // Garante que a próxima partida também reconecta corretamente em caso de reload
+    // (heroDraftId só é gravado quando admin clicar em Criar Hero Draft)
   }
 
   async function registrarResultadoFinal() {
@@ -301,6 +315,7 @@ export default function ShowmatchAdmin() {
   async function encerrarShowmatch() {
     if (sessaoPath) await remove(ref(db, sessaoPath))
     if (isConfrontoMode) await remove(ref(db, heroDraftPath))
+    if (!isConfrontoMode) localStorage.removeItem('showmatch_sessaoId')
     setConfirmEnd(false)
     setSessao(isConfrontoMode ? null : null)
     flash(isConfrontoMode ? 'Draft encerrado.' : 'Showmatch encerrado e apagado.')
