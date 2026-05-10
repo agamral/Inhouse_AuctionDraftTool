@@ -419,12 +419,16 @@ function ConfrontoCard({ confrontoId, confronto: c, times, disponibilidade, onRe
   const emComum = encontrarSlotsEmComum(dispA, dispB)
   const temAlerta = c.alertas?.semOverlap || c.alertas?.prazoAusente?.timeA || c.alertas?.prazoAusente?.timeB
 
-  // Placar das partidas
-  const partidasArr = Object.values(c.partidas ?? {})
-  const winsA = partidasArr.filter(p => p.vencedor === 'timeA').length
-  const winsB = partidasArr.filter(p => p.vencedor === 'timeB').length
+  // Placar e estado das partidas
+  const partidasObj = c.partidas ?? {}
+  const partidasArr = Object.values(partidasObj)
+  const winsA       = partidasArr.filter(p => p.vencedor === 'timeA').length
+  const winsB       = partidasArr.filter(p => p.vencedor === 'timeB').length
+  const concluidas  = partidasArr.filter(p => p.status === 'concluida').length
   const temPartidas = partidasArr.length > 0
-  const emDraft = partidasArr.some(p => p.status === 'em_draft')
+  const emDraftPart = Object.values(partidasObj).find(p => p.status === 'em_draft')
+  const emDraft     = !!emDraftPart
+  const maxTotal    = c.formato === 'MD5' ? 5 : c.formato === 'MD2' ? 2 : 1
 
   return (
     <div style={{
@@ -515,12 +519,45 @@ function ConfrontoCard({ confrontoId, confronto: c, times, disponibilidade, onRe
         </div>
       )}
 
+      {/* Status das partidas */}
+      {(temPartidas || c.status === 'em_jogo') && (
+        <div style={{ marginBottom: 10, padding: '8px 10px', background: 'var(--bg2)', borderRadius: 6, border: '1px solid var(--border)' }}>
+          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 6 }}>
+            Partidas: {concluidas}/{maxTotal}
+          </div>
+          {Array.from({ length: maxTotal }, (_, i) => {
+            const n       = String(i + 1)
+            const partida = partidasObj[n]
+            const prevDone = i === 0 || partidasObj[String(i)]?.status === 'concluida'
+            let label, cor
+            if (!partida) {
+              label = prevDone ? 'Aguardando início do draft' : `Aguardando término da Partida ${i}`
+              cor   = 'var(--text3)'
+            } else if (partida.status === 'em_draft') {
+              label = '⚡ Fase de Draft'
+              cor   = 'var(--purple)'
+            } else if (partida.status === 'concluida') {
+              const v = partida.vencedor === 'timeA' ? (tA?.nome ?? 'Time A') : (tB?.nome ?? 'Time B')
+              label = `✓ Finalizado — vitória ${v}`
+              cor   = 'var(--green)'
+            }
+            return (
+              <div key={n} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontFamily: "'Barlow Condensed', sans-serif", color: cor, padding: '1px 0' }}>
+                <span style={{ color: 'var(--text3)', minWidth: 52 }}>Partida {n}:</span>
+                <span>{label}</span>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
       {/* Ações admin */}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-        {c.status === STATUS_CONFRONTO.CONFIRMADO && (
+        {/* Botão de draft — aparece em confirmado (iniciar) ou em_jogo (gerenciar) */}
+        {(c.status === STATUS_CONFRONTO.CONFIRMADO || c.status === 'em_jogo') && (
           <button className="btn" style={{ fontSize: 11, padding: '4px 10px', borderColor: 'var(--purple)', color: 'var(--purple)', fontWeight: 700 }}
             onClick={onIniciarDraft}>
-            ▶ Iniciar Draft
+            {emDraft ? '⚡ Gerenciar Draft Ativo' : `▶ Iniciar Draft${concluidas > 0 ? ` P${concluidas + 1}` : ''}`}
           </button>
         )}
         {c.status !== STATUS_CONFRONTO.REALIZADO && c.status !== STATUS_CONFRONTO.CANCELADO && (
