@@ -1,0 +1,15 @@
+app = "inhouse-bot"
+primary_region = "gru"  # São Paulo — menor latência para o Brasil
+
+[build]
+
+[env]
+  # Variáveis não-secretas podem vir aqui
+  # Segredos (DISCORD_TOKEN, FIREBASE_CRED_JSON) ficam em fly secrets
+
+[[services]]
+  # Bot Discord não expõe porta HTTP — sem HTTP service
+  # Fly mantém o processo rodando como worker
+
+[processes]
+  app = "python main.py"
