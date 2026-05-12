@@ -158,6 +158,19 @@ export default function AdminRodadasSection() {
     }
   }
 
+  // ── Mudar status da rodada ───────────────────────────────────────────────────
+
+  async function mudarStatusRodada(rodadaId, status) {
+    try {
+      await update(ref(db, `${rodadasPath(campeonatoId)}/${rodadaId}`), {
+        status, atualizadoEm: Date.now(),
+      })
+      flash('ok', `Rodada: ${status}`)
+    } catch (e) {
+      flash('erro', e.message)
+    }
+  }
+
   // ── Deletar rodada (e todos os confrontos dela) ──────────────────────────────
 
   async function deletarRodada(rodadaId) {
@@ -311,7 +324,7 @@ export default function AdminRodadasSection() {
         {/* Rodada selecionada */}
         {rodadaAtual && (
           <>
-            <RodadaHeader rodada={rodadaAtual} rodadaId={rodadaSel} onChange={mudarStatus} />
+            <RodadaHeader rodada={rodadaAtual} rodadaId={rodadaSel} onChange={mudarStatusRodada} />
 
             {/* Confrontos */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -582,7 +595,7 @@ function ConfrontoCard({ confrontoId, confronto: c, times, disponibilidade, onRe
             ⚔ Agendar desempate MD3
           </button>
         )}
-        {c.status !== STATUS_CONFRONTO.CANCELADO && (
+        {c.status !== STATUS_CONFRONTO.CANCELADO && c.status !== STATUS_CONFRONTO.REALIZADO && (
           <button className="btn" style={{ fontSize: 11, padding: '4px 10px', borderColor: 'rgba(224,85,85,0.4)', color: 'var(--text2)' }}
             onClick={() => onMudarStatus(STATUS_CONFRONTO.CANCELADO)}>
             Cancelar
