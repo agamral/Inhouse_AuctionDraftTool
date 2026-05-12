@@ -6,6 +6,16 @@ Status: **em desenvolvimento**
 
 ---
 
+## Backlog — itens identificados durante testes
+
+- [ ] **Hero draft → confronto:** quando a chave for implementada, garantir que o histórico de picks/bans do hero draft fique acessível pelo slot do bracket, não apenas pelo confronto isolado
+- [x] **Botão "Cancelar" em REALIZADO** — ocultar quando confronto já foi realizado *(corrigido)*
+- [x] **Botões de status da rodada** — CONFIGURANDO/AGENDAMENTO/JOGANDO/ENCERRADA não salvavam no Firebase (escreviam no path errado) *(corrigido)*
+- [x] **Partida bônus** — botão no ShowmatchAdmin para adicionar partida extra marcada como `bonus: true` *(implementado)*
+- [ ] **Override de posição na tabela** — admin pode reordenar times manualmente em caso de empate ou critério externo
+
+---
+
 ## Contexto
 
 O sistema atual de Chaves e Tabela tem lógica automática demais para as necessidades reais da organização. Existem muitas variáveis humanas (desempates subjetivos, partidas extras informais, pontuações atípicas) que quebram qualquer automação. A decisão foi migrar para um sistema **manual com controle total do admin**, mantendo apenas somas automáticas onde faz sentido.
@@ -111,9 +121,9 @@ O sistema atual de Chaves e Tabela tem lógica automática demais para as necess
 - [ ] Adicionar `pontosTabela` ao confronto no Firebase
 - [ ] Modificar o modal de "Registrar Resultado" para aceitar pontos manuais
 - [ ] Modificar `calcularClassificacao` para somar `pontosTabela` em vez de calcular automaticamente
-- [ ] Adicionar `posicaoManual` ao time e respeitar na ordenação da tabela
-- [ ] UI na Tabela para o admin reordenar times (drag ou input de posição)
-- [ ] Adicionar `bonus: true/false` à partida no ShowmatchAdmin
+- [x] Adicionar `posicaoManual` ao time e respeitar na ordenação da tabela
+- [x] UI na Tabela para o admin reordenar times (drag ou input de posição)
+- [x] Adicionar `bonus: true/false` à partida no ShowmatchAdmin
 
 ### Fase 2 — Bracket builder ✅ prioridade média
 

@@ -90,8 +90,9 @@ export default function ShowmatchAdmin() {
   const [primeiroTime, setPrimeiroTime] = useState('A')
 
   // Partidas (só confronto mode)
-  const [partidas, setPartidas] = useState({})
+  const [partidas, setPartidas]           = useState({})
   const [confirmResultado, setConfirmResultado] = useState(false)
+  const [isBonus, setIsBonus]             = useState(false)
 
   // Hero Draft hook — usa caminho dinâmico (showmatch ou confronto)
   const { estado: draftEstado, iniciar: _iniciarDraft, iniciarComContagem, encerrar: encerrarDraft, desfazer: desfazerDraft } = useHeroDraft(
@@ -222,11 +223,13 @@ export default function ShowmatchAdmin() {
       const pNum = String(numAtual)
       const base = `${confrontosPath(campeonatoId)}/${confrontoId}`
       await update(ref(db), {
-        [`${base}/status`]:                    'em_jogo',
-        [`${base}/partidas/${pNum}/status`]:   'em_draft',
+        [`${base}/status`]:                       'em_jogo',
+        [`${base}/partidas/${pNum}/status`]:      'em_draft',
         [`${base}/partidas/${pNum}/heroDraftId`]: sessaoId,
-        [`${base}/partidas/${pNum}/criadoEm`]: Date.now(),
+        [`${base}/partidas/${pNum}/criadoEm`]:    Date.now(),
+        ...(isBonus ? { [`${base}/partidas/${pNum}/bonus`]: true } : {}),
       })
+      if (isBonus) setIsBonus(false)
     }
 
     flash('Hero Draft criado — clique em Iniciar para começar.')
@@ -291,8 +294,17 @@ export default function ShowmatchAdmin() {
     setMapaId('')
     setPrimeiroTime('A')
     flash(`Pronto para configurar a Partida ${concluidas + 1}.`)
-    // Garante que a próxima partida também reconecta corretamente em caso de reload
-    // (heroDraftId só é gravado quando admin clicar em Criar Hero Draft)
+  }
+
+  async function iniciarPartidaBonus() {
+    setIsBonus(true)
+    const novoId = gerarSessaoId()
+    setSessaoId(novoId)
+    setDraftCriado(false)
+    setGlobalBans([])
+    setMapaId('')
+    setPrimeiroTime('A')
+    flash('Partida bônus — configure o draft abaixo e clique em Criar Hero Draft.')
   }
 
   async function registrarResultadoFinal() {
@@ -680,10 +692,23 @@ export default function ShowmatchAdmin() {
                       isDone ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
                           {!confirmResultado ? (
-                            <button className="btn primary" style={{ fontSize: 13, padding: '9px 16px', alignSelf: 'flex-start', borderColor: 'var(--gold)', color: 'var(--gold)', background: 'rgba(201,168,76,0.08)' }}
-                              onClick={() => setConfirmResultado(true)}>
-                              ✓ Registrar Resultado Final
-                            </button>
+                            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                              <button className="btn primary" style={{ fontSize: 13, padding: '9px 16px', borderColor: 'var(--gold)', color: 'var(--gold)', background: 'rgba(201,168,76,0.08)' }}
+                                onClick={() => setConfirmResultado(true)}>
+                                ✓ Registrar Resultado Final
+                              </button>
+                              {!emDraftEntry && !isBonus && (
+                                <button className="btn" style={{ fontSize: 12, padding: '9px 14px', borderColor: 'rgba(155,110,232,0.4)', color: 'var(--text2)' }}
+                                  onClick={iniciarPartidaBonus}>
+                                  + Partida Bônus
+                                </button>
+                              )}
+                              {isBonus && (
+                                <span style={{ fontSize: 11, fontFamily: "'Barlow Condensed', sans-serif", color: 'var(--purple)', letterSpacing: '0.06em' }}>
+                                  BÔNUS — configure o draft abaixo
+                                </span>
+                              )}
+                            </div>
                           ) : (
                             <div style={{ background: 'rgba(201,168,76,0.08)', border: '1px solid rgba(201,168,76,0.3)', borderRadius: 8, padding: '12px 16px' }}>
                               <p style={{ fontSize: 13, color: 'var(--text)', margin: '0 0 10px' }}>

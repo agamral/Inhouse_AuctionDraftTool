@@ -565,6 +565,21 @@ function ConfrontoCard({ confrontoId, confronto: c, times, disponibilidade, onRe
               </div>
             )
           })}
+          {/* Partidas bônus (além do maxTotal) */}
+          {Object.entries(partidasObj)
+            .filter(([n, p]) => Number(n) > maxTotal && p)
+            .sort(([a], [b]) => Number(a) - Number(b))
+            .map(([n, p]) => {
+              const label = p.status === 'em_draft' ? '⚡ Fase de Draft' :
+                p.status === 'concluida' ? `✓ ${p.vencedor === 'timeA' ? (tA?.nome ?? 'Time A') : (tB?.nome ?? 'Time B')}` : '...'
+              const cor = p.status === 'em_draft' ? 'var(--purple)' : p.status === 'concluida' ? 'var(--green)' : 'var(--text3)'
+              return (
+                <div key={n} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontFamily: "'Barlow Condensed', sans-serif", color: cor, padding: '1px 0' }}>
+                  <span style={{ color: 'rgba(201,168,76,0.6)', minWidth: 52 }}>Bônus {n}:</span>
+                  <span>{label}</span>
+                </div>
+              )
+            })}
         </div>
       )}
 

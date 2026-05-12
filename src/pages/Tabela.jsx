@@ -1,17 +1,47 @@
-import { useState, useEffect } from 'react'
-import { ref, onValue } from 'firebase/database'
+import { useState, useEffect, useCallback } from 'react'
+import { ref, onValue, set, remove } from 'firebase/database'
 import { db } from '../firebase/database'
 import { useAuth } from '../hooks/useAuth'
 import { useModules } from '../hooks/useConfig'
 import { useCampeonato } from '../contexts/CampeonatoContext'
 import PaginaInativa from '../components/PaginaInativa'
-import { teamPath, rodadasPath, confrontosPath } from '../utils/campeonatoPaths'
+import { teamPath, rodadasPath, confrontosPath, tabelaOverridePath } from '../utils/campeonatoPaths'
 import {
   calcularClassificacao, calcularPontos,
   STATUS_CONFRONTO, TIPO_CONFRONTO,
   SLOT_LABEL, formatarResultado, PONTUACAO_PADRAO,
 } from '../utils/scheduling'
 import './Tabela.css'
+
+// Aplica posições manuais sobre o array já ordenado por pontos.
+// Times com posicaoManual são inseridos na posição definida;
+// os restantes preenchem os espaços vazios na ordem calculada.
+function aplicarOverrides(classificacao, overrides) {
+  const n = classificacao.length
+  if (!n || !Object.keys(overrides).length) return classificacao
+
+  const result = new Array(n).fill(null)
+  const semOverride = []
+
+  for (const entry of classificacao) {
+    const pos = overrides[entry.id]?.posicaoManual
+    if (pos != null && pos >= 1 && pos <= n) {
+      const idx = pos - 1
+      // conflito: quem chegou antes fica, o outro vai pra fila livre
+      if (result[idx] === null) result[idx] = entry
+      else semOverride.push(entry)
+    } else {
+      semOverride.push(entry)
+    }
+  }
+
+  let j = 0
+  for (let i = 0; i < n; i++) {
+    if (result[i] === null) result[i] = semOverride[j++]
+  }
+
+  return result.filter(Boolean)
+}
 
 export default function Tabela() {
   const { isAdmin } = useAuth()
@@ -20,12 +50,14 @@ export default function Tabela() {
   const [rodadas,    setRodadas]    = useState({})
   const [confrontos, setConfrontos] = useState({})
   const [times,      setTimes]      = useState({})
+  const [overrides,  setOverrides]  = useState({})
   const [rodadaSel,  setRodadaSel]  = useState('todas')
   const [timeSel,    setTimeSel]    = useState('')
 
-  useEffect(() => onValue(ref(db, rodadasPath(idPublico)),    snap => setRodadas(snap.val()    ?? {})), [idPublico])
-  useEffect(() => onValue(ref(db, confrontosPath(idPublico)), snap => setConfrontos(snap.val() ?? {})), [idPublico])
-  useEffect(() => onValue(ref(db, teamPath(idPublico)),       snap => setTimes(snap.val()      ?? {})), [idPublico])
+  useEffect(() => onValue(ref(db, rodadasPath(idPublico)),       snap => setRodadas(snap.val()    ?? {})), [idPublico])
+  useEffect(() => onValue(ref(db, confrontosPath(idPublico)),    snap => setConfrontos(snap.val() ?? {})), [idPublico])
+  useEffect(() => onValue(ref(db, teamPath(idPublico)),          snap => setTimes(snap.val()      ?? {})), [idPublico])
+  useEffect(() => onValue(ref(db, tabelaOverridePath(idPublico)),snap => setOverrides(snap.val()  ?? {})), [idPublico])
 
   // ── Derivados ──────────────────────────────────────────────────────────────
 
@@ -36,13 +68,11 @@ export default function Tabela() {
     return c.rodadaId === rodadaSel
   })
 
-  // Para a tabela geral, usamos todos os confrontos realizados (independente da rodada selecionada)
   const todosConfrontos = Object.values(confrontos)
-
   const teamIds = Object.keys(times)
-  const classificacao = calcularClassificacao(teamIds, todosConfrontos)
+  const classificacaoBase = calcularClassificacao(teamIds, todosConfrontos)
+  const classificacao = aplicarOverrides(classificacaoBase, overrides)
 
-  // Confrontos exibidos na seção de partidas (filtrado pela rodada e time selecionados)
   const confrontosExibidos = confrontosArr
     .filter(c => !timeSel || c.timeA === timeSel || c.timeB === timeSel)
     .filter(c =>
@@ -55,7 +85,6 @@ export default function Tabela() {
       return ordem.indexOf(a.status) - ordem.indexOf(b.status)
     })
 
-  // Últimas 5 partidas por time (para indicador de forma)
   function formaDoTime(teamId) {
     return todosConfrontos
       .filter(c =>
@@ -74,8 +103,20 @@ export default function Tabela() {
         if (meuPts < outPts) return 'D'
         return 'E'
       })
-      .reverse() // mais antigo primeiro
+      .reverse()
   }
+
+  // ── Override admin ─────────────────────────────────────────────────────────
+
+  const salvarPosicao = useCallback(async (teamId, valor) => {
+    const n = parseInt(valor, 10)
+    const path = `${tabelaOverridePath(idPublico)}/${teamId}`
+    if (!valor || isNaN(n) || n < 1) {
+      await remove(ref(db, path))
+    } else {
+      await set(ref(db, path), { posicaoManual: n })
+    }
+  }, [idPublico])
 
   if (!modules.loading && !isAdmin && !modules.campeonatoAtivo) {
     return <PaginaInativa icone="📊" titulo="Classificação em breve" descricao="A tabela de classificação estará disponível quando o campeonato começar." />
@@ -84,12 +125,26 @@ export default function Tabela() {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   const semDados = classificacao.length === 0
+  const temOverrides = Object.values(overrides).some(o => o.posicaoManual != null)
 
   return (
     <div className="tab-root page">
 
       <h1 className="page-title">Tabela de Classificação</h1>
       <p className="page-subtitle">Fase regular · Copa Inhouse</p>
+
+      {/* Aviso de ordem manual ativa */}
+      {temOverrides && (
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          padding: '5px 12px', borderRadius: 4, marginBottom: 12,
+          background: 'rgba(201,168,76,0.08)', border: '1px solid rgba(201,168,76,0.3)',
+          fontSize: 11, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600,
+          color: 'var(--gold)', letterSpacing: '0.06em',
+        }}>
+          ✎ Ordem ajustada manualmente
+        </div>
+      )}
 
       {/* Filtros */}
       <div className="tab-filtros-grupo">
@@ -140,6 +195,7 @@ export default function Tabela() {
                 <th className="tab-th tab-th--num" title="Saldo">SG</th>
                 <th className="tab-th tab-th--pts">Pts</th>
                 <th className="tab-th tab-th--forma">Forma</th>
+                {isAdmin && <th className="tab-th tab-th--num" title="Posição manual — deixe vazio para usar ordem automática">Pos.</th>}
               </tr>
             </thead>
             <tbody>
@@ -148,8 +204,9 @@ export default function Tabela() {
                 const cor  = time?.cor ?? 'var(--text2)'
                 const forma = formaDoTime(entry.id)
                 const destaque = idx === 0 ? 'gold' : idx === 1 ? 'silver' : idx === 2 ? 'bronze' : ''
-
                 const selecionado = timeSel === entry.id
+                const posManual = overrides[entry.id]?.posicaoManual
+
                 return (
                   <tr key={entry.id}
                     className={`tab-tr${destaque ? ` tab-tr--${destaque}` : ''}${selecionado ? ' tab-tr--selecionado' : ''}`}
@@ -157,7 +214,8 @@ export default function Tabela() {
                     onClick={() => setTimeSel(selecionado ? '' : entry.id)}
                   >
                     <td className="tab-td tab-td--pos">
-                      <span className={`tab-pos${destaque ? ` tab-pos--${destaque}` : ''}`}>
+                      <span className={`tab-pos${destaque ? ` tab-pos--${destaque}` : ''}`}
+                        style={posManual != null ? { color: 'var(--gold)', border: '1px solid rgba(201,168,76,0.35)' } : {}}>
                         {idx + 1}
                       </span>
                     </td>
@@ -186,11 +244,25 @@ export default function Tabela() {
                         ))}
                       </div>
                     </td>
+                    {isAdmin && (
+                      <td className="tab-td tab-td--num" onClick={e => e.stopPropagation()}>
+                        <PosInput
+                          value={posManual ?? ''}
+                          max={classificacao.length}
+                          onCommit={val => salvarPosicao(entry.id, val)}
+                        />
+                      </td>
+                    )}
                   </tr>
                 )
               })}
             </tbody>
           </table>
+          {isAdmin && (
+            <p style={{ fontSize: 11, color: 'var(--text3)', fontFamily: "'Barlow Condensed', sans-serif", marginTop: 8, padding: '0 2px' }}>
+              Coluna "Pos." — número força a posição na tabela. Apague para voltar ao automático.
+            </p>
+          )}
         </div>
       )}
 
@@ -243,5 +315,41 @@ export default function Tabela() {
       )}
 
     </div>
+  )
+}
+
+// Input controlado para posição manual — salva no blur ou Enter, descarta no Escape
+function PosInput({ value, max, onCommit }) {
+  const [local, setLocal] = useState(String(value ?? ''))
+
+  useEffect(() => { setLocal(String(value ?? '')) }, [value])
+
+  function commit() {
+    const trimmed = local.trim()
+    onCommit(trimmed)
+  }
+
+  return (
+    <input
+      type="number"
+      min={1}
+      max={max}
+      value={local}
+      placeholder="—"
+      onChange={e => setLocal(e.target.value)}
+      onBlur={commit}
+      onKeyDown={e => {
+        if (e.key === 'Enter') { e.target.blur() }
+        if (e.key === 'Escape') { setLocal(String(value ?? '')); e.target.blur() }
+      }}
+      style={{
+        width: 44, textAlign: 'center', padding: '3px 4px',
+        background: local ? 'rgba(201,168,76,0.08)' : 'var(--bg2)',
+        border: `1px solid ${local ? 'rgba(201,168,76,0.35)' : 'var(--border)'}`,
+        borderRadius: 4, color: local ? 'var(--gold)' : 'var(--text3)',
+        fontFamily: "'Barlow Condensed', sans-serif", fontSize: 13,
+        outline: 'none',
+      }}
+    />
   )
 }
