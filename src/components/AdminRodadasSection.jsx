@@ -101,18 +101,22 @@ export default function AdminRodadasSection() {
 
   // ── Registrar resultado ──────────────────────────────────────────────────────
 
-  async function registrarResultado(confrontoId, resultado) {
+  async function registrarResultado(confrontoId, resultado, pontosTabela) {
     try {
       const c = confrontos[confrontoId]
       let novoStatus = STATUS_CONFRONTO.REALIZADO
 
-      // Se foi empate numa série MD2 → muda para empate_pendente
       if (resultado.tipo === TIPO_RESULTADO.EMPATE && c?.formato === FORMATO_SERIE.MD2) {
         novoStatus = STATUS_CONFRONTO.EMPATE_PENDENTE
       }
 
       await update(ref(db, `${confrontosPath(campeonatoId)}/${confrontoId}`), {
         resultado,
+        // pontosTabela: pontos definidos manualmente pelo admin para a classificação
+        // null = legado (usa cálculo automático como fallback na tabela)
+        pontosTabela: (pontosTabela?.timeA != null || pontosTabela?.timeB != null)
+          ? { timeA: pontosTabela.timeA ?? 0, timeB: pontosTabela.timeB ?? 0 }
+          : null,
         status: novoStatus,
         alertas: {},
         atualizadoEm: Date.now(),
@@ -691,6 +695,8 @@ function ModalResultado({ confronto, confrontoId, times, onSalvar, onFechar }) {
   const [tipo, setTipo] = useState(TIPO_RESULTADO.NORMAL)
   const [gA, setGA] = useState(0)
   const [gB, setGB] = useState(0)
+  const [ptsA, setPtsA] = useState('')
+  const [ptsB, setPtsB] = useState('')
   const [obs, setObs] = useState(confronto.observacoes ?? '')
 
   const ehMD2 = confronto.formato === FORMATO_SERIE.MD2
@@ -705,12 +711,16 @@ function ModalResultado({ confronto, confrontoId, times, onSalvar, onFechar }) {
 
   const resultado =
     tipo === TIPO_RESULTADO.NORMAL  ? { tipo, timeA: gA, timeB: gB } :
-    tipo === TIPO_RESULTADO.EMPATE  ? { tipo, timeA: 1, timeB: 1 }   : // 1-1, cada time leva 1pt
+    tipo === TIPO_RESULTADO.EMPATE  ? { tipo, timeA: 1, timeB: 1 }   :
     tipo === TIPO_RESULTADO.WO_A    ? { tipo, timeA: 1, timeB: 0 }   :
     tipo === TIPO_RESULTADO.WO_B    ? { tipo, timeA: 0, timeB: 1 }   :
     /* DUPLO_WO */                    { tipo, timeA: 0, timeB: 0 }
 
-  const pontos = calcularPontos(resultado, PONTUACAO_PADRAO, confronto.tipo)
+  // Pontos de tabela — sempre definidos manualmente pelo admin
+  const pontosTabela = {
+    timeA: ptsA !== '' ? Number(ptsA) : null,
+    timeB: ptsB !== '' ? Number(ptsB) : null,
+  }
 
   return (
     <Modal titulo={`Resultado — ${tA?.nome ?? confronto.timeA} vs ${tB?.nome ?? confronto.timeB}`} onFechar={onFechar}>
@@ -740,10 +750,31 @@ function ModalResultado({ confronto, confrontoId, times, onSalvar, onFechar }) {
         </div>
       )}
 
-      {/* Preview de pontos */}
-      <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 12px', marginBottom: 14, fontSize: 12, fontFamily: "'Barlow Condensed', sans-serif", display: 'flex', gap: 24 }}>
-        <span style={{ color: tA?.cor ?? 'var(--text)' }}>{tA?.nome ?? 'Time A'}: <strong>+{pontos.timeA} pts</strong></span>
-        <span style={{ color: tB?.cor ?? 'var(--text)' }}>{tB?.nome ?? 'Time B'}: <strong>+{pontos.timeB} pts</strong></span>
+      {/* Pontos de tabela — input manual */}
+      <div style={{ background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.25)', borderRadius: 6, padding: '10px 12px', marginBottom: 14 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: 8 }}>
+          Pontos de tabela
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 10 }}>
+          Defina quantos pontos cada time ganha na classificação por este confronto. Independente do placar acima.
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px', gap: 8, alignItems: 'center' }}>
+          <span style={{ fontSize: 12, color: tA?.cor ?? 'var(--text)' }}>{tA?.nome ?? 'Time A'}</span>
+          <input type="number" min={0} placeholder="0" value={ptsA}
+            onChange={e => setPtsA(e.target.value)}
+            style={{ ...inputStyle, textAlign: 'center', borderColor: 'rgba(201,168,76,0.3)', color: 'var(--gold)' }} />
+          <span style={{ fontSize: 12, color: tB?.cor ?? 'var(--text)' }}>{tB?.nome ?? 'Time B'}</span>
+          <input type="number" min={0} placeholder="0" value={ptsB}
+            onChange={e => setPtsB(e.target.value)}
+            style={{ ...inputStyle, textAlign: 'center', borderColor: 'rgba(201,168,76,0.3)', color: 'var(--gold)' }} />
+        </div>
+        {(ptsA !== '' || ptsB !== '') && (
+          <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text2)' }}>
+            {tA?.nome ?? 'Time A'}: <strong style={{ color: 'var(--gold)' }}>+{ptsA || 0}pts</strong>
+            {' · '}
+            {tB?.nome ?? 'Time B'}: <strong style={{ color: 'var(--gold)' }}>+{ptsB || 0}pts</strong>
+          </div>
+        )}
       </div>
 
       <FieldLabel label="Observações" hint="opcional" />
@@ -752,7 +783,7 @@ function ModalResultado({ confronto, confrontoId, times, onSalvar, onFechar }) {
 
       <div style={{ display: 'flex', gap: 8 }}>
         <button className="btn primary" style={{ fontSize: 13 }}
-          onClick={() => onSalvar(confrontoId, { ...resultado, observacoes: obs || null })}>
+          onClick={() => onSalvar(confrontoId, { ...resultado, observacoes: obs || null }, pontosTabela)}>
           Confirmar resultado
         </button>
         <button className="btn" style={{ fontSize: 13 }} onClick={onFechar}>Cancelar</button>

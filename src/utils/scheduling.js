@@ -330,7 +330,11 @@ export function calcularClassificacao(teamIds = [], confrontos = [], config = PO
         c.tipo === TIPO_CONFRONTO.SEMI    ||
         c.tipo === TIPO_CONFRONTO.FINAL) continue
 
-    const pts = calcularPontos(c.resultado, config, c.tipo)
+    // Usa pontosTabela definidos manualmente pelo admin quando disponíveis;
+    // caso contrário cai no cálculo automático (retrocompatibilidade).
+    const pts = c.pontosTabela
+      ? { timeA: c.pontosTabela.timeA ?? 0, timeB: c.pontosTabela.timeB ?? 0 }
+      : calcularPontos(c.resultado, config, c.tipo)
     const gA  = c.resultado.timeA ?? 0
     const gB  = c.resultado.timeB ?? 0
 
