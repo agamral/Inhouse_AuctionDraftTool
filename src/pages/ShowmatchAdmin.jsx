@@ -93,6 +93,8 @@ export default function ShowmatchAdmin() {
   const [partidas, setPartidas]           = useState({})
   const [confirmResultado, setConfirmResultado] = useState(false)
   const [isBonus, setIsBonus]             = useState(false)
+  const [ptsA, setPtsA]                   = useState('')
+  const [ptsB, setPtsB]                   = useState('')
 
   // Hero Draft hook — usa caminho dinâmico (showmatch ou confronto)
   const { estado: draftEstado, iniciar: _iniciarDraft, iniciarComContagem, encerrar: encerrarDraft, desfazer: desfazerDraft } = useHeroDraft(
@@ -310,16 +312,23 @@ export default function ShowmatchAdmin() {
   async function registrarResultadoFinal() {
     const base   = `${confrontosPath(campeonatoId)}/${confrontoId}`
     const isTie  = winsA === winsB
-    // resultado sempre necessário — tabela e bot leem c.resultado para pontuar
     const resultado = {
       tipo:  isTie ? 'empate' : 'normal',
       timeA: winsA,
       timeB: winsB,
     }
+    const nA = ptsA !== '' ? Number(ptsA) : null
+    const nB = ptsB !== '' ? Number(ptsB) : null
+    const pontosTabela = (nA != null || nB != null)
+      ? { timeA: nA ?? 0, timeB: nB ?? 0 }
+      : null
     await update(ref(db), {
-      [`${base}/status`]:    isTie ? 'empate_pendente' : 'realizado',
-      [`${base}/resultado`]: resultado,
+      [`${base}/status`]:       isTie ? 'empate_pendente' : 'realizado',
+      [`${base}/resultado`]:    resultado,
+      [`${base}/pontosTabela`]: pontosTabela,
     })
+    setPtsA('')
+    setPtsB('')
     setConfirmResultado(false)
     flash(isTie ? 'Empate registrado — desempate pendente.' : 'Resultado registrado!')
   }
@@ -710,17 +719,34 @@ export default function ShowmatchAdmin() {
                               )}
                             </div>
                           ) : (
-                            <div style={{ background: 'rgba(201,168,76,0.08)', border: '1px solid rgba(201,168,76,0.3)', borderRadius: 8, padding: '12px 16px' }}>
-                              <p style={{ fontSize: 13, color: 'var(--text)', margin: '0 0 10px' }}>
+                            <div style={{ background: 'rgba(201,168,76,0.08)', border: '1px solid rgba(201,168,76,0.3)', borderRadius: 8, padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                              <p style={{ fontSize: 13, color: 'var(--text)', margin: 0 }}>
                                 Confirmar resultado:{' '}
                                 <strong>{sessao?.timeA?.nome ?? 'Time A'} {winsA} × {winsB} {sessao?.timeB?.nome ?? 'Time B'}</strong>?
                                 {winsA === winsB && <span style={{ color: 'var(--gold)', marginLeft: 6 }}>(Empate — desempate pendente)</span>}
                               </p>
+                              {/* Pontos de tabela */}
+                              <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 6, padding: '8px 10px' }}>
+                                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: 8, fontFamily: "'Barlow Condensed', sans-serif" }}>
+                                  Pontos de tabela
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 60px', gap: '6px 10px', alignItems: 'center' }}>
+                                  <span style={{ fontSize: 12, color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif" }}>{sessao?.timeA?.nome ?? 'Time A'}</span>
+                                  <input type="number" min={0} placeholder="0" value={ptsA} onChange={e => setPtsA(e.target.value)}
+                                    style={{ padding: '4px 6px', textAlign: 'center', background: 'var(--bg)', border: '1px solid rgba(201,168,76,0.3)', borderRadius: 4, color: 'var(--gold)', fontFamily: "'Barlow Condensed', sans-serif", fontSize: 13, outline: 'none' }} />
+                                  <span style={{ fontSize: 12, color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif" }}>{sessao?.timeB?.nome ?? 'Time B'}</span>
+                                  <input type="number" min={0} placeholder="0" value={ptsB} onChange={e => setPtsB(e.target.value)}
+                                    style={{ padding: '4px 6px', textAlign: 'center', background: 'var(--bg)', border: '1px solid rgba(201,168,76,0.3)', borderRadius: 4, color: 'var(--gold)', fontFamily: "'Barlow Condensed', sans-serif", fontSize: 13, outline: 'none' }} />
+                                </div>
+                                <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 6, fontFamily: "'Barlow Condensed', sans-serif" }}>
+                                  Deixe em branco para usar o cálculo automático.
+                                </div>
+                              </div>
                               <div style={{ display: 'flex', gap: 8 }}>
                                 <button className="btn primary" style={{ fontSize: 13, padding: '7px 16px' }} onClick={registrarResultadoFinal}>
                                   Confirmar
                                 </button>
-                                <button className="btn" style={{ fontSize: 13, padding: '7px 12px' }} onClick={() => setConfirmResultado(false)}>
+                                <button className="btn" style={{ fontSize: 13, padding: '7px 12px' }} onClick={() => { setConfirmResultado(false); setPtsA(''); setPtsB('') }}>
                                   Cancelar
                                 </button>
                               </div>
