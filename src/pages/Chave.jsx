@@ -5,7 +5,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useModules } from '../hooks/useConfig'
 import { useCampeonato } from '../contexts/CampeonatoContext'
 import PaginaInativa from '../components/PaginaInativa'
-import { teamPath, rodadasPath, confrontosPath } from '../utils/campeonatoPaths'
+import { teamPath, rodadasPath, confrontosPath, chavePath } from '../utils/campeonatoPaths'
 import {
   BRACKET_UPPER, BRACKET_LOWER, BRACKET_LABELS,
   STATUS_CONFRONTO, TIPO_CONFRONTO, SLOT_LABEL,
@@ -45,6 +45,7 @@ export default function Chave() {
   const [confrontos, setConfrontos] = useState({})
   const [rodadas,    setRodadas]    = useState({})
   const [times,      setTimes]      = useState({})
+  const [chaves,     setChaves]     = useState({})
   const [erroRead,   setErroRead]   = useState(null)
   const [loading,    setLoading]    = useState(true)
   const [timeSel,    setTimeSel]    = useState('')
@@ -56,6 +57,7 @@ export default function Chave() {
   ), [idPublico])
   useEffect(() => onValue(ref(db, rodadasPath(idPublico)), snap => setRodadas(snap.val() ?? {})), [idPublico])
   useEffect(() => onValue(ref(db, teamPath(idPublico)),    snap => setTimes(snap.val()   ?? {})), [idPublico])
+  useEffect(() => onValue(ref(db, chavePath(idPublico)),   snap => setChaves(snap.val()  ?? {})), [idPublico])
 
   if (!modules.loading && !isAdmin && !modules.campeonatoAtivo) {
     return <PaginaInativa icone="🏅" titulo="Chave em preparação" descricao="O bracket do campeonato será publicado quando as partidas começarem." />
@@ -151,6 +153,27 @@ export default function Chave() {
         </div>
       )}
 
+      {/* ── Chaves manuais ───────────────────────────────────────────────── */}
+      {Object.entries(chaves)
+        .sort(([, a], [, b]) => (a.criadaEm ?? 0) - (b.criadaEm ?? 0))
+        .filter(([, c]) => c.slots && Object.keys(c.slots).length > 0)
+        .map(([chaveId, chave]) => (
+          <div key={chaveId} className="chave-secao">
+            <div className="chave-secao-titulo" style={{ color: 'var(--gold2)', borderColor: 'rgba(201,168,76,0.3)' }}>
+              {chave.nome}
+            </div>
+            <div className="chave-secao-bracket-wrap">
+              <ManualBracket
+                slots={chave.slots}
+                confrontos={confrontos}
+                times={times}
+                timeSel={timeSel}
+              />
+            </div>
+          </div>
+        ))
+      }
+
       {/* ── Fase Regular ──────────────────────────────────────────────────── */}
       {temRegular && (
         <div className="chave-secao">
@@ -236,6 +259,155 @@ export default function Chave() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+// ── Manual Bracket ────────────────────────────────────────────────────────────
+
+function ManualBracket({ slots, confrontos, times, timeSel }) {
+  if (!slots || !Object.keys(slots).length) return null
+
+  // Group by coluna, sort by ordem within each column
+  const byCol = {}
+  for (const [id, s] of Object.entries(slots)) {
+    const col = s.coluna ?? 0
+    if (!byCol[col]) byCol[col] = []
+    byCol[col].push({ id, s })
+  }
+  for (const col of Object.keys(byCol)) {
+    byCol[col].sort((a, b) => (a.s.ordem ?? 0) - (b.s.ordem ?? 0))
+  }
+  const cols = Object.keys(byCol).map(Number).sort((a, b) => a - b)
+  if (!cols.length) return null
+
+  // Build children map: parentId → [childIds] (slots pointing TO parent via proximoSlot)
+  const children = {}
+  for (const [id, s] of Object.entries(slots)) {
+    const next = s.proximoSlot
+    if (next && slots[next]) {
+      if (!children[next]) children[next] = []
+      children[next].push(id)
+    }
+  }
+
+  // Compute Y positions: first column evenly spaced, each subsequent column
+  // positioned at the vertical midpoint of its children (slots feeding into it)
+  const yPos = {}
+  const firstCol = byCol[cols[0]]
+  firstCol.forEach(({ id }, i) => { yPos[id] = i * (CARD_H + CARD_GAP) })
+
+  for (let ci = 1; ci < cols.length; ci++) {
+    for (const { id } of byCol[cols[ci]]) {
+      const feeders = children[id] ?? []
+      if (feeders.length > 0) {
+        yPos[id] = feeders.reduce((s, fid) => s + (yPos[fid] ?? 0), 0) / feeders.length
+      } else {
+        const idx = byCol[cols[ci]].findIndex(e => e.id === id)
+        yPos[id] = idx * (CARD_H + CARD_GAP)
+      }
+    }
+  }
+
+  const numCols = cols.length
+  const totalW  = numCols * COL_STEP - CONN_W
+  const maxY    = Math.max(...Object.values(yPos))
+  const totalH  = maxY + CARD_H + LABEL_H + 8
+
+  // SVG lines: for each slot with a proximoSlot, draw bracket-style connectors
+  // Group feeders by their target to draw the classic bracket shape
+  const svgLines = []
+  for (let ci = 0; ci < cols.length - 1; ci++) {
+    const nextColIdx = cols[ci + 1]
+    // For each slot in the NEXT column, find all feeders in this column
+    for (const { id: nextId } of byCol[nextColIdx]) {
+      const feeders = (children[nextId] ?? [])
+        .filter(fid => {
+          const fSlot = slots[fid]
+          return fSlot && (fSlot.coluna ?? 0) === cols[ci]
+        })
+        .sort((a, b) => (yPos[a] ?? 0) - (yPos[b] ?? 0))
+
+      if (!feeders.length) continue
+
+      const xRight = ci * COL_STEP + COL_W
+      const xMid   = ci * COL_STEP + COL_W + CONN_W / 2
+      const xLeft  = (ci + 1) * COL_STEP
+      const yNext  = (yPos[nextId] ?? 0) + LABEL_H + CARD_H / 2
+      const yTop   = (yPos[feeders[0]] ?? 0) + LABEL_H + CARD_H / 2
+      const yBot   = (yPos[feeders[feeders.length - 1]] ?? 0) + LABEL_H + CARD_H / 2
+      const yJoin  = (yTop + yBot) / 2
+
+      // Each feeder: horizontal right + vertical to join point
+      for (const fid of feeders) {
+        const yCur = (yPos[fid] ?? 0) + LABEL_H + CARD_H / 2
+        svgLines.push(
+          <polyline key={`f-${fid}`}
+            points={`${xRight},${yCur} ${xMid},${yCur} ${xMid},${yJoin}`}
+            fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="1.5" />
+        )
+      }
+      // Join → next slot
+      svgLines.push(
+        <polyline key={`n-${nextId}-${ci}`}
+          points={`${xMid},${yJoin} ${xMid},${yNext} ${xLeft},${yNext}`}
+          fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="1.5" />
+      )
+    }
+  }
+
+  return (
+    <div style={{ position: 'relative', width: totalW, height: totalH, minWidth: totalW }}>
+      <svg style={{ position: 'absolute', inset: 0, overflow: 'visible', pointerEvents: 'none' }}
+        width={totalW} height={totalH}>
+        {svgLines}
+      </svg>
+
+      {/* Column labels */}
+      {cols.map((col, ci) => {
+        const firstSlot = byCol[col]?.[0]?.s
+        const labelText = firstSlot?.label
+          ? byCol[col].length === 1
+            ? firstSlot.label
+            : `Coluna ${ci + 1}`
+          : `Coluna ${ci + 1}`
+        return (
+          <div key={col} className="bracket-col-label" style={{ left: ci * COL_STEP, width: COL_W }}>
+            {labelText}
+          </div>
+        )
+      })}
+
+      {/* Slot cards */}
+      {cols.map((col, ci) =>
+        byCol[col].map(({ id, s }) => {
+          const confronto  = confrontos[s.confrontoId]
+          return (
+            <div key={id} style={{ position: 'absolute', top: (yPos[id] ?? 0) + LABEL_H, left: ci * COL_STEP, width: COL_W }}>
+              {confronto
+                ? <MatchCard match={confronto} times={times} timeSel={timeSel} />
+                : <SlotVazio label={s.label} />
+              }
+            </div>
+          )
+        })
+      )}
+    </div>
+  )
+}
+
+function SlotVazio({ label }) {
+  return (
+    <div className="match-card" style={{ height: CARD_H, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px' }}>
+        <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--border2)', flexShrink: 0 }} />
+        <span style={{ color: 'var(--text3)', fontStyle: 'italic', fontSize: 12, fontFamily: "'Barlow Condensed', sans-serif" }}>A definir</span>
+      </div>
+      <div className="match-card-sep" />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px' }}>
+        <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--border2)', flexShrink: 0 }} />
+        <span style={{ color: 'var(--text3)', fontStyle: 'italic', fontSize: 12, fontFamily: "'Barlow Condensed', sans-serif" }}>A definir</span>
+      </div>
     </div>
   )
 }

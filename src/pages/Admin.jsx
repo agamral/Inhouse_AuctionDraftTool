@@ -19,6 +19,7 @@ import AdminMigracaoSection          from '../components/AdminMigracaoSection'
 import AdminProvisionamentoSection   from '../components/AdminProvisionamentoSection'
 import AdminEncerramentoSection      from '../components/AdminEncerramentoSection'
 import AdminBotSetupSection          from '../components/AdminBotSetupSection'
+import AdminChaveSection             from '../components/AdminChaveSection'
 import './Admin.css'
 
 const ALL_TABS = [
@@ -27,6 +28,7 @@ const ALL_TABS = [
   { id: 'leilao',     label: 'Leilão'     },
   { id: 'times',      label: 'Times'      },
   { id: 'campeonato', label: 'Campeonato' },
+  { id: 'chave',      label: 'Chave'      },
   { id: 'sistema',    label: 'Sistema',   superAdminOnly: true },
 ]
 
@@ -437,6 +439,13 @@ export default function Admin() {
         <div className="admin-tab-content">
           <AdminRodadasSection />
           <AdminHeroDraftSection />
+        </div>
+      )}
+
+      {/* CHAVE */}
+      {aba === 'chave' && (
+        <div className="admin-tab-content">
+          <AdminChaveSection />
         </div>
       )}
 
