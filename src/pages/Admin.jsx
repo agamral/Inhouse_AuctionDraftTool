@@ -20,6 +20,7 @@ import AdminProvisionamentoSection   from '../components/AdminProvisionamentoSec
 import AdminEncerramentoSection      from '../components/AdminEncerramentoSection'
 import AdminBotSetupSection          from '../components/AdminBotSetupSection'
 import AdminChaveSection             from '../components/AdminChaveSection'
+import ChavesUnificadas              from '../components/ChavesUnificadas'
 import './Admin.css'
 
 const ALL_TABS = [
@@ -29,6 +30,7 @@ const ALL_TABS = [
   { id: 'times',      label: 'Times'      },
   { id: 'campeonato', label: 'Campeonato' },
   { id: 'chave',      label: 'Chave'      },
+  { id: 'chaves',     label: 'Chaves & Confrontos' },
   { id: 'sistema',    label: 'Sistema',   superAdminOnly: true },
 ]
 
@@ -446,6 +448,13 @@ export default function Admin() {
       {aba === 'chave' && (
         <div className="admin-tab-content">
           <AdminChaveSection />
+        </div>
+      )}
+
+      {/* CHAVES & CONFRONTOS — interface unificada */}
+      {aba === 'chaves' && (
+        <div className="admin-tab-content" style={{ padding: 0 }}>
+          <ChavesUnificadas />
         </div>
       )}
 

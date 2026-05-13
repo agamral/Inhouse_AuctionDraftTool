@@ -31,7 +31,7 @@ function getWinner(confronto) {
 
 // ── Componente principal ────────────────────────────────────────────────────────
 
-export default function AdminChaveSection() {
+export default function AdminChaveSection({ embedded = false }) {
   const { campeonatoId } = useCampeonato()
   const [chaves,     setChaves]     = useState({})
   const [confrontos, setConfrontos] = useState({})
@@ -151,11 +151,8 @@ export default function AdminChaveSection() {
 
   // ── Render ────────────────────────────────────────────────────────────────────
 
-  return (
-    <section className="admin-section" style={{ maxWidth: 'none', borderColor: 'rgba(201,168,76,0.25)' }}>
-      <div className="admin-section-title" style={{ color: 'var(--gold)' }}>Chaves (Bracket)</div>
-
-      <div style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+  const inner = (
+      <div style={{ padding: embedded ? 0 : '14px 18px', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
         {feedback && (
           <div style={{
@@ -290,6 +287,13 @@ export default function AdminChaveSection() {
           <p style={{ color: 'var(--text2)', fontSize: 13 }}>Nenhuma chave criada ainda.</p>
         )}
       </div>
+  )
+
+  if (embedded) return inner
+  return (
+    <section className="admin-section" style={{ maxWidth: 'none', borderColor: 'rgba(201,168,76,0.25)' }}>
+      <div className="admin-section-title" style={{ color: 'var(--gold)' }}>Chaves (Bracket)</div>
+      {inner}
     </section>
   )
 }
