@@ -338,17 +338,29 @@ export default function HeroDraftEspectador() {
       <div className="hde-stage">
 
         {(() => {
-          const isPickA = isRunning && passo?.acao === ACOES.PICK && passo?.time === 'A'
-          const isPickB = isRunning && passo?.acao === ACOES.PICK && passo?.time === 'B'
-          const nextIdxA = estado.timeA.picks.length
-          const nextIdxB = estado.timeB.picks.length
+          const seq       = estado.sequencia ?? []
+          const passoIdx  = estado.passoAtual ?? 0
+          const isPickA   = isRunning && passo?.acao === ACOES.PICK && passo?.time === 'A'
+          const isPickB   = isRunning && passo?.acao === ACOES.PICK && passo?.time === 'B'
+          const nextIdxA  = estado.timeA.picks.length
+          const nextIdxB  = estado.timeB.picks.length
+          // Pick duplo: próximo passo é pick do mesmo time
+          const isDuploA  = isPickA && seq[passoIdx + 1]?.acao === ACOES.PICK && seq[passoIdx + 1]?.time === 'A'
+          const isDuploB  = isPickB && seq[passoIdx + 1]?.acao === ACOES.PICK && seq[passoIdx + 1]?.time === 'B'
+
+          const gradA = `linear-gradient(to top, ${estado.timeA.cor}55 0%, transparent 100%)`
+          const gradB = `linear-gradient(to top, ${estado.timeB.cor}55 0%, transparent 100%)`
+
           return (
             <>
-              <div className="hde-col hde-col--a" style={isPickA ? { filter: 'brightness(1.12)', transition: 'filter 0.4s ease' } : { transition: 'filter 0.4s ease' }}>
+              <div className="hde-col hde-col--a" style={{ position: 'relative' }}>
                 {Array.from({ length: picksA }, (_, i) => (
                   <HexSlot key={i} heroiId={estado.timeA.picks[i] ?? null} cor={estado.timeA.cor} large
-                    nextPick={isPickA && i === nextIdxA} />
+                    nextPick={isPickA && (i === nextIdxA || (isDuploA && i === nextIdxA + 1))} />
                 ))}
+                {isPickA && (
+                  <div style={{ position: 'absolute', bottom: -8, left: -20, right: -20, height: 80, background: gradA, pointerEvents: 'none', transition: 'opacity 0.4s ease' }} />
+                )}
               </div>
 
               <div className="hde-centro">
@@ -371,11 +383,14 @@ export default function HeroDraftEspectador() {
           )}
         </div>
 
-              <div className="hde-col hde-col--b" style={isPickB ? { filter: 'brightness(1.12)', transition: 'filter 0.4s ease' } : { transition: 'filter 0.4s ease' }}>
+              <div className="hde-col hde-col--b" style={{ position: 'relative' }}>
                 {Array.from({ length: picksB }, (_, i) => (
                   <HexSlot key={i} heroiId={estado.timeB.picks[i] ?? null} cor={estado.timeB.cor} large
-                    nextPick={isPickB && i === nextIdxB} />
+                    nextPick={isPickB && (i === nextIdxB || (isDuploB && i === nextIdxB + 1))} />
                 ))}
+                {isPickB && (
+                  <div style={{ position: 'absolute', bottom: -8, left: -20, right: -20, height: 80, background: gradB, pointerEvents: 'none', transition: 'opacity 0.4s ease' }} />
+                )}
               </div>
             </>
           )
