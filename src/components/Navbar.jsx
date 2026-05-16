@@ -52,7 +52,7 @@ export default function Navbar() {
             <NavLink to={base} end className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
               {t('nav.home')}
             </NavLink>
-            {(isAdmin || capitao) && (
+            {(isAdmin || capitao || modules.inscritosAbertos) && (
               <NavLink to={`${base}/inscritos`} className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
                 {t('nav.inscritos')}
               </NavLink>
