@@ -84,7 +84,7 @@ export default function Inscritos() {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border2)' }}>
-                  {['player', 'elo', 'role', 'pais', 'status', 'captain'].map((col) => (
+                  {['player', 'elo', 'role', 'roleSecundaria', 'pais', 'status'].map((col) => (
                     <th key={col} style={{
                       padding: '8px 12px', textAlign: 'left',
                       fontFamily: "'Barlow Condensed', sans-serif",
@@ -132,14 +132,19 @@ export default function Inscritos() {
                           <RoleIcon role={p.rolePrimaria} size={18} />{p.rolePrimaria}
                         </div>
                       </td>
+                      <td style={{ padding: '12px', color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif" }}>
+                        {p.roleSecundaria && p.roleSecundaria !== 'Nenhuma' ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <RoleIcon role={p.roleSecundaria} size={18} />{p.roleSecundaria}
+                          </div>
+                        ) : (
+                          <span style={{ color: 'var(--text3)' }}>—</span>
+                        )}
+                      </td>
                       <td style={{ padding: '12px', fontSize: '20px' }}>{paisFlag(p.pais)}</td>
                       <td style={{ padding: '12px' }}>
                         {p.titularReserva === 'Titular' && <span className="badge" style={{ color: 'var(--green)', borderColor: 'rgba(76,175,125,0.35)', background: 'rgba(76,175,125,0.08)' }}>TITULAR</span>}
                         {p.titularReserva === 'Reserva' && <span className="badge" style={{ color: 'var(--text2)' }}>RESERVA</span>}
-                      </td>
-                      <td style={{ padding: '12px' }}>
-                        {p.querCapitao === 'Sim'            && <span className="badge gold">CAP</span>}
-                        {p.querCapitao === 'SoSeNecessario' && <span className="badge">SE NEC.</span>}
                       </td>
                     </tr>
                   )

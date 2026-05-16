@@ -82,9 +82,9 @@
       "player": "Player",
       "elo": "Rank",
       "role": "Role",
+      "roleSecundaria": "2nd Role",
       "pais": "Country",
-      "status": "Status",
-      "captain": "Captain"
+      "status": "Status"
     },
     "empty": "No players found"
   },

@@ -82,9 +82,9 @@
       "player": "Jogador",
       "elo": "Elo",
       "role": "Função",
+      "roleSecundaria": "2ª Função",
       "pais": "País",
-      "status": "Status",
-      "captain": "Capitão"
+      "status": "Status"
     },
     "empty": "Nenhum jogador encontrado"
   },
