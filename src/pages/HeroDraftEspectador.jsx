@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { ref, onValue } from 'firebase/database'
+import { db } from '../firebase/database'
 import { useHeroDraft } from '../hooks/useHeroDraft'
 import { useCampeonato } from '../contexts/CampeonatoContext'
 import { heroDraftPath } from '../utils/campeonatoPaths'
@@ -32,6 +34,18 @@ export default function HeroDraftEspectador() {
   const { estado, loading, erro } = useHeroDraft(
     isShowmatch ? null : sessaoId, null, pathOverride
   )
+
+  // ── Sessão do showmatch (para lobby do espectador) ────────────────────────
+  const [sessaoData, setSessaoData] = useState(null)
+  useEffect(() => {
+    if (!isShowmatch || !sessaoId || sessaoId === 'default' || sessaoId === 'showmatch') return
+    const unsub = onValue(ref(db, `showmatch/sessions/${sessaoId}`), snap => {
+      const val = snap.val()
+      if (val) { const { heroDraft: _, ...rest } = val; setSessaoData(rest) }
+      else setSessaoData(null)
+    })
+    return unsub
+  }, [isShowmatch, sessaoId]) // eslint-disable-line
 
   // ── Anúncio de picks ─────────────────────────────────────────────────────
   const [anuncioPicks, setAnuncioPicks] = useState([])
@@ -185,6 +199,12 @@ export default function HeroDraftEspectador() {
   // ── Guards ────────────────────────────────────────────────────────────────
   if (loading) return <div className="hde-loading">{t('hero_espectador.connecting')}</div>
   if (erro)    return <div className="hde-loading">Erro: {erro}</div>
+
+  // Showmatch: lobby do espectador enquanto draft não começou
+  if (isShowmatch && (!estado || estado.status === STATUS_DRAFT.AGUARDANDO)) {
+    return <EspectadorLobby sessaoData={sessaoData} />
+  }
+
   if (!estado) return <div className="hde-loading">{t('hero_espectador.no_draft')}</div>
 
   // Countdown overlay para o espectador
@@ -537,6 +557,88 @@ function AnuncioBanOverlay({ heroi, timeSide, nomeTime, saindo }) {
         <div className="hde-ban-sub">{nomeTime} baniu este herói</div>
       </div>
 
+    </div>
+  )
+}
+
+
+// ── Lobby do espectador ────────────────────────────────────────────────────────
+
+function EspectadorLobby({ sessaoData }) {
+  const config  = sessaoData?.config ?? {}
+  const mapa    = getMapaById(config.mapaId)
+  const nomeA   = sessaoData?.timeA?.nome ?? 'Time A'
+  const nomeB   = sessaoData?.timeB?.nome ?? 'Time B'
+  const bans    = (config.globalBans ?? [])
+    .map(id => HEROES.find(h => h.id === id))
+    .filter(Boolean)
+
+  return (
+    <div style={{
+      minHeight: '100vh', background: '#050612',
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
+      padding: '40px 24px', position: 'relative', overflow: 'hidden',
+    }}>
+      {mapa && (
+        <div style={{
+          position: 'absolute', inset: 0,
+          backgroundImage: 'url(' + mapa.splashUrl + ')',
+          backgroundSize: 'cover', backgroundPosition: 'center',
+          opacity: 0.08, filter: 'blur(8px)', transform: 'scale(1.05)',
+        }} />
+      )}
+      <div style={{ position: 'relative', zIndex: 1, maxWidth: 700, width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 36 }}>
+        <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 11, letterSpacing: '0.3em', textTransform: 'uppercase', color: 'rgba(201,168,76,0.6)' }}>Em breve</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 28, flexWrap: 'wrap', textAlign: 'center' }}>
+          <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 900, fontSize: 'clamp(2rem, 6vw, 3.5rem)', color: '#fff' }}>{nomeA}</span>
+          <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 'clamp(1rem, 3vw, 1.5rem)', color: 'rgba(201,168,76,0.5)', letterSpacing: '0.1em' }}>VS</span>
+          <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 900, fontSize: 'clamp(2rem, 6vw, 3.5rem)', color: '#fff' }}>{nomeB}</span>
+        </div>
+        {mapa && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+            <img src={mapa.splashUrl} alt={mapa.nome} style={{ width: 280, height: 157, objectFit: 'cover', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }} onError={e => { e.target.style.display = 'none' }} />
+            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 13, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{mapa.nome}</div>
+          </div>
+        )}
+        {bans.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'rgba(224,85,85,0.7)' }}>Heróis banidos</div>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
+              {bans.map(h => (
+                <div key={h.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
+                  <div style={{ position: 'relative' }}>
+                    <img src={h.iconeUrl} alt={h.nome} style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover', border: '1px solid rgba(224,85,85,0.4)', filter: 'grayscale(50%) brightness(0.8)' }} onError={e => { e.target.style.display = 'none' }} />
+                    <div style={{ position: 'absolute', inset: 0, borderRadius: 8, background: 'rgba(224,85,85,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <div style={{ width: 28, height: 1.5, background: 'rgba(224,85,85,0.7)', transform: 'rotate(-45deg)' }} />
+                    </div>
+                  </div>
+                  <span style={{ fontSize: 9, fontFamily: "'Barlow Condensed', sans-serif", color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.03em', maxWidth: 48, textAlign: 'center', lineHeight: 1.2 }}>{h.nome}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {(config.timerBan || config.timerPick) && (
+          <div style={{ display: 'flex', gap: 32, opacity: 0.45 }}>
+            {[['Ban', config.timerBan], ['Pick', config.timerPick], ['Pick duplo', config.timerPickDuplo]].map(([label, val]) => val ? (
+              <div key={label} style={{ textAlign: 'center' }}>
+                <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 22, color: 'var(--gold)' }}>{val}s</div>
+                <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 10, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.12em' }}>{label}</div>
+              </div>
+            ) : null)}
+          </div>
+        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', gap: 5 }}>
+            {[0, 1, 2].map(i => (
+              <div key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: 'rgba(201,168,76,0.6)', animation: 'hde-dot-pulse 1.4s ease-in-out ' + (i * 0.2) + 's infinite' }} />
+            ))}
+          </div>
+          <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 12, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>Aguardando início do draft</span>
+        </div>
+      </div>
+      <style>{'@keyframes hde-dot-pulse { 0%, 80%, 100% { transform: scale(0.6); opacity: 0.3; } 40% { transform: scale(1); opacity: 1; } }'}</style>
     </div>
   )
 }
