@@ -33,9 +33,35 @@ const PAISES_FLAG = {
   'CAZAQUISTÃO': '🇰🇿', CAZAQUISTAO: '🇰🇿', KAZAKHSTAN: '🇰🇿',
 }
 
+const ELO_ORDEM = { Bronze: 1, Prata: 2, Ouro: 3, Platina: 4, Diamante: 5, Mestre: 6 }
+const ROLE_ORDEM = { Tank: 1, Offlane: 2, DPS: 3, Healer: 4, Flex: 5, Nenhuma: 6 }
+const STATUS_ORDEM = { Titular: 1, Reserva: 2 }
+
 function paisFlag(pais) {
   if (!pais) return '🌎'
   return PAISES_FLAG[pais.toUpperCase()] || '🌎'
+}
+
+function sortKey(col, p) {
+  switch (col) {
+    case 'player':         return (p.discord ?? '').toLowerCase()
+    case 'elo':            return ELO_ORDEM[p.elo] ?? 0
+    case 'role':           return ROLE_ORDEM[p.rolePrimaria] ?? 99
+    case 'roleSecundaria': return ROLE_ORDEM[p.roleSecundaria] ?? 99
+    case 'pais':           return (p.pais ?? '').toLowerCase()
+    case 'status':         return STATUS_ORDEM[p.titularReserva] ?? 99
+    default:               return ''
+  }
+}
+
+function sortPlayers(players, col, dir) {
+  if (!col) return players
+  return [...players].sort((a, b) => {
+    const ka = sortKey(col, a)
+    const kb = sortKey(col, b)
+    const cmp = typeof ka === 'number' ? ka - kb : ka.localeCompare(kb)
+    return dir === 'asc' ? cmp : -cmp
+  })
 }
 
 export default function Inscritos() {
@@ -48,6 +74,8 @@ export default function Inscritos() {
   const [bannerTexto, setBannerTexto] = useState('')
   const [loading,     setLoading]     = useState(true)
   const [error,       setError]       = useState(null)
+  const [sortCol,     setSortCol]     = useState('')
+  const [sortDir,     setSortDir]     = useState('asc')
 
   useEffect(() => {
     fetch(import.meta.env.VITE_SHEETS_WEBAPP_URL)
@@ -75,9 +103,29 @@ export default function Inscritos() {
     return unsub
   }, [idPublico])
 
+  function handleSort(col) {
+    if (sortCol === col) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortCol(col)
+      setSortDir('asc')
+    }
+  }
+
   if (!modulesLoading && !isAdmin && !capitao && !inscritosAbertos) {
     return <PaginaInativa icone="📋" titulo="Lista em preparação" descricao="A lista de inscritos será aberta pelos organizadores em breve." />
   }
+
+  const COLS = [
+    { key: 'player',         sortable: true  },
+    { key: 'elo',            sortable: true  },
+    { key: 'role',           sortable: true  },
+    { key: 'roleSecundaria', sortable: true  },
+    { key: 'pais',           sortable: true  },
+    { key: 'status',         sortable: true  },
+  ]
+
+  const playersOrdenados = sortPlayers(players, sortCol, sortDir)
 
   return (
     <main className="page">
@@ -112,25 +160,44 @@ export default function Inscritos() {
         <>
           <p style={{ color: 'var(--text2)', fontSize: '13px', marginBottom: '16px' }}>
             {players.length} inscrito{players.length !== 1 ? 's' : ''}
+            {sortCol && (
+              <span style={{ marginLeft: 10, color: 'var(--text3)' }}>
+                · ordenado por {t(`inscritos.table.${sortCol}`)} {sortDir === 'asc' ? '↑' : '↓'}
+              </span>
+            )}
           </p>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border2)' }}>
-                  {['player', 'elo', 'role', 'roleSecundaria', 'pais', 'status'].map((col) => (
-                    <th key={col} style={{
-                      padding: '8px 12px', textAlign: 'left',
-                      fontFamily: "'Barlow Condensed', sans-serif",
-                      fontSize: '11px', letterSpacing: '0.12em',
-                      textTransform: 'uppercase', color: 'var(--text2)', fontWeight: 600,
-                    }}>
-                      {t(`inscritos.table.${col}`)}
-                    </th>
-                  ))}
+                  {COLS.map(({ key, sortable }) => {
+                    const active = sortCol === key
+                    return (
+                      <th key={key}
+                        onClick={sortable ? () => handleSort(key) : undefined}
+                        style={{
+                          padding: '8px 12px', textAlign: 'left',
+                          fontFamily: "'Barlow Condensed', sans-serif",
+                          fontSize: '11px', letterSpacing: '0.12em',
+                          textTransform: 'uppercase', fontWeight: 600,
+                          color: active ? 'var(--gold)' : 'var(--text2)',
+                          cursor: sortable ? 'pointer' : 'default',
+                          userSelect: 'none',
+                          whiteSpace: 'nowrap',
+                        }}>
+                        {t(`inscritos.table.${key}`)}
+                        {sortable && (
+                          <span style={{ marginLeft: 4, opacity: active ? 1 : 0.3, fontSize: 10 }}>
+                            {active ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}
+                          </span>
+                        )}
+                      </th>
+                    )
+                  })}
                 </tr>
               </thead>
               <tbody>
-                {players.map((p, idx) => {
+                {playersOrdenados.map((p, idx) => {
                   const ov     = overrides[p.id] ?? {}
                   const eloCfg = ELO_CONFIG[p.elo] ?? {}
                   const nomeExibido = privacidadeAtiva ? `Jogador #${idx + 1}` : p.discord
