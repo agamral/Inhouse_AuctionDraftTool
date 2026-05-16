@@ -203,8 +203,8 @@ export default function HeroDraft() {
   if (erro) return <div className="hd-erro">Erro: {erro}</div>
 
   // Showmatch: tela unificada de pré-draft (lobby + confirmação)
-  // Aparece sempre que a sessão existe e o draft ainda não começou
-  if (isShowmatch && sessaoData && (!estado || estado.status === STATUS_DRAFT.AGUARDANDO)) {
+  // Aparece sempre que o draft ainda não começou — mesmo sem sessaoData carregada
+  if (isShowmatch && !sessaoLoading && (!estado || estado.status === STATUS_DRAFT.AGUARDANDO)) {
     const draftPronto = !!estado && sessaoData?.status === 'lobby'
     const confirmado  = sessaoData?.presenca?.[timeLocal]?.confirmado === true
     const outroTime   = timeLocal === 'A' ? 'B' : 'A'

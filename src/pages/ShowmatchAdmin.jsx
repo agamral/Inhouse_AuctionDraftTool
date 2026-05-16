@@ -255,6 +255,22 @@ export default function ShowmatchAdmin() {
     )
   }
 
+  async function atualizarConfiguracoes() {
+    if (!draftEstado) return
+    const novoEstado = {
+      ...draftEstado,
+      timerConfig: {
+        ban:       Number(timerBan)        || DEFAULT_TIMER_CONFIG.ban,
+        pick:      Number(timerPick)       || DEFAULT_TIMER_CONFIG.pick,
+        pickDuplo: Number(timerPickDuplo)  || DEFAULT_TIMER_CONFIG.pickDuplo,
+      },
+      globalBans,
+      mapaId: mapaId || null,
+    }
+    await set(ref(db, heroDraftPath), novoEstado)
+    flash('Configurações atualizadas!')
+  }
+
   async function handleIniciar() {
     const r = await iniciarComContagem(5)
     r?.ok ? flash('Contagem iniciada!') : flash(`Erro: ${r?.erro}`, 'err')
@@ -649,6 +665,21 @@ export default function ShowmatchAdmin() {
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
 
+                  {/* Edição de configurações enquanto aguardando (showmatch) */}
+                  {!isConfrontoMode && draftEstado?.status === 'aguardando' && (
+                    <ConfigEdicao
+                      timerBan={timerBan} setTimerBan={setTimerBan}
+                      timerPick={timerPick} setTimerPick={setTimerPick}
+                      timerPickDuplo={timerPickDuplo} setTimerPickDuplo={setTimerPickDuplo}
+                      primeiroTime={primeiroTime} setPrimeiroTime={setPrimeiroTime}
+                      numBans={numBans} setNumBans={setNumBans}
+                      mapaId={mapaId} setMapaId={setMapaId}
+                      globalBans={globalBans} toggleGlobalBan={toggleGlobalBan}
+                      buscaBan={buscaBan} setBuscaBan={setBuscaBan}
+                      onAtualizar={atualizarConfiguracoes}
+                    />
+                  )}
+
                   {/* Placar + partida atual (confronto mode) */}
                   {isConfrontoMode && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '10px 14px', background: 'var(--bg2)', borderRadius: 8, border: '1px solid var(--border)' }}>
@@ -828,5 +859,122 @@ export default function ShowmatchAdmin() {
         </div>
       )}
     </main>
+  )
+}
+
+// ── ConfigEdicao — configurações editáveis mesmo após criar o draft ────────────
+
+function ConfigEdicao({ timerBan, setTimerBan, timerPick, setTimerPick, timerPickDuplo, setTimerPickDuplo, primeiroTime, setPrimeiroTime, numBans, setNumBans, mapaId, setMapaId, globalBans, toggleGlobalBan, buscaBan, setBuscaBan, onAtualizar }) {
+  const [aberto, setAberto] = useState(false)
+
+  const inputStyle = {
+    background: 'var(--bg)', border: '1px solid var(--border2)', borderRadius: 6,
+    padding: '8px 12px', color: 'var(--text)', fontFamily: "'Barlow', sans-serif",
+    fontSize: 13, outline: 'none', width: '100%', boxSizing: 'border-box',
+  }
+
+  return (
+    <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+      <button
+        onClick={() => setAberto(a => !a)}
+        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif", fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+        <span>✎ Editar configurações</span>
+        <span style={{ fontSize: 10, color: 'var(--text3)' }}>{aberto ? '▲' : '▼'}</span>
+      </button>
+
+      {aberto && (
+        <div style={{ padding: '0 14px 14px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+          {/* Timer */}
+          <div>
+            <div className="admin-toggle-label" style={{ marginBottom: 8, fontSize: 12 }}>Timer por ação <span style={{ color: 'var(--text3)', fontWeight: 400 }}>(segundos)</span></div>
+            <div style={{ display: 'flex', gap: 20 }}>
+              {[['Ban', timerBan, setTimerBan], ['Pick Simples', timerPick, setTimerPick], ['Pick Duplo', timerPickDuplo, setTimerPickDuplo]].map(([label, val, set]) => (
+                <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: "'Barlow Condensed', sans-serif" }}>{label}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <button className="btn" style={{ fontSize: 14, padding: '3px 10px' }} onClick={() => set(v => Math.max(5, Number(v) - 5))}>−</button>
+                    <input type="number" value={val} onChange={e => set(e.target.value)}
+                      style={{ ...inputStyle, width: 56, textAlign: 'center', padding: '6px 4px' }} />
+                    <button className="btn" style={{ fontSize: 14, padding: '3px 10px' }} onClick={() => set(v => Number(v) + 5)}>+</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Quem começa */}
+          <div>
+            <div className="admin-toggle-label" style={{ marginBottom: 8, fontSize: 12 }}>Quem começa o draft</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {['A', 'B'].map(t => (
+                <button key={t} className={`btn${primeiroTime === t ? ' primary' : ''}`}
+                  style={{ fontSize: 12, padding: '5px 18px' }}
+                  onClick={() => setPrimeiroTime(t)}>
+                  {t === 'A' ? 'Time A' : 'Time B'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Bans por time */}
+          <div>
+            <div className="admin-toggle-label" style={{ marginBottom: 8, fontSize: 12 }}>Bans por time</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {[['Sem bans', 0], ['2 por time', 2], ['3 por time', 3]].map(([label, val]) => (
+                <button key={val} className={`btn${numBans === val ? ' primary' : ''}`}
+                  style={{ fontSize: 12, padding: '5px 12px' }}
+                  onClick={() => setNumBans(val)}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Mapa */}
+          <div>
+            <div className="admin-toggle-label" style={{ marginBottom: 8, fontSize: 12 }}>Mapa <span style={{ color: 'var(--text3)', fontWeight: 400 }}>(opcional)</span></div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              <button onClick={() => setMapaId('')}
+                style={{ padding: 0, borderRadius: 4, cursor: 'pointer', overflow: 'hidden', border: `1px solid ${!mapaId ? 'var(--gold)' : 'var(--border)'}`, background: 'var(--bg3)', width: 70 }}>
+                <div style={{ width: '100%', height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: 'var(--text3)', fontFamily: "'Barlow Condensed', sans-serif" }}>— Sem mapa</div>
+              </button>
+              {MAPAS.map(m => (
+                <button key={m.id} onClick={() => setMapaId(m.id)}
+                  style={{ padding: 0, borderRadius: 4, cursor: 'pointer', overflow: 'hidden', border: `1px solid ${mapaId === m.id ? 'var(--gold)' : 'var(--border)'}`, background: 'var(--bg3)' }}>
+                  <img src={m.splashUrl} alt={m.nome} style={{ width: 70, height: 38, objectFit: 'cover', display: 'block' }} onError={e => { e.target.style.display = 'none' }} />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Global Bans */}
+          <div>
+            <div className="admin-toggle-label" style={{ marginBottom: 8, fontSize: 12 }}>
+              Global Bans{globalBans.length > 0 && <span style={{ color: 'var(--red)', marginLeft: 6 }}>({globalBans.length})</span>}
+            </div>
+            <input value={buscaBan} onChange={e => setBuscaBan(e.target.value)} placeholder="Buscar herói..."
+              style={{ ...inputStyle, marginBottom: 6 }} />
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, maxHeight: 120, overflowY: 'auto', padding: 6, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6 }}>
+              {HEROES.filter(h => !buscaBan || h.nome.toLowerCase().includes(buscaBan.toLowerCase())).map(h => {
+                const sel = globalBans.includes(h.id)
+                return (
+                  <button key={h.id} onClick={() => toggleGlobalBan(h.id)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 4, background: sel ? 'rgba(224,85,85,0.18)' : 'var(--bg3)', border: `1px solid ${sel ? 'var(--red)' : 'var(--border)'}`, color: sel ? 'var(--red)' : 'var(--text2)', borderRadius: 4, padding: '2px 6px', fontSize: 11, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600, cursor: 'pointer' }}>
+                    <img src={h.iconeUrl} alt="" style={{ width: 14, height: 14, borderRadius: 2, objectFit: 'cover' }} onError={e => { e.target.style.display = 'none' }} />
+                    {h.nome}{sel && ' ✕'}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          <button className="btn primary" style={{ fontSize: 13, padding: '8px 18px', alignSelf: 'flex-start' }}
+            onClick={onAtualizar}>
+            ✓ Aplicar alterações
+          </button>
+        </div>
+      )}
+    </div>
   )
 }
