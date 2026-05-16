@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { ref, set, remove } from 'firebase/database'
+import { ref, set, remove, onValue, update } from 'firebase/database'
 import { db } from '../firebase/database'
 import { useHeroDraft } from '../hooks/useHeroDraft'
 import { useCampeonato } from '../contexts/CampeonatoContext'
@@ -47,6 +47,24 @@ export default function HeroDraft() {
       window.removeEventListener('beforeunload', handleUnload)
     }
   }, [pathOverride, timeLocal]) // eslint-disable-line
+
+  // ── Sessão do showmatch (lobby + confirmação de presença) ────────────────
+  const [sessaoData, setSessaoData] = useState(null)
+  useEffect(() => {
+    if (!isShowmatch || !sessaoId || sessaoId === 'default' || sessaoId === 'showmatch') return
+    const unsub = onValue(ref(db, `showmatch/sessions/${sessaoId}`), snap => {
+      const val = snap.val()
+      if (val) { const { heroDraft: _, ...rest } = val; setSessaoData(rest) }
+      else setSessaoData(null)
+    })
+    return unsub
+  }, [isShowmatch, sessaoId]) // eslint-disable-line
+
+  async function confirmarPresenca() {
+    await update(ref(db, `showmatch/sessions/${sessaoId}/presenca`), {
+      [timeLocal]: { confirmado: true, confirmedEm: Date.now() },
+    })
+  }
 
   // ── Countdown ────────────────────────────────────────────────────────────
   const [countdown, setCountdown] = useState(null)
@@ -176,6 +194,23 @@ export default function HeroDraft() {
   // ── Guards ────────────────────────────────────────────────────────────────
   if (loading) return <div className="hd-loading">{t('hero_draft.loading')}</div>
   if (erro)    return <div className="hd-erro">Erro: {erro}</div>
+
+  // Showmatch: sala de espera enquanto admin configura
+  if (isShowmatch && !estado && sessaoData) {
+    return <ShowmatchLobby sessaoData={sessaoData} timeLocal={timeLocal} />
+  }
+
+  // Showmatch: confirmação de presença após admin criar o draft
+  if (isShowmatch && estado?.status === STATUS_DRAFT.AGUARDANDO && timeLocal && sessaoData?.status === 'lobby') {
+    const confirmado = sessaoData?.presenca?.[timeLocal]?.confirmado === true
+    const outroTime  = timeLocal === 'A' ? 'B' : 'A'
+    const outroConf  = sessaoData?.presenca?.[outroTime]?.confirmado === true
+    if (!confirmado) {
+      return <ShowmatchConfirmacao sessaoData={sessaoData} timeLocal={timeLocal} onConfirmar={confirmarPresenca} />
+    }
+    return <ShowmatchAguardando sessaoData={sessaoData} timeLocal={timeLocal} outroConfirmou={outroConf} />
+  }
+
   if (!estado) return <div className="hd-loading">{t('hero_draft.not_found')}</div>
 
   // ── Overlay de countdown ──────────────────────────────────────────────────
@@ -468,5 +503,196 @@ function RoleTab({ label, value, ativo, onClick }) {
     >
       {label}
     </button>
+  )
+}
+
+// ── Sala de espera do showmatch (admin ainda configurando) ─────────────────────
+
+function ShowmatchLobby({ sessaoData, timeLocal }) {
+  const config = sessaoData?.config ?? {}
+  const mapa   = getMapaById(config.mapaId)
+  const nomeA  = sessaoData?.timeA?.nome ?? 'Time A'
+  const nomeB  = sessaoData?.timeB?.nome ?? 'Time B'
+  const meuNome = timeLocal === 'A' ? nomeA : timeLocal === 'B' ? nomeB : null
+
+  return (
+    <main className="hero-draft-page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#050612', padding: 24 }}>
+      <div style={{ maxWidth: 440, width: '100%', display: 'flex', flexDirection: 'column', gap: 24 }}>
+
+        {/* Header */}
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 11, fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.2em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', marginBottom: 10 }}>
+            SALA DE ESPERA
+          </div>
+          <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 28, color: '#fff' }}>
+            {nomeA} <span style={{ color: 'rgba(255,255,255,0.25)' }}>×</span> {nomeB}
+          </div>
+          {meuNome && (
+            <div style={{ marginTop: 6, fontSize: 13, color: 'var(--gold)', fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700 }}>
+              Você: {meuNome}
+            </div>
+          )}
+        </div>
+
+        {/* Config ao vivo */}
+        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+          {/* Mapa */}
+          <div>
+            <div style={{ fontSize: 10, fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', marginBottom: 8 }}>Mapa</div>
+            {mapa ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <img src={mapa.splashUrl} alt={mapa.nome} style={{ width: 80, height: 44, objectFit: 'cover', borderRadius: 5, border: '1px solid rgba(255,255,255,0.1)' }} onError={e => { e.target.style.display = 'none' }} />
+                <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 16, color: '#fff' }}>{mapa.nome}</span>
+              </div>
+            ) : (
+              <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.25)', fontStyle: 'italic' }}>Aguardando admin selecionar...</span>
+            )}
+          </div>
+
+          {/* Timer */}
+          <div>
+            <div style={{ fontSize: 10, fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', marginBottom: 8 }}>Tempo por ação</div>
+            <div style={{ display: 'flex', gap: 16 }}>
+              {[
+                { label: 'Ban', val: config.timerBan },
+                { label: 'Pick', val: config.timerPick },
+                { label: 'Pick duplo', val: config.timerPickDuplo },
+              ].map(({ label, val }) => (
+                <div key={label} style={{ textAlign: 'center' }}>
+                  <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 22, color: val ? 'var(--gold)' : 'rgba(255,255,255,0.2)' }}>
+                    {val ?? '—'}s
+                  </div>
+                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', fontFamily: "'Barlow Condensed', sans-serif", textTransform: 'uppercase' }}>{label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Bans globais */}
+          {config.globalBans?.length > 0 && (
+            <div>
+              <div style={{ fontSize: 10, fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', marginBottom: 8 }}>
+                Bans globais ({config.globalBans.length})
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                {config.globalBans.map(id => {
+                  const h = HEROES.find(h => h.id === id)
+                  return h ? (
+                    <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(224,85,85,0.12)', border: '1px solid rgba(224,85,85,0.25)', borderRadius: 4, padding: '2px 8px', fontSize: 11, color: 'rgba(224,85,85,0.9)', fontFamily: "'Barlow Condensed', sans-serif" }}>
+                      <img src={h.iconeUrl} alt="" style={{ width: 14, height: 14, borderRadius: 2, objectFit: 'cover' }} onError={e => { e.target.style.display = 'none' }} />
+                      {h.nome}
+                    </div>
+                  ) : null
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Status */}
+        <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.35)', fontSize: 13, fontFamily: "'Barlow Condensed', sans-serif', letterSpacing: '0.06em" }}>
+          <span style={{ display: 'inline-block', animation: 'hd-pulse 2s ease-in-out infinite' }}>⏳</span>
+          {' '}Aguardando admin finalizar configurações...
+        </div>
+        <style>{`@keyframes hd-pulse { 0%,100%{opacity:.4} 50%{opacity:1} }`}</style>
+      </div>
+    </main>
+  )
+}
+
+// ── Confirmação de presença ────────────────────────────────────────────────────
+
+function ShowmatchConfirmacao({ sessaoData, timeLocal, onConfirmar }) {
+  const nomeA   = sessaoData?.timeA?.nome ?? 'Time A'
+  const nomeB   = sessaoData?.timeB?.nome ?? 'Time B'
+  const meuNome = timeLocal === 'A' ? nomeA : nomeB
+  const config  = sessaoData?.config ?? {}
+  const mapa    = getMapaById(config.mapaId)
+
+  return (
+    <main className="hero-draft-page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#050612', padding: 24 }}>
+      <div style={{ maxWidth: 400, width: '100%', display: 'flex', flexDirection: 'column', gap: 20, textAlign: 'center' }}>
+
+        <div>
+          <div style={{ fontSize: 11, fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.2em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', marginBottom: 10 }}>
+            DRAFT PRONTO
+          </div>
+          <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 26, color: '#fff' }}>
+            {nomeA} <span style={{ color: 'rgba(255,255,255,0.25)' }}>×</span> {nomeB}
+          </div>
+          <div style={{ marginTop: 8, fontSize: 14, color: 'var(--gold)', fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700 }}>
+            Você está jogando como {meuNome}
+          </div>
+        </div>
+
+        {/* Resumo do draft */}
+        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 10, textAlign: 'left' }}>
+          {mapa && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <img src={mapa.splashUrl} alt={mapa.nome} style={{ width: 64, height: 36, objectFit: 'cover', borderRadius: 4, border: '1px solid rgba(255,255,255,0.1)' }} onError={e => { e.target.style.display = 'none' }} />
+              <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 14, color: '#fff', fontWeight: 700 }}>{mapa.nome}</span>
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 16 }}>
+            {[['Ban', config.timerBan], ['Pick', config.timerPick], ['Pick duplo', config.timerPickDuplo]].map(([label, val]) => (
+              <div key={label} style={{ fontSize: 12, fontFamily: "'Barlow Condensed', sans-serif", color: 'rgba(255,255,255,0.5)' }}>
+                {label}: <strong style={{ color: 'var(--gold)' }}>{val ?? '—'}s</strong>
+              </div>
+            ))}
+          </div>
+          {config.globalBans?.length > 0 && (
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontFamily: "'Barlow Condensed', sans-serif" }}>
+              {config.globalBans.length} herói(s) banido(s) globalmente
+            </div>
+          )}
+        </div>
+
+        <button
+          onClick={onConfirmar}
+          style={{
+            padding: '16px 24px', borderRadius: 8, cursor: 'pointer', border: 'none',
+            background: 'linear-gradient(135deg, rgba(76,175,125,0.25), rgba(76,175,125,0.12))',
+            border: '1px solid rgba(76,175,125,0.5)',
+            color: 'var(--green)', fontFamily: "'Rajdhani', sans-serif", fontWeight: 700,
+            fontSize: 20, letterSpacing: '0.05em',
+            boxShadow: '0 0 20px rgba(76,175,125,0.15)',
+          }}
+        >
+          ✓ Confirmar Presença
+        </button>
+
+        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', fontFamily: "'Barlow Condensed', sans-serif" }}>
+          O draft começa quando o admin clicar em Iniciar
+        </div>
+      </div>
+    </main>
+  )
+}
+
+// ── Aguardando outro capitão confirmar ─────────────────────────────────────────
+
+function ShowmatchAguardando({ sessaoData, timeLocal, outroConfirmou }) {
+  const outroTime = timeLocal === 'A' ? 'B' : 'A'
+  const outroNome = outroTime === 'A' ? sessaoData?.timeA?.nome : sessaoData?.timeB?.nome
+
+  return (
+    <main className="hero-draft-page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#050612' }}>
+      <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 16, alignItems: 'center' }}>
+        <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(76,175,125,0.15)', border: '2px solid var(--green)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>
+          ✓
+        </div>
+        <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 22, color: 'var(--green)' }}>
+          Presença confirmada!
+        </div>
+        <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', fontFamily: "'Barlow Condensed', sans-serif" }}>
+          {outroConfirmou
+            ? 'Ambos confirmados — aguardando admin iniciar o draft...'
+            : `Aguardando ${outroNome ?? `Time ${outroTime}`} confirmar...`
+          }
+        </div>
+        <style>{`@keyframes hd-pulse { 0%,100%{opacity:.4} 50%{opacity:1} }`}</style>
+      </div>
+    </main>
   )
 }

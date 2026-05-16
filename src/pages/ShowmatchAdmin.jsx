@@ -125,6 +125,23 @@ export default function ShowmatchAdmin() {
     setDraftCriado(!!draftEstado)
   }, [draftEstado])
 
+  // Salva config da sessão em tempo real para o lobby dos capitães ver ao vivo
+  useEffect(() => {
+    if (!sessaoPath || !sessao) return
+    const t = setTimeout(() => {
+      update(ref(db, `${sessaoPath}/config`), {
+        mapaId:        mapaId || null,
+        numBans,
+        globalBans,
+        timerBan:       Number(timerBan)        || DEFAULT_TIMER_CONFIG.ban,
+        timerPick:      Number(timerPick)       || DEFAULT_TIMER_CONFIG.pick,
+        timerPickDuplo: Number(timerPickDuplo)  || DEFAULT_TIMER_CONFIG.pickDuplo,
+        primeiroTime,
+      })
+    }, 300)
+    return () => clearTimeout(t)
+  }, [mapaId, numBans, globalBans, timerBan, timerPick, timerPickDuplo, primeiroTime]) // eslint-disable-line
+
   // Listener de partidas — só em modo confronto
   useEffect(() => {
     if (!confrontoId || !campeonatoId) return
@@ -215,7 +232,7 @@ export default function ShowmatchAdmin() {
       },
     })
     await set(ref(db, heroDraftPath), estado)
-    if (sessaoPath) await update(ref(db, sessaoPath), { status: 'heroDraft' })
+    if (sessaoPath) await update(ref(db, sessaoPath), { status: 'lobby', presenca: null })
 
     // Registra partida no confronto
     if (isConfrontoMode && confrontoId && campeonatoId) {
@@ -712,24 +729,54 @@ export default function ShowmatchAdmin() {
 
                     {draftEstado?.status === 'aguardando' && (
                       <>
-                        {/* Presença dos capitães */}
-                        <div style={{ display: 'flex', gap: 16, padding: '8px 12px', background: 'var(--bg2)', borderRadius: 6, border: '1px solid var(--border)' }}>
+                        {/* Confirmação de presença dos capitães */}
+                        <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <div style={{ fontSize: 10, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>
+                            Confirmação de presença
+                          </div>
                           {['A', 'B'].map(t => {
-                            const online = !!(draftEstado.presence?.[t]?.onlineEm)
-                            const nome = t === 'A' ? sessao?.timeA?.nome : sessao?.timeB?.nome
+                            const confirmado = sessao?.presenca?.[t]?.confirmado === true
+                            const online     = !!(draftEstado.presence?.[t]?.onlineEm)
+                            const nome       = t === 'A' ? sessao?.timeA?.nome : sessao?.timeB?.nome
                             return (
-                              <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
-                                <div style={{ width: 7, height: 7, borderRadius: '50%', background: online ? 'var(--green)' : 'var(--text3)', boxShadow: online ? '0 0 5px var(--green)' : 'none' }} />
-                                <span style={{ color: online ? 'var(--text)' : 'var(--text3)', fontFamily: "'Barlow Condensed'" }}>
-                                  {nome ?? `Time ${t}`}: {online ? 'na sala' : 'aguardando...'}
+                              <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+                                <div style={{
+                                  width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  background: confirmado ? 'rgba(76,175,125,0.15)' : online ? 'rgba(201,168,76,0.1)' : 'var(--bg3)',
+                                  border: `1px solid ${confirmado ? 'var(--green)' : online ? 'rgba(201,168,76,0.4)' : 'var(--border)'}`,
+                                  fontSize: 11,
+                                }}>
+                                  {confirmado ? '✓' : online ? '●' : '○'}
+                                </div>
+                                <span style={{ fontFamily: "'Barlow Condensed', sans-serif", color: confirmado ? 'var(--green)' : online ? 'var(--gold)' : 'var(--text3)' }}>
+                                  {nome ?? `Time ${t}`}
+                                </span>
+                                <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: "'Barlow Condensed', sans-serif", marginLeft: 'auto' }}>
+                                  {confirmado ? 'Confirmado ✓' : online ? 'Na sala — aguardando confirmação' : 'Ainda não entrou'}
                                 </span>
                               </div>
                             )
                           })}
                         </div>
-                        <button className="btn primary" style={{ fontSize: 12, padding: '6px 14px' }} onClick={handleIniciar}>
-                          ▶ Iniciar Draft
-                        </button>
+                        {(() => {
+                          const ambos = sessao?.presenca?.A?.confirmado && sessao?.presenca?.B?.confirmado
+                          return (
+                            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                              <button className="btn primary"
+                                style={{ fontSize: 12, padding: '6px 14px', opacity: ambos ? 1 : 0.7 }}
+                                onClick={handleIniciar}>
+                                {ambos ? '▶ Iniciar Draft' : '▶ Iniciar Draft (aguardando confirmações)'}
+                              </button>
+                              {!ambos && (
+                                <button className="btn" style={{ fontSize: 11, padding: '4px 10px', color: 'var(--text3)' }}
+                                  onClick={handleIniciar}>
+                                  Forçar início
+                                </button>
+                              )}
+                            </div>
+                          )
+                        })()}
                       </>
                     )}
                     {draftEstado?.status === 'countdown' && (
