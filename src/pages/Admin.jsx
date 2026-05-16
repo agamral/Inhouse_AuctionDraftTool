@@ -52,12 +52,13 @@ export default function Admin() {
   }, [searchParams, campeonatos]) // eslint-disable-line
 
   const [modules, setModules] = useState({
-    inscricaoAberta:   false,
-    inscritosAbertos:  false,  // Lista de inscritos visível publicamente
-    draftAtivo:        false,  // Leilão ativo
-    espectadorAtivo:   false,  // Espectador do leilão
-    campeonatoAtivo:   false,  // Campeonato iniciado (agendamento, tabela, chave, elenco)
-    heroDraftAtivo:    false,  // Hero Draft disponível
+    inscricaoAberta:      false,
+    inscritosAbertos:     false,  // Lista de inscritos visível publicamente
+    draftAtivo:           false,  // Leilão ativo
+    espectadorAtivo:      false,  // Espectador do leilão
+    campeonatoAtivo:      false,  // Campeonato iniciado (agendamento, tabela, chave, elenco)
+    heroDraftAtivo:       false,  // Hero Draft disponível
+    bannerInscritosAtivo: false,  // Banner de aviso na página de inscritos
   })
 
   const [draft, setDraft] = useState({
@@ -242,6 +243,12 @@ export default function Admin() {
                   onChange={() => toggleModule('inscritosAbertos')}
                 />
                 <ToggleRow
+                  label="Banner na página de inscritos"
+                  desc="Exibe aviso personalizado no topo da lista de inscritos"
+                  checked={modules.bannerInscritosAtivo}
+                  onChange={() => toggleModule('bannerInscritosAtivo')}
+                />
+                <ToggleRow
                   label="Leilão ativo"
                   desc="Libera o acesso ao leilão de times para capitães e admins"
                   checked={modules.draftAtivo}
@@ -322,6 +329,7 @@ export default function Admin() {
               <ContentField label="Label de temporada"  value={conteudo.labelSeason}       onChange={v => setConteudoField('labelSeason', v)}       placeholder="Ex: Season 2 · Heroes of the Storm" />
               <ContentField label="Descrição do torneio (Home)" value={conteudo.descricaoTorneio} onChange={v => setConteudoField('descricaoTorneio', v)} placeholder="Breve descrição exibida na Home para novos visitantes" />
               <ContentField label="Próximo evento"      value={conteudo.proximoEvento}     onChange={v => setConteudoField('proximoEvento', v)}     placeholder="Ex: Sábado, 10 de Maio · 20h BRT" />
+              <ContentField label="Banner de inscritos (texto)" value={conteudo.bannerInscritosTexto} onChange={v => setConteudoField('bannerInscritosTexto', v)} placeholder="Ex: Capitão será anunciado em breve — fique atento ao Discord!" hint="Ativado/desativado pelo toggle nos Módulos Ativos" />
               <ContentField label="Texto pós-inscrição" value={conteudo.posInscricaoTexto} onChange={v => setConteudoField('posInscricaoTexto', v)} placeholder="Mensagem exibida após o jogador se inscrever" multiline />
               <ContentField label="Prazo de disponibilidade" value={conteudo.prazoDisponibilidade} onChange={v => setConteudoField('prazoDisponibilidade', v)} placeholder="Ex: Marque até quinta-feira" />
               <ContentField label="Regras e Formato (Home)" value={conteudo.regrasFormato} onChange={v => setConteudoField('regrasFormato', v)} placeholder="Descreva o formato e regras do torneio. Aparece na Home quando preenchido." multiline />
@@ -455,7 +463,7 @@ function ToggleRow({ label, desc, checked, onChange }) {
   )
 }
 
-function ContentField({ label, value, onChange, placeholder, multiline }) {
+function ContentField({ label, value, onChange, placeholder, multiline, hint }) {
   const style = {
     width: '100%', boxSizing: 'border-box',
     background: 'var(--bg)', border: '1px solid var(--border2)', borderRadius: 6,
@@ -469,6 +477,7 @@ function ContentField({ label, value, onChange, placeholder, multiline }) {
         ? <textarea rows={3} style={style} value={value} placeholder={placeholder ?? ''} onChange={e => onChange(e.target.value)} />
         : <input style={style} value={value} placeholder={placeholder ?? ''} onChange={e => onChange(e.target.value)} />
       }
+      {hint && <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, fontFamily: "'Barlow Condensed', sans-serif" }}>{hint}</div>}
     </div>
   )
 }

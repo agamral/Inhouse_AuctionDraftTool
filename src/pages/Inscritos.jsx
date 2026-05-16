@@ -4,6 +4,8 @@ import { ref, onValue } from 'firebase/database'
 import { db } from '../firebase/database'
 import { useModules } from '../hooks/useConfig'
 import { useAuth } from '../hooks/useAuth'
+import { useCampeonato } from '../contexts/CampeonatoContext'
+import { configConteudoPath } from '../utils/campeonatoPaths'
 import RoleIcon from '../components/RoleIcon'
 import EloIcon, { ELO_CONFIG } from '../components/EloIcon'
 import PaginaInativa from '../components/PaginaInativa'
@@ -38,12 +40,14 @@ function paisFlag(pais) {
 
 export default function Inscritos() {
   const { t } = useTranslation()
-  const { privacidadeAtiva, inscritosAbertos, loading: modulesLoading } = useModules()
+  const { privacidadeAtiva, inscritosAbertos, bannerInscritosAtivo, loading: modulesLoading } = useModules()
   const { isAdmin, capitao } = useAuth()
-  const [players,   setPlayers]   = useState([])
-  const [overrides, setOverrides] = useState({})
-  const [loading,   setLoading]   = useState(true)
-  const [error,     setError]     = useState(null)
+  const { idPublico } = useCampeonato()
+  const [players,     setPlayers]     = useState([])
+  const [overrides,   setOverrides]   = useState({})
+  const [bannerTexto, setBannerTexto] = useState('')
+  const [loading,     setLoading]     = useState(true)
+  const [error,       setError]       = useState(null)
 
   useEffect(() => {
     fetch(import.meta.env.VITE_SHEETS_WEBAPP_URL)
@@ -63,6 +67,14 @@ export default function Inscritos() {
     return unsub
   }, [])
 
+  useEffect(() => {
+    if (!idPublico) return
+    const unsub = onValue(ref(db, configConteudoPath(idPublico)), (snap) => {
+      setBannerTexto(snap.val()?.bannerInscritosTexto ?? '')
+    })
+    return unsub
+  }, [idPublico])
+
   if (!modulesLoading && !isAdmin && !capitao && !inscritosAbertos) {
     return <PaginaInativa icone="📋" titulo="Lista em preparação" descricao="A lista de inscritos será aberta pelos organizadores em breve." />
   }
@@ -71,6 +83,27 @@ export default function Inscritos() {
     <main className="page">
       <h1 className="page-title">{t('inscritos.title')}</h1>
       <p className="page-subtitle">{t('inscritos.subtitle')}</p>
+
+      {bannerInscritosAtivo && bannerTexto && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 16,
+          margin: '8px 0 28px',
+          padding: '14px 20px',
+          background: 'linear-gradient(95deg, rgba(201,168,76,0.10) 0%, rgba(201,168,76,0.04) 100%)',
+          border: '1px solid rgba(201,168,76,0.30)',
+          borderLeft: '3px solid var(--gold)',
+          borderRadius: 8,
+        }}>
+          <span style={{ fontSize: 22, flexShrink: 0, lineHeight: 1 }}>📢</span>
+          <span style={{
+            fontFamily: "'Rajdhani', sans-serif", fontWeight: 700,
+            fontSize: 17, color: 'var(--gold2)', lineHeight: 1.3,
+            letterSpacing: '0.01em',
+          }}>
+            {bannerTexto}
+          </span>
+        </div>
+      )}
 
       {loading && <p style={{ color: 'var(--text2)', fontSize: '14px' }}>Carregando inscritos...</p>}
       {error   && <p style={{ color: 'var(--red)',   fontSize: '14px' }}>{error}</p>}

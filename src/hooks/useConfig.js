@@ -24,7 +24,8 @@ export const DEFAULT_MODULES = {
   espectadorAtivo:  false,
   campeonatoAtivo:  false,
   heroDraftAtivo:   false,
-  privacidadeAtiva: false,
+  privacidadeAtiva:      false,
+  bannerInscritosAtivo:  false,
 }
 
 export const DEFAULT_DRAFT = {
@@ -51,6 +52,7 @@ export const DEFAULT_CONTEUDO = {
   stream2Url:           '',
   stream3Nome:          '',
   stream3Url:           '',
+  bannerInscritosTexto: '',
 }
 
 export const DEFAULT_PARTIDAS = {
