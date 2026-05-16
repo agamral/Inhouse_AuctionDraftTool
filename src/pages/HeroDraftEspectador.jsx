@@ -371,6 +371,35 @@ export default function HeroDraftEspectador() {
 
       </div>
 
+      {/* ── Bans globais (rodapé) ────────────────────────────────────────── */}
+      {(estado.globalBans?.length > 0) && (
+        <div style={{
+          position: 'absolute', bottom: 14, left: '50%', transform: 'translateX(-50%)',
+          display: 'flex', alignItems: 'center', gap: 10, zIndex: 10,
+          padding: '6px 14px', borderRadius: 8,
+          background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(6px)',
+          border: '1px solid rgba(224,85,85,0.2)',
+        }}>
+          <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 9, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(224,85,85,0.6)', whiteSpace: 'nowrap', marginRight: 2 }}>
+            Bans globais
+          </span>
+          {estado.globalBans.map(id => {
+            const h = HEROES.find(h => h.id === id)
+            if (!h) return null
+            return (
+              <div key={id} style={{ position: 'relative', flexShrink: 0 }} title={h.nome}>
+                <img src={h.iconeUrl} alt={h.nome}
+                  style={{ width: 32, height: 32, borderRadius: 5, objectFit: 'cover', display: 'block', filter: 'grayscale(60%) brightness(0.75)', border: '1px solid rgba(224,85,85,0.35)' }}
+                  onError={e => { e.target.style.display = 'none' }} />
+                <div style={{ position: 'absolute', inset: 0, borderRadius: 5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ width: 20, height: 1.5, background: 'rgba(224,85,85,0.75)', transform: 'rotate(-45deg)', pointerEvents: 'none' }} />
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
       {/* ── Overlay de ban ───────────────────────────────────────────────── */}
       {anuncioBan && (
         <AnuncioBanOverlay
