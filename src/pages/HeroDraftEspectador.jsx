@@ -348,8 +348,8 @@ export default function HeroDraftEspectador() {
           const isDuploA  = isPickA && seq[passoIdx + 1]?.acao === ACOES.PICK && seq[passoIdx + 1]?.time === 'A'
           const isDuploB  = isPickB && seq[passoIdx + 1]?.acao === ACOES.PICK && seq[passoIdx + 1]?.time === 'B'
 
-          const gradA = `linear-gradient(to top, ${estado.timeA.cor}55 0%, transparent 100%)`
-          const gradB = `linear-gradient(to top, ${estado.timeB.cor}55 0%, transparent 100%)`
+          const gradA = `linear-gradient(to right, ${estado.timeA.cor}55 0%, transparent 70%)`
+          const gradB = `linear-gradient(to left,  ${estado.timeB.cor}55 0%, transparent 70%)`
 
           return (
             <>
@@ -359,7 +359,7 @@ export default function HeroDraftEspectador() {
                     nextPick={isPickA && (i === nextIdxA || (isDuploA && i === nextIdxA + 1))} />
                 ))}
                 {isPickA && (
-                  <div style={{ position: 'absolute', bottom: -8, left: -20, right: -20, height: 80, background: gradA, pointerEvents: 'none', transition: 'opacity 0.4s ease' }} />
+                  <div style={{ position: 'absolute', inset: 0, left: -32, right: 0, background: gradA, pointerEvents: 'none', transition: 'opacity 0.4s ease' }} />
                 )}
               </div>
 
@@ -389,7 +389,7 @@ export default function HeroDraftEspectador() {
                     nextPick={isPickB && (i === nextIdxB || (isDuploB && i === nextIdxB + 1))} />
                 ))}
                 {isPickB && (
-                  <div style={{ position: 'absolute', bottom: -8, left: -20, right: -20, height: 80, background: gradB, pointerEvents: 'none', transition: 'opacity 0.4s ease' }} />
+                  <div style={{ position: 'absolute', inset: 0, left: 0, right: -32, background: gradB, pointerEvents: 'none', transition: 'opacity 0.4s ease' }} />
                 )}
               </div>
             </>
