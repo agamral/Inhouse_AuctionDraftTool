@@ -337,13 +337,21 @@ export default function HeroDraftEspectador() {
       {/* ── Stage: colunas + centro ───────────────────────────────────────── */}
       <div className="hde-stage">
 
-        <div className="hde-col hde-col--a">
-          {Array.from({ length: picksA }, (_, i) => (
-            <HexSlot key={i} heroiId={estado.timeA.picks[i] ?? null} cor={estado.timeA.cor} large />
-          ))}
-        </div>
+        {(() => {
+          const isPickA = isRunning && passo?.acao === ACOES.PICK && passo?.time === 'A'
+          const isPickB = isRunning && passo?.acao === ACOES.PICK && passo?.time === 'B'
+          const nextIdxA = estado.timeA.picks.length
+          const nextIdxB = estado.timeB.picks.length
+          return (
+            <>
+              <div className="hde-col hde-col--a" style={isPickA ? { filter: 'brightness(1.12)', transition: 'filter 0.4s ease' } : { transition: 'filter 0.4s ease' }}>
+                {Array.from({ length: picksA }, (_, i) => (
+                  <HexSlot key={i} heroiId={estado.timeA.picks[i] ?? null} cor={estado.timeA.cor} large
+                    nextPick={isPickA && i === nextIdxA} />
+                ))}
+              </div>
 
-        <div className="hde-centro">
+              <div className="hde-centro">
           {isRunning && passo ? (
             <>
               <div className={`hde-centro-acao hde-centro-acao--${passo.acao}`}>
@@ -363,11 +371,15 @@ export default function HeroDraftEspectador() {
           )}
         </div>
 
-        <div className="hde-col hde-col--b">
-          {Array.from({ length: picksB }, (_, i) => (
-            <HexSlot key={i} heroiId={estado.timeB.picks[i] ?? null} cor={estado.timeB.cor} large />
-          ))}
-        </div>
+              <div className="hde-col hde-col--b" style={isPickB ? { filter: 'brightness(1.12)', transition: 'filter 0.4s ease' } : { transition: 'filter 0.4s ease' }}>
+                {Array.from({ length: picksB }, (_, i) => (
+                  <HexSlot key={i} heroiId={estado.timeB.picks[i] ?? null} cor={estado.timeB.cor} large
+                    nextPick={isPickB && i === nextIdxB} />
+                ))}
+              </div>
+            </>
+          )
+        })()}
 
       </div>
 
@@ -443,13 +455,14 @@ function FaseDot({ passo, corA, corB, completado = false, ativo = false }) {
 
 // ── Slot hexagonal ─────────────────────────────────────────────────────────────
 
-function HexSlot({ heroiId, cor, large = false, ban = false }) {
+function HexSlot({ heroiId, cor, large = false, ban = false, nextPick = false }) {
   const heroi = heroiId ? HEROES.find(h => h.id === heroiId) : null
   const cls = [
     'hde-hex',
-    large ? 'hde-hex--l' : 'hde-hex--s',
-    heroi ? 'hde-hex--has' : '',
-    ban   ? 'hde-hex--ban' : '',
+    large    ? 'hde-hex--l'         : 'hde-hex--s',
+    heroi    ? 'hde-hex--has'       : '',
+    ban      ? 'hde-hex--ban'       : '',
+    nextPick ? 'hde-hex--next-pick' : '',
   ].filter(Boolean).join(' ')
 
   return (

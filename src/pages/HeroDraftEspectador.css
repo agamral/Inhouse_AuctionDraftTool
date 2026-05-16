@@ -318,6 +318,17 @@ body:has(.hde-root) > * {
   background: var(--c, #4a9eda);
 }
 
+/* Próximo slot de pick: pulsa na cor do time */
+.hde-hex--next-pick .hde-hex-bd {
+  background: var(--c, #4a9eda);
+  animation: hde-next-pick 1.4s ease-in-out infinite;
+}
+
+@keyframes hde-next-pick {
+  0%, 100% { opacity: 0.18; transform: scale(0.97); }
+  50%       { opacity: 0.55; transform: scale(1.02); }
+}
+
 /* Camada interna: fundo escuro + imagem */
 .hde-hex-in {
   position: absolute;
