@@ -33,7 +33,10 @@ const PAISES_FLAG = {
   'CAZAQUISTÃO': '🇰🇿', CAZAQUISTAO: '🇰🇿', KAZAKHSTAN: '🇰🇿',
 }
 
-const ELO_ORDEM = { Bronze: 1, Prata: 2, Ouro: 3, Platina: 4, Diamante: 5, Mestre: 6 }
+const ELO_ORDEM = {
+  Bronze: 1, Prata: 2, Ouro: 3, Platina: 4, Diamante: 5, Mestre: 6,
+  'Grão Mestre': 7, 'Mestre / Grão Mestre': 7,
+}
 const ROLE_ORDEM = { Tank: 1, Offlane: 2, DPS: 3, Healer: 4, Flex: 5, Nenhuma: 6 }
 const STATUS_ORDEM = { Titular: 1, Reserva: 2 }
 

@@ -6,9 +6,9 @@ export const ELO_CONFIG = {
   Ouro:     { color: '#f0cc6e', bg: 'rgba(240,204,110,0.13)', border: 'rgba(240,204,110,0.45)', shape: 'shield' },
   Platina:  { color: '#4ecdc4', bg: 'rgba(78,205,196,0.1)',    border: 'rgba(78,205,196,0.38)',   shape: 'gem'    },
   Diamante: { color: '#74b9ff', bg: 'rgba(116,185,255,0.1)',   border: 'rgba(116,185,255,0.4)',   shape: 'gem'    },
-  Mestre:              { color: '#c39bd3', bg: 'rgba(155,110,232,0.15)', border: 'rgba(155,110,232,0.5)', shape: 'crown' },
-  'Grão Mestre':       { color: '#c39bd3', bg: 'rgba(155,110,232,0.15)', border: 'rgba(155,110,232,0.5)', shape: 'crown' },
-  'Mestre / Grão Mestre': { color: '#c39bd3', bg: 'rgba(155,110,232,0.15)', border: 'rgba(155,110,232,0.5)', shape: 'crown' },
+  Mestre:                  { color: '#c39bd3', bg: 'rgba(155,110,232,0.15)', border: 'rgba(155,110,232,0.45)', shape: 'crown' },
+  'Grão Mestre':           { color: '#e0aaff', bg: 'rgba(210,100,255,0.18)', border: 'rgba(210,100,255,0.65)', shape: 'crown' },
+  'Mestre / Grão Mestre':  { color: '#e0aaff', bg: 'rgba(210,100,255,0.18)', border: 'rgba(210,100,255,0.65)', shape: 'crown' },
 }
 
 // Formas SVG (viewBox 0 0 24 24)
