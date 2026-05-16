@@ -359,7 +359,7 @@ export default function HeroDraftEspectador() {
                     nextPick={isPickA && (i === nextIdxA || (isDuploA && i === nextIdxA + 1))} />
                 ))}
                 {isPickA && (
-                  <div style={{ position: 'absolute', top: -60, bottom: -60, left: -40, right: -8, background: gradA, pointerEvents: 'none', zIndex: -1, transition: 'opacity 0.4s ease' }} />
+                  <div style={{ position: 'absolute', top: 0, bottom: -40, left: -40, right: -8, background: gradA, pointerEvents: 'none', zIndex: -1, transition: 'opacity 0.4s ease' }} />
                 )}
               </div>
 
@@ -389,7 +389,7 @@ export default function HeroDraftEspectador() {
                     nextPick={isPickB && (i === nextIdxB || (isDuploB && i === nextIdxB + 1))} />
                 ))}
                 {isPickB && (
-                  <div style={{ position: 'absolute', top: -60, bottom: -60, left: -8, right: -40, background: gradB, pointerEvents: 'none', zIndex: -1, transition: 'opacity 0.4s ease' }} />
+                  <div style={{ position: 'absolute', top: 0, bottom: -40, left: -8, right: -40, background: gradB, pointerEvents: 'none', zIndex: -1, transition: 'opacity 0.4s ease' }} />
                 )}
               </div>
             </>
