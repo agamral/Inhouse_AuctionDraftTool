@@ -318,9 +318,9 @@ export default function HeroDraft() {
               onChange={(e) => setBusca(e.target.value)}
             />
             <div className="hd-role-tabs">
-              <RoleTab label="Todos" value="todos" ativo={filtroRole} onClick={setFiltroRole} />
+              <RoleTab label={t('roles.todos')} value="todos" ativo={filtroRole} onClick={setFiltroRole} />
               {Object.values(ROLES).map((r) => (
-                <RoleTab key={r} label={r} value={r} ativo={filtroRole} onClick={setFiltroRole} />
+                <RoleTab key={r} label={t('roles.' + r, { defaultValue: r })} value={r} ativo={filtroRole} onClick={setFiltroRole} />
               ))}
             </div>
           </div>
@@ -469,7 +469,7 @@ function HeroCard({ heroi, bloqueado, selecionado, clicavel, estado, onClick }) 
         onError={(e) => { e.target.src = '/heroes/placeholder.png' }}
       />
       <span className="hd-hero-nome">{t('heroes.' + heroi.id, { defaultValue: heroi.nome })}</span>
-      <span className="hd-hero-role">{heroi.role}</span>
+      <span className="hd-hero-role">{t('roles.' + heroi.role, { defaultValue: heroi.role })}</span>
 
       {overlay && (
         <div className={`hd-hero-overlay hd-hero-overlay--${overlay}`}>

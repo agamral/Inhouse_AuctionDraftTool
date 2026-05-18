@@ -524,7 +524,7 @@ function AnuncioOverlay({ picks, cor, saindo }) {
         {picks.map(({ heroi }, idx) => (
           <div key={`${heroi.id}-label-${idx}`} className="hde-anuncio-label">
             <div className="hde-anuncio-nome">{t('heroes.' + heroi.id, { defaultValue: heroi.nome })}</div>
-            <div className="hde-anuncio-role">{heroi.role}</div>
+            <div className="hde-anuncio-role">{t('roles.' + heroi.role, { defaultValue: heroi.role })}</div>
           </div>
         ))}
       </div>

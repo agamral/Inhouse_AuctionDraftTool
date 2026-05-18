@@ -209,6 +209,15 @@
     "draft_waiting": "Aguardando início do draft...",
     "draft_ended": "DRAFT ENCERRADO"
   },
+  "roles": {
+    "Tank":             "Tank",
+    "Bruiser":          "Bruiser",
+    "Melee Assassin":   "Assassino Corpo-a-Corpo",
+    "Ranged Assassin":  "Assassino à Distância",
+    "Healer":           "Curandeiro",
+    "Support":          "Suporte",
+    "todos":            "Todos"
+  },
   "heroes": {
     "anubarak":       "Anub'arak",
     "arthas":         "Arthas",
