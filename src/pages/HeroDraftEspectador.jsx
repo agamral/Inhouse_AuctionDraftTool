@@ -471,6 +471,7 @@ function FaseDot({ passo, corA, corB, completado = false, ativo = false }) {
 // ── Slot hexagonal ─────────────────────────────────────────────────────────────
 
 function HexSlot({ heroiId, cor, large = false, ban = false, nextPick = false }) {
+  const { t } = useTranslation()
   const heroi = heroiId ? HEROES.find(h => h.id === heroiId) : null
   const cls = [
     'hde-hex',
@@ -491,7 +492,7 @@ function HexSlot({ heroiId, cor, large = false, ban = false, nextPick = false })
               onError={e => { e.target.src = '/heroes/placeholder.png' }}
             />
             {ban   && <div className="hde-hex-ban-x">✕</div>}
-            {large && <div className="hde-hex-name">{heroi.nome}</div>}
+            {large && <div className="hde-hex-name">{t('heroes.' + heroi.id, { defaultValue: heroi.nome })}</div>}
           </>
         )}
       </div>
@@ -504,6 +505,7 @@ function HexSlot({ heroiId, cor, large = false, ban = false, nextPick = false })
 // Para picks duplos: tela dividida ao meio.
 
 function AnuncioOverlay({ picks, cor, saindo }) {
+  const { t } = useTranslation()
   return (
     <div className={`hde-anuncio${saindo ? ' hde-anuncio--saindo' : ''}`}>
 
@@ -521,7 +523,7 @@ function AnuncioOverlay({ picks, cor, saindo }) {
       <div className={`hde-anuncio-labels hde-anuncio-labels--${picks.length}`}>
         {picks.map(({ heroi }, idx) => (
           <div key={`${heroi.id}-label-${idx}`} className="hde-anuncio-label">
-            <div className="hde-anuncio-nome">{heroi.nome}</div>
+            <div className="hde-anuncio-nome">{t('heroes.' + heroi.id, { defaultValue: heroi.nome })}</div>
             <div className="hde-anuncio-role">{heroi.role}</div>
           </div>
         ))}
@@ -579,6 +581,7 @@ function AnuncioVideoPanel({ heroi, cor }) {
 // ── Overlay de ban ────────────────────────────────────────────────────────────
 
 function AnuncioBanOverlay({ heroi, timeSide, nomeTime, saindo }) {
+  const { t } = useTranslation()
   const videoUrl  = getHeroVideoUrl(heroi.id)
   const imageUrl  = getHeroImageUrl(heroi.id)
   const [videoFalhou, setVideoFalhou] = useState(false)
@@ -609,7 +612,7 @@ function AnuncioBanOverlay({ heroi, timeSide, nomeTime, saindo }) {
 
       {/* Conteúdo central */}
       <div className="hde-ban-conteudo">
-        <div className="hde-ban-nome-heroi">{heroi.nome}</div>
+        <div className="hde-ban-nome-heroi">{t('heroes.' + heroi.id, { defaultValue: heroi.nome })}</div>
         <div className="hde-ban-stamp">BANIDO</div>
         <div className="hde-ban-sub">{nomeTime} baniu este herói</div>
       </div>
@@ -670,7 +673,7 @@ function EspectadorLobby({ sessaoData }) {
                       <div style={{ width: 28, height: 1.5, background: 'rgba(224,85,85,0.7)', transform: 'rotate(-45deg)' }} />
                     </div>
                   </div>
-                  <span style={{ fontSize: 9, fontFamily: "'Barlow Condensed', sans-serif", color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.03em', maxWidth: 48, textAlign: 'center', lineHeight: 1.2 }}>{h.nome}</span>
+                  <span style={{ fontSize: 9, fontFamily: "'Barlow Condensed', sans-serif", color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.03em', maxWidth: 48, textAlign: 'center', lineHeight: 1.2 }}>{t('heroes.' + h.id, { defaultValue: h.nome })}</span>
                 </div>
               ))}
             </div>

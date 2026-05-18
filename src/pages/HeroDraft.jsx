@@ -437,6 +437,7 @@ function SlotHeroi({ heroiId, tipo, corTime }) {
 }
 
 function HeroCard({ heroi, bloqueado, selecionado, clicavel, estado, onClick }) {
+  const { t } = useTranslation()
   // Determina se foi banido ou pickado e por quem
   const banidoPorA  = (estado.timeA.bans  ?? []).includes(heroi.id)
   const banidoPorB  = (estado.timeB.bans  ?? []).includes(heroi.id)
@@ -460,14 +461,14 @@ function HeroCard({ heroi, bloqueado, selecionado, clicavel, estado, onClick }) 
       ].join(' ')}
       onClick={clicavel ? onClick : undefined}
       disabled={bloqueado || !clicavel}
-      title={heroi.nome}
+      title={t('heroes.' + heroi.id, { defaultValue: heroi.nome })}
     >
       <img
         src={heroi.iconeUrl}
-        alt={heroi.nome}
+        alt={t('heroes.' + heroi.id, { defaultValue: heroi.nome })}
         onError={(e) => { e.target.src = '/heroes/placeholder.png' }}
       />
-      <span className="hd-hero-nome">{heroi.nome}</span>
+      <span className="hd-hero-nome">{t('heroes.' + heroi.id, { defaultValue: heroi.nome })}</span>
       <span className="hd-hero-role">{heroi.role}</span>
 
       {overlay && (
@@ -490,9 +491,9 @@ function ConfirmacaoOverlay({ heroiId, acao, onConfirmar, onCancelar }) {
   return (
     <div className="hd-confirmar-backdrop" onClick={onCancelar}>
       <div className="hd-confirmar-modal" onClick={(e) => e.stopPropagation()}>
-        <img src={heroi.iconeUrl} alt={heroi.nome} className="hd-confirmar-img"
+        <img src={heroi.iconeUrl} alt={t('heroes.' + heroi.id, { defaultValue: heroi.nome })} className="hd-confirmar-img"
           onError={(e) => { e.target.src = '/heroes/placeholder.png' }} />
-        <h3 className="hd-confirmar-nome">{heroi.nome}</h3>
+        <h3 className="hd-confirmar-nome">{t('heroes.' + heroi.id, { defaultValue: heroi.nome })}</h3>
         <p className="hd-confirmar-acao" data-acao={acaoClass}>
           {acaoLabel}?
         </p>
@@ -521,6 +522,7 @@ function RoleTab({ label, value, ativo, onClick }) {
 // O estado interno muda conforme o fluxo: configurando → lobby → confirmado
 
 function ShowmatchPreDraft({ sessaoData, timeLocal, draftPronto, confirmado, outroConfirmou, onConfirmar }) {
+  const { t } = useTranslation()
   const config  = sessaoData?.config ?? {}
   const mapa    = getMapaById(config.mapaId)
   const nomeA   = sessaoData?.timeA?.nome ?? 'Time A'
@@ -588,7 +590,7 @@ function ShowmatchPreDraft({ sessaoData, timeLocal, draftPronto, confirmado, out
                   return h ? (
                     <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(224,85,85,0.12)', border: '1px solid rgba(224,85,85,0.25)', borderRadius: 4, padding: '2px 8px', fontSize: 11, color: 'rgba(224,85,85,0.9)', fontFamily: "'Barlow Condensed', sans-serif" }}>
                       <img src={h.iconeUrl} alt="" style={{ width: 14, height: 14, borderRadius: 2, objectFit: 'cover' }} onError={e => { e.target.style.display = 'none' }} />
-                      {h.nome}
+                      {t('heroes.' + h.id, { defaultValue: h.nome })}
                     </div>
                   ) : null
                 })}
@@ -717,7 +719,7 @@ function ShowmatchLobby({ sessaoData, timeLocal }) {
                   return h ? (
                     <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(224,85,85,0.12)', border: '1px solid rgba(224,85,85,0.25)', borderRadius: 4, padding: '2px 8px', fontSize: 11, color: 'rgba(224,85,85,0.9)', fontFamily: "'Barlow Condensed', sans-serif" }}>
                       <img src={h.iconeUrl} alt="" style={{ width: 14, height: 14, borderRadius: 2, objectFit: 'cover' }} onError={e => { e.target.style.display = 'none' }} />
-                      {h.nome}
+                      {t('heroes.' + h.id, { defaultValue: h.nome })}
                     </div>
                   ) : null
                 })}

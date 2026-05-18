@@ -1,4 +1,5 @@
 import { useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useHeroDraft } from '../hooks/useHeroDraft'
 import { HEROES } from '../utils/heroPool'
 import { passoAtual, ACOES, STATUS_DRAFT } from '../utils/heroDraft'
@@ -79,6 +80,7 @@ export default function HeroDraftOverlay() {
 // ── Subcomponentes ─────────────────────────────────────────────────────────────
 
 function OverlaySlot({ heroiId, tipo, cor }) {
+  const { t } = useTranslation()
   const heroi = heroiId ? HEROES.find((h) => h.id === heroiId) : null
 
   return (
@@ -86,9 +88,9 @@ function OverlaySlot({ heroiId, tipo, cor }) {
          style={{ '--cor': cor }}>
       {heroi && (
         <>
-          <img src={heroi.iconeUrl} alt={heroi.nome}
+          <img src={heroi.iconeUrl} alt={t('heroes.' + heroi.id, { defaultValue: heroi.nome })}
                onError={(e) => { e.target.src = '/heroes/placeholder.png' }} />
-          <span className="hdo-slot-nome">{heroi.nome}</span>
+          <span className="hdo-slot-nome">{t('heroes.' + heroi.id, { defaultValue: heroi.nome })}</span>
         </>
       )}
     </div>
