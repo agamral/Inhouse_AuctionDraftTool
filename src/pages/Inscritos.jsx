@@ -128,7 +128,11 @@ export default function Inscritos() {
     { key: 'status',         sortable: true  },
   ]
 
-  const playersOrdenados = sortPlayers(players, sortCol, sortDir)
+  // Admins veem todos (com estilo riscado); público não vê descartados
+  const playersVisiveis  = isAdmin
+    ? players
+    : players.filter(p => !overrides[p.id]?.descartado)
+  const playersOrdenados = sortPlayers(playersVisiveis, sortCol, sortDir)
 
   return (
     <main className="page">
@@ -162,7 +166,7 @@ export default function Inscritos() {
       {!loading && !error && (
         <>
           <p style={{ color: 'var(--text2)', fontSize: '13px', marginBottom: '16px' }}>
-            {players.length} inscrito{players.length !== 1 ? 's' : ''}
+            {playersVisiveis.length} inscrito{playersVisiveis.length !== 1 ? 's' : ''}{isAdmin && playersVisiveis.length !== players.length && <span style={{ color: 'var(--red)', marginLeft: 6 }}>({players.length - playersVisiveis.length} descartado{players.length - playersVisiveis.length !== 1 ? 's' : ''} visível{players.length - playersVisiveis.length !== 1 ? 'eis' : ''} só para admins)</span>}
             {sortCol && (
               <span style={{ marginLeft: 10, color: 'var(--text3)' }}>
                 · ordenado por {t(`inscritos.table.${sortCol}`)} {sortDir === 'asc' ? '↑' : '↓'}
