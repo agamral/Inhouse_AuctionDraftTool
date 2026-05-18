@@ -5,7 +5,7 @@ import { db } from '../firebase/database'
 import { useModules } from '../hooks/useConfig'
 import { useAuth } from '../hooks/useAuth'
 import { useCampeonato } from '../contexts/CampeonatoContext'
-import { configConteudoPath } from '../utils/campeonatoPaths'
+import { configConteudoPath, playerOverridesPath } from '../utils/campeonatoPaths'
 import RoleIcon from '../components/RoleIcon'
 import EloIcon, { ELO_CONFIG } from '../components/EloIcon'
 import PaginaInativa from '../components/PaginaInativa'
@@ -92,11 +92,12 @@ export default function Inscritos() {
   }, [])
 
   useEffect(() => {
-    const unsub = onValue(ref(db, '/playerOverrides'), (snap) => {
+    if (!idPublico) return
+    const unsub = onValue(ref(db, playerOverridesPath(idPublico)), (snap) => {
       setOverrides(snap.val() ?? {})
     })
     return unsub
-  }, [])
+  }, [idPublico])
 
   useEffect(() => {
     if (!idPublico) return
