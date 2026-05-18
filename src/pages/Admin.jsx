@@ -354,6 +354,26 @@ export default function Admin() {
                   ))}
                 </div>
               </div>
+              <div>
+                <div className="admin-toggle-label" style={{ marginBottom: 8 }}>Redes Sociais</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {[
+                    { label: '▶ YouTube', key: 'youtubeUrl',  placeholder: 'https://youtube.com/@canal' },
+                    { label: '📷 Instagram', key: 'instagramUrl', placeholder: 'https://instagram.com/perfil' },
+                    { label: '💬 Discord', key: 'discordUrl',  placeholder: 'https://discord.gg/convite' },
+                  ].map(({ label, key, placeholder }) => (
+                    <div key={key} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <span style={{ fontSize: 12, color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif", minWidth: 90 }}>{label}</span>
+                      <input
+                        style={{ flex: 1, background: 'var(--bg)', border: '1px solid var(--border2)', borderRadius: 6, padding: '8px 12px', color: 'var(--text)', fontFamily: "'Barlow', sans-serif", fontSize: 13, outline: 'none' }}
+                        placeholder={placeholder}
+                        value={conteudo[key]}
+                        onChange={e => setConteudoField(key, e.target.value)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </section>
 

@@ -53,6 +53,9 @@ export const DEFAULT_CONTEUDO = {
   stream3Nome:          '',
   stream3Url:           '',
   bannerInscritosTexto: '',
+  youtubeUrl:           '',
+  instagramUrl:         '',
+  discordUrl:           '',
 }
 
 export const DEFAULT_PARTIDAS = {
