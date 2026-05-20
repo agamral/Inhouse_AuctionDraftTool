@@ -46,26 +46,37 @@ function LinguasBadge({ linguas }) {
   )
 }
 
-const PAISES_FLAG = {
-  BR: '🇧🇷', AR: '🇦🇷', MX: '🇲🇽', CL: '🇨🇱', CO: '🇨🇴',
-  PE: '🇵🇪', VE: '🇻🇪', UY: '🇺🇾', PY: '🇵🇾', BO: '🇧🇴',
-  EC: '🇪🇨', US: '🇺🇸', PT: '🇵🇹', ES: '🇪🇸',
-  BRASIL: '🇧🇷', BRAZIL: '🇧🇷', BRASA: '🇧🇷',
-  ARGENTINA: '🇦🇷',
-  'MÉXICO': '🇲🇽', MEXICO: '🇲🇽',
-  CHILE: '🇨🇱',
-  'COLÔMBIA': '🇨🇴', COLOMBIA: '🇨🇴',
-  PERU: '🇵🇪', 'PERÚ': '🇵🇪',
-  VENEZUELA: '🇻🇪',
-  URUGUAI: '🇺🇾', URUGUAY: '🇺🇾',
-  PARAGUAI: '🇵🇾', PARAGUAY: '🇵🇾',
-  'BOLÍVIA': '🇧🇴', BOLIVIA: '🇧🇴',
-  EQUADOR: '🇪🇨', ECUADOR: '🇪🇨',
-  'ESTADOS UNIDOS': '🇺🇸', USA: '🇺🇸',
-  PORTUGAL: '🇵🇹',
-  ESPANHA: '🇪🇸', SPAIN: '🇪🇸',
-  CONGO: '🇨🇩',
-  'CAZAQUISTÃO': '🇰🇿', CAZAQUISTAO: '🇰🇿', KAZAKHSTAN: '🇰🇿',
+const PAISES_CDN = {
+  BR: 'br', AR: 'ar', MX: 'mx', CL: 'cl', CO: 'co',
+  PE: 'pe', VE: 've', UY: 'uy', PY: 'py', BO: 'bo',
+  EC: 'ec', US: 'us', PT: 'pt', ES: 'es',
+  BRASIL: 'br', BRAZIL: 'br', BRASA: 'br',
+  ARGENTINA: 'ar',
+  'MÉXICO': 'mx', MEXICO: 'mx',
+  CHILE: 'cl',
+  'COLÔMBIA': 'co', COLOMBIA: 'co',
+  PERU: 'pe', 'PERÚ': 'pe',
+  VENEZUELA: 've',
+  URUGUAI: 'uy', URUGUAY: 'uy',
+  PARAGUAI: 'py', PARAGUAY: 'py',
+  'BOLÍVIA': 'bo', BOLIVIA: 'bo',
+  EQUADOR: 'ec', ECUADOR: 'ec',
+  'ESTADOS UNIDOS': 'us', USA: 'us',
+  PORTUGAL: 'pt',
+  ESPANHA: 'es', SPAIN: 'es',
+  CONGO: 'cd',
+  'CAZAQUISTÃO': 'kz', CAZAQUISTAO: 'kz', KAZAKHSTAN: 'kz',
+}
+
+function PaisFlag({ pais }) {
+  if (!pais) return <span style={{ color: 'var(--text3)' }}>—</span>
+  const code = PAISES_CDN[pais.toUpperCase()]
+  if (!code) return <span style={{ fontSize: 12, color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif" }}>{pais}</span>
+  return (
+    <img src={`https://flagcdn.com/${code}.svg`} alt={pais} title={pais}
+      style={{ width: 24, height: 16, objectFit: 'cover', borderRadius: 2, display: 'block' }}
+    />
+  )
 }
 
 const ELO_ORDEM = {
@@ -75,10 +86,7 @@ const ELO_ORDEM = {
 const ROLE_ORDEM = { Tank: 1, Offlane: 2, DPS: 3, Healer: 4, Flex: 5, Nenhuma: 6 }
 const STATUS_ORDEM = { Titular: 1, Reserva: 2 }
 
-function paisFlag(pais) {
-  if (!pais) return '🌎'
-  return PAISES_FLAG[pais.toUpperCase()] || '🌎'
-}
+
 
 function sortKey(col, p) {
   switch (col) {
@@ -286,7 +294,7 @@ export default function Inscritos() {
                           <span style={{ color: 'var(--text3)' }}>—</span>
                         )}
                       </td>
-                      <td style={{ padding: '12px', fontSize: '20px' }}>{paisFlag(p.pais)}</td>
+                      <td style={{ padding: '12px' }}><PaisFlag pais={p.pais} /></td>
                       <td style={{ padding: '12px' }}><LinguasBadge linguas={p.linguas} /></td>
                       <td style={{ padding: '12px' }}>
                         {p.titularReserva === 'Titular' && <span className="badge" style={{ color: 'var(--green)', borderColor: 'rgba(76,175,125,0.35)', background: 'rgba(76,175,125,0.08)' }}>TITULAR</span>}
