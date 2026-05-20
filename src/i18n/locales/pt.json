@@ -84,6 +84,7 @@
       "role": "Função",
       "roleSecundaria": "2ª Função",
       "pais": "País",
+      "linguas": "Línguas",
       "status": "Status"
     },
     "empty": "Nenhum jogador encontrado"

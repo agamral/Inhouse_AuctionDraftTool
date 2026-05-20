@@ -84,6 +84,7 @@
       "role": "Rol",
       "roleSecundaria": "2° Rol",
       "pais": "País",
+      "linguas": "Idiomas",
       "status": "Estado"
     },
     "empty": "No se encontraron jugadores"

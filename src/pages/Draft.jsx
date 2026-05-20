@@ -1064,10 +1064,19 @@ function SectionLabel({ children, accent }) {
   )
 }
 
+const LINGUA_FLAG_DRAFT = { pt: '🇧🇷', es: '🇪🇸', en: '🇺🇸' }
+
+function parseLinguasDraft(raw) {
+  if (!raw) return []
+  if (Array.isArray(raw)) return raw.map(l => l.trim().toLowerCase()).filter(Boolean)
+  return String(raw).split(',').map(l => l.trim().toLowerCase()).filter(Boolean)
+}
+
 function PlayerRow({ player, preco, canAct, onAct, isSteal, owner, privacidade, t }) {
   const borderColor = isSteal ? `${owner?.cor ?? 'var(--border)'}55` : 'var(--border)'
   const bgColor     = isSteal ? `${owner?.cor ?? 'transparent'}08`   : 'var(--bg2)'
   const nomeExibido = privacidade ? `${player.rolePrimaria ?? 'Jogador'}` : player.discord
+  const linguas     = parseLinguasDraft(player.linguas)
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderRadius: '6px', border: `1px solid ${borderColor}`, background: bgColor }}>
@@ -1090,6 +1099,16 @@ function PlayerRow({ player, preco, canAct, onAct, isSteal, owner, privacidade, 
             <span style={{ opacity: 0.4 }}>·</span>
             <RoleIcon role={player.rolePrimaria} size={14} />
             {player.rolePrimaria}
+            {linguas.length > 0 && (
+              <>
+                <span style={{ opacity: 0.4 }}>·</span>
+                {linguas.map(l => (
+                  <span key={l} title={l.toUpperCase()} style={{ fontSize: 13, lineHeight: 1 }}>
+                    {LINGUA_FLAG_DRAFT[l] ?? l.toUpperCase()}
+                  </span>
+                ))}
+              </>
+            )}
             {isSteal && owner && (
               <>
                 <span style={{ opacity: 0.4 }}>·</span>

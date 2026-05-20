@@ -11,6 +11,29 @@ import EloIcon, { ELO_CONFIG } from '../components/EloIcon'
 import PaginaInativa from '../components/PaginaInativa'
 import './Inscritos.css'
 
+const LINGUA_FLAG  = { pt: '🇧🇷', es: '🇪🇸', en: '🇺🇸' }
+const LINGUA_ORDER = { pt: 1, es: 2, en: 3 }
+
+function parseLinguas(raw) {
+  if (!raw) return []
+  if (Array.isArray(raw)) return raw.map(l => l.trim().toLowerCase()).filter(Boolean)
+  return String(raw).split(',').map(l => l.trim().toLowerCase()).filter(Boolean)
+}
+
+function LinguasBadge({ linguas }) {
+  const list = parseLinguas(linguas)
+  if (!list.length) return <span style={{ color: 'var(--text3)' }}>—</span>
+  return (
+    <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+      {list.map(l => (
+        <span key={l} title={l.toUpperCase()} style={{ fontSize: 17, lineHeight: 1 }}>
+          {LINGUA_FLAG[l] ?? <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 10, letterSpacing: '0.06em', color: 'var(--text2)', background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 3, padding: '1px 4px' }}>{l.toUpperCase()}</span>}
+        </span>
+      ))}
+    </div>
+  )
+}
+
 const PAISES_FLAG = {
   BR: '🇧🇷', AR: '🇦🇷', MX: '🇲🇽', CL: '🇨🇱', CO: '🇨🇴',
   PE: '🇵🇪', VE: '🇻🇪', UY: '🇺🇾', PY: '🇵🇾', BO: '🇧🇴',
@@ -52,6 +75,7 @@ function sortKey(col, p) {
     case 'role':           return ROLE_ORDEM[p.rolePrimaria] ?? 99
     case 'roleSecundaria': return ROLE_ORDEM[p.roleSecundaria] ?? 99
     case 'pais':           return (p.pais ?? '').toLowerCase()
+    case 'linguas':        return LINGUA_ORDER[parseLinguas(p.linguas)[0]] ?? 99
     case 'status':         return STATUS_ORDEM[p.titularReserva] ?? 99
     default:               return ''
   }
@@ -126,6 +150,7 @@ export default function Inscritos() {
     { key: 'role',           sortable: true  },
     { key: 'roleSecundaria', sortable: true  },
     { key: 'pais',           sortable: true  },
+    { key: 'linguas',        sortable: true  },
     { key: 'status',         sortable: true  },
   ]
 
@@ -250,6 +275,7 @@ export default function Inscritos() {
                         )}
                       </td>
                       <td style={{ padding: '12px', fontSize: '20px' }}>{paisFlag(p.pais)}</td>
+                      <td style={{ padding: '12px' }}><LinguasBadge linguas={p.linguas} /></td>
                       <td style={{ padding: '12px' }}>
                         {p.titularReserva === 'Titular' && <span className="badge" style={{ color: 'var(--green)', borderColor: 'rgba(76,175,125,0.35)', background: 'rgba(76,175,125,0.08)' }}>TITULAR</span>}
                         {p.titularReserva === 'Reserva' && <span className="badge" style={{ color: 'var(--text2)' }}>RESERVA</span>}
