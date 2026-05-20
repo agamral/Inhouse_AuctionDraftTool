@@ -11,11 +11,11 @@ import EloIcon, { ELO_CONFIG } from '../components/EloIcon'
 import PaginaInativa from '../components/PaginaInativa'
 import './Inscritos.css'
 
-const LINGUA_ORDER  = { pt: 1, es: 2, en: 3 }
-const LINGUA_CONFIG = {
-  pt: { label: 'PT', color: '#f0cc6e',           bg: 'rgba(240,204,110,0.10)', border: 'rgba(240,204,110,0.30)' },
-  es: { label: 'ES', color: '#e05555',           bg: 'rgba(224,85,85,0.10)',   border: 'rgba(224,85,85,0.30)'   },
-  en: { label: 'EN', color: 'var(--blue)',        bg: 'rgba(74,158,218,0.10)', border: 'rgba(74,158,218,0.30)'  },
+const LINGUA_ORDER    = { pt: 1, es: 2, en: 3 }
+const LINGUA_FLAG_CDN = {
+  pt: 'https://flagcdn.com/br.svg',
+  es: 'https://flagcdn.com/es.svg',
+  en: 'https://flagcdn.com/us.svg',
 }
 
 function parseLinguas(raw) {
@@ -28,19 +28,17 @@ function LinguasBadge({ linguas }) {
   const list = parseLinguas(linguas)
   if (!list.length) return <span style={{ color: 'var(--text3)' }}>—</span>
   return (
-    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+    <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
       {list.map(l => {
-        const cfg = LINGUA_CONFIG[l]
-        return (
-          <span key={l} style={{
-            fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700,
-            fontSize: 11, letterSpacing: '0.08em',
-            color:      cfg?.color  ?? 'var(--text2)',
-            background: cfg?.bg     ?? 'var(--bg3)',
-            border:     `1px solid ${cfg?.border ?? 'var(--border)'}`,
-            borderRadius: 3, padding: '1px 5px',
-          }}>
-            {cfg?.label ?? l.toUpperCase()}
+        const src = LINGUA_FLAG_CDN[l]
+        return src ? (
+          <img key={l} src={src} alt={l.toUpperCase()} title={l.toUpperCase()}
+            style={{ width: 22, height: 15, objectFit: 'cover', borderRadius: 2, display: 'block' }}
+            onError={e => { e.currentTarget.replaceWith(Object.assign(document.createElement('span'), { textContent: l.toUpperCase(), style: 'font-size:10px;color:var(--text2)' })) }}
+          />
+        ) : (
+          <span key={l} style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 10, color: 'var(--text2)' }}>
+            {l.toUpperCase()}
           </span>
         )
       })}

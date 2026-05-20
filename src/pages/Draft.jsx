@@ -1064,10 +1064,10 @@ function SectionLabel({ children, accent }) {
   )
 }
 
-const LINGUA_CONFIG_DRAFT = {
-  pt: { label: 'PT', color: '#f0cc6e',    border: 'rgba(240,204,110,0.35)' },
-  es: { label: 'ES', color: '#e05555',    border: 'rgba(224,85,85,0.35)'   },
-  en: { label: 'EN', color: '#4a9eda',    border: 'rgba(74,158,218,0.35)'  },
+const LINGUA_FLAG_CDN_DRAFT = {
+  pt: 'https://flagcdn.com/br.svg',
+  es: 'https://flagcdn.com/es.svg',
+  en: 'https://flagcdn.com/us.svg',
 }
 
 function parseLinguasDraft(raw) {
@@ -1107,16 +1107,14 @@ function PlayerRow({ player, preco, canAct, onAct, isSteal, owner, privacidade, 
               <>
                 <span style={{ opacity: 0.4 }}>·</span>
                 {linguas.map(l => {
-                  const cfg = LINGUA_CONFIG_DRAFT[l]
-                  return (
-                    <span key={l} style={{
-                      fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700,
-                      fontSize: 10, letterSpacing: '0.06em',
-                      color: cfg?.color ?? 'var(--text2)',
-                      border: `1px solid ${cfg?.border ?? 'var(--border)'}`,
-                      borderRadius: 3, padding: '0px 4px',
-                    }}>
-                      {cfg?.label ?? l.toUpperCase()}
+                  const src = LINGUA_FLAG_CDN_DRAFT[l]
+                  return src ? (
+                    <img key={l} src={src} alt={l.toUpperCase()} title={l.toUpperCase()}
+                      style={{ width: 18, height: 12, objectFit: 'cover', borderRadius: 2, display: 'inline-block', verticalAlign: 'middle' }}
+                    />
+                  ) : (
+                    <span key={l} style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 10, color: 'var(--text2)' }}>
+                      {l.toUpperCase()}
                     </span>
                   )
                 })}
