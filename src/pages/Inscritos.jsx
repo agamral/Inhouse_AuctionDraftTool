@@ -113,7 +113,7 @@ function sortPlayers(players, col, dir) {
 
 export default function Inscritos() {
   const { t } = useTranslation()
-  const { privacidadeAtiva, inscritosAbertos, bannerInscritosAtivo, loading: modulesLoading } = useModules()
+  const { privacidadeAtiva, inscritosAbertos, bannerInscritosAtivo, capitaesPublicos, loading: modulesLoading } = useModules()
   const { isAdmin, capitao } = useAuth()
   const { idPublico } = useCampeonato()
   const [players,     setPlayers]     = useState([])
@@ -255,7 +255,7 @@ export default function Inscritos() {
                   const eloCfg = ELO_CONFIG[p.elo] ?? {}
                   const nomeExibido = privacidadeAtiva ? `Jogador #${idx + 1}` : p.discord
 
-                  const rowClass = ov.capitao    ? 'inscrito-row inscrito-capitao'
+                  const rowClass = (ov.capitao && (isAdmin || capitaesPublicos)) ? 'inscrito-row inscrito-capitao'
                                  : ov.confirmado ? 'inscrito-row inscrito-confirmado'
                                  : ov.descartado ? 'inscrito-row inscrito-descartado'
                                  : 'inscrito-row'
@@ -265,7 +265,7 @@ export default function Inscritos() {
                       <td style={{ padding: '12px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span style={{ width: '18px', flexShrink: 0, display: 'flex', justifyContent: 'center' }}>
-                            {ov.capitao && <span className="inscrito-cap-icon" title="Capitão escolhido">⚑</span>}
+                            {ov.capitao && (isAdmin || capitaesPublicos) && <span className="inscrito-cap-icon" title="Capitão escolhido">⚑</span>}
                           </span>
                           <div>
                             <div style={{ fontWeight: 600, color: 'var(--text)' }}>{nomeExibido}</div>

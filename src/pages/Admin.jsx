@@ -24,6 +24,7 @@ import './Admin.css'
 const ALL_TABS = [
   { id: 'geral',      label: 'Geral'      },
   { id: 'inscricoes', label: 'Inscrições' },
+  { id: 'capitaes',   label: 'Capitães'   },
   { id: 'leilao',     label: 'Leilão'     },
   { id: 'times',      label: 'Times'      },
   { id: 'campeonato', label: 'Campeonato' },
@@ -385,7 +386,30 @@ export default function Admin() {
       {aba === 'inscricoes' && (
         <div className="admin-tab-content">
           <AdminPlayersSection />
+        </div>
+      )}
+
+      {/* CAPITÃES */}
+      {aba === 'capitaes' && (
+        <div className="admin-tab-content">
+
+          {/* Visibilidade pública */}
+          <section className="admin-section">
+            <div className="admin-section-title">Visibilidade Pública</div>
+            <div className="admin-fields">
+              <ToggleRow
+                label="Capitães visíveis ao público"
+                desc="Mostra o ⚑ ao lado do nome na lista de inscritos. Deixe desligado até o anúncio oficial."
+                checked={modules.capitaesPublicos}
+                onChange={() => toggleModule('capitaesPublicos')}
+              />
+            </div>
+            <SaveBar saving={saving} saved={saved} onSave={handleSave} />
+          </section>
+
           <AdminCaptainsSection draftConfig={draft} />
+          <AdminCapitaoAcesso />
+
         </div>
       )}
 
@@ -417,7 +441,6 @@ export default function Admin() {
       {aba === 'times' && (
         <div className="admin-tab-content">
           <AdminTeamsSection />
-          <AdminCapitaoAcesso />
         </div>
       )}
 

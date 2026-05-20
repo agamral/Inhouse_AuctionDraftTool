@@ -26,6 +26,7 @@ export const DEFAULT_MODULES = {
   heroDraftAtivo:   false,
   privacidadeAtiva:      false,
   bannerInscritosAtivo:  false,
+  capitaesPublicos:      false,
 }
 
 export const DEFAULT_DRAFT = {
