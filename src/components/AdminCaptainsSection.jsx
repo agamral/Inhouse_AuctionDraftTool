@@ -26,6 +26,8 @@ export default function AdminCaptainsSection({ draftConfig }) {
   const [novaCor, setNovaCor]         = useState(CORES[0])
   const [msg, setMsg]                 = useState('')
   const [copied, setCopied]           = useState(null)
+  const [editando, setEditando]       = useState(null)
+  const [editData, setEditData]       = useState({})
 
   const max = draftConfig?.maxCaptains ?? 8
   const min = draftConfig?.minCaptains ?? 2
@@ -98,6 +100,23 @@ export default function AdminCaptainsSection({ draftConfig }) {
     ])
   }
 
+  function iniciarEdicao(id, cap) {
+    setEditando(id)
+    setEditData({ nome: cap.nome, capitaoNome: cap.capitaoNome ?? '', emoji: cap.emoji, cor: cap.cor })
+  }
+
+  async function salvarEdicao(id) {
+    if (!editData.nome.trim()) return
+    await update(ref(db, `${draftSessionPath(campeonatoId)}/captains/${id}`), {
+      nome:        editData.nome.trim(),
+      capitaoNome: editData.capitaoNome.trim(),
+      emoji:       editData.emoji,
+      cor:         editData.cor,
+    })
+    setEditando(null)
+    flash('Time atualizado!')
+  }
+
   async function randomizarSeeds() {
     const ids = list.map(([id]) => id)
     // Fisher-Yates shuffle
@@ -156,34 +175,83 @@ export default function AdminCaptainsSection({ draftConfig }) {
       ) : (
         <div className="cap-list">
           {list.map(([id, cap], idx) => (
-            <div key={id} className="cap-row">
-              <div className="cap-seed">{cap.seed}</div>
-              <div className="cap-emoji" style={{ background: cap.cor + '22', border: `1px solid ${cap.cor}55` }}>
-                {cap.emoji}
-              </div>
-              <div className="cap-info">
-                <span className="cap-nome" style={{ color: cap.cor }}>{cap.nome}</span>
-                <span className="cap-pin">
-                  {cap.capitaoNome
-                    ? <><span style={{ color: 'var(--text2)' }}>⚑ {cap.capitaoNome}</span> · PIN: <strong>{cap.pin}</strong></>
-                    : <>PIN: <strong>{cap.pin}</strong> · <span style={{ color: 'var(--red)', opacity: 0.7 }}>sem capitão</span></>
-                  }
-                </span>
-              </div>
-              <div className="cap-actions">
-                <button className="ap-btn" onClick={() => moverSeed(id, -1)} disabled={idx === 0} title="Subir">↑</button>
-                <button className="ap-btn" onClick={() => moverSeed(id, 1)} disabled={idx === list.length - 1} title="Descer">↓</button>
-                <button className="ap-btn" onClick={() => regenerarPin(id)} title="Novo PIN">🔄 PIN</button>
-                <button
-                  className="ap-btn"
-                  onClick={() => copiarLink(id)}
-                  title="Copiar link do leilão para o capitão"
-                  style={{ color: copied === id ? 'var(--green)' : 'var(--text2)' }}
-                >
-                  {copied === id ? '✓ Copiado' : '🔗 Link'}
-                </button>
-                <button className="ap-btn ap-btn-discard" onClick={() => removerCapitao(id)}>✕</button>
-              </div>
+            <div key={id} className="cap-row" style={{ flexWrap: editando === id ? 'wrap' : 'nowrap' }}>
+
+              {editando === id ? (
+                /* ── Modo edição ── */
+                <>
+                  <div style={{ display: 'flex', gap: 8, flex: 1, flexWrap: 'wrap', alignItems: 'center', padding: '4px 0' }}>
+                    <input
+                      className="sa-input"
+                      value={editData.nome}
+                      onChange={e => setEditData(p => ({ ...p, nome: e.target.value }))}
+                      placeholder="Nome do time"
+                      style={{ flex: 1, minWidth: 120 }}
+                    />
+                    <select
+                      className="sa-input"
+                      value={editData.capitaoNome}
+                      onChange={e => setEditData(p => ({ ...p, capitaoNome: e.target.value }))}
+                      style={{ flex: 1, minWidth: 140 }}
+                    >
+                      <option value="">— Sem capitão —</option>
+                      {(() => {
+                        const jaVinculados = new Set(list.map(([k, c]) => k !== id ? c.capitaoNome : null).filter(Boolean))
+                        const disponiveis  = players.filter(p => !jaVinculados.has(p.discord))
+                        const tagCap   = disponiveis.filter(p => overrides[p.id]?.capitao)
+                        const querSim  = disponiveis.filter(p => !overrides[p.id]?.capitao && p.querCapitao === 'Sim')
+                        const querSoSe = disponiveis.filter(p => !overrides[p.id]?.capitao && p.querCapitao === 'SoSeNecessario')
+                        return (<>
+                          {editData.capitaoNome && !disponiveis.find(p => p.discord === editData.capitaoNome) && (
+                            <option value={editData.capitaoNome}>{editData.capitaoNome}</option>
+                          )}
+                          {tagCap.length > 0   && <optgroup label="⚑ Marcados como capitão">{tagCap.map(p   => <option key={p.id} value={p.discord}>{p.discord}</option>)}</optgroup>}
+                          {querSim.length > 0  && <optgroup label="Quer ser capitão">{querSim.map(p  => <option key={p.id} value={p.discord}>{p.discord}</option>)}</optgroup>}
+                          {querSoSe.length > 0 && <optgroup label="Se necessário">{querSoSe.map(p => <option key={p.id} value={p.discord}>{p.discord}</option>)}</optgroup>}
+                        </>)
+                      })()}
+                    </select>
+                    <div className="cap-emoji-picker">
+                      {EMOJIS.map(e => <button key={e} className={`cap-emoji-opt ${editData.emoji === e ? 'active' : ''}`} onClick={() => setEditData(p => ({ ...p, emoji: e }))}>{e}</button>)}
+                    </div>
+                    <div className="cap-cor-picker">
+                      {CORES.map(c => <button key={c} className={`cap-cor-opt ${editData.cor === c ? 'active' : ''}`} style={{ background: c, borderColor: editData.cor === c ? '#fff' : 'transparent' }} onClick={() => setEditData(p => ({ ...p, cor: c }))} />)}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button className="btn primary" style={{ fontSize: 12, padding: '5px 14px' }} onClick={() => salvarEdicao(id)}>Salvar</button>
+                    <button className="ap-btn" onClick={() => setEditando(null)}>Cancelar</button>
+                  </div>
+                </>
+              ) : (
+                /* ── Modo normal ── */
+                <>
+                  <div className="cap-seed">{cap.seed}</div>
+                  <div className="cap-emoji" style={{ background: cap.cor + '22', border: `1px solid ${cap.cor}55` }}>
+                    {cap.emoji}
+                  </div>
+                  <div className="cap-info">
+                    <span className="cap-nome" style={{ color: cap.cor }}>{cap.nome}</span>
+                    <span className="cap-pin">
+                      {cap.capitaoNome
+                        ? <><span style={{ color: 'var(--text2)' }}>⚑ {cap.capitaoNome}</span> · PIN: <strong>{cap.pin}</strong></>
+                        : <>PIN: <strong>{cap.pin}</strong> · <span style={{ color: 'var(--red)', opacity: 0.7 }}>sem capitão</span></>
+                      }
+                    </span>
+                  </div>
+                  <div className="cap-actions">
+                    <button className="ap-btn" onClick={() => moverSeed(id, -1)} disabled={idx === 0} title="Subir">↑</button>
+                    <button className="ap-btn" onClick={() => moverSeed(id, 1)} disabled={idx === list.length - 1} title="Descer">↓</button>
+                    <button className="ap-btn" onClick={() => iniciarEdicao(id, cap)} title="Editar time">✏️</button>
+                    <button className="ap-btn" onClick={() => regenerarPin(id)} title="Novo PIN">🔄 PIN</button>
+                    <button className="ap-btn" onClick={() => copiarLink(id)} title="Copiar link" style={{ color: copied === id ? 'var(--green)' : 'var(--text2)' }}>
+                      {copied === id ? '✓' : '🔗'}
+                    </button>
+                    <button className="ap-btn ap-btn-discard" onClick={() => removerCapitao(id)}>✕</button>
+                  </div>
+                </>
+              )}
+
             </div>
           ))}
         </div>
