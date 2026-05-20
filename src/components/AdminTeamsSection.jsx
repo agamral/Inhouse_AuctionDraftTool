@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { ref, onValue, set, remove, push } from 'firebase/database'
+import { ref, onValue, set, remove, push, update } from 'firebase/database'
 import { db } from '../firebase/database'
 import { FUSOS, FUSO_PADRAO } from '../utils/scheduling'
 import { useCampeonato } from '../contexts/CampeonatoContext'
@@ -30,6 +30,8 @@ export default function AdminTeamsSection() {
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [feedback, setFeedback]       = useState(null)
   const [salvando, setSalvando]       = useState(false)
+  const [editando, setEditando]       = useState(null)
+  const [editForm, setEditForm]       = useState(null)
 
   // Times salvos
   useEffect(() => onValue(ref(db, teamPath(campeonatoId)), snap => setTimes(snap.val() ?? {})), [campeonatoId])
@@ -149,6 +151,61 @@ export default function AdminTeamsSection() {
     }
   }
 
+  function iniciarEdicao(id, time) {
+    setEditando(id)
+    setEditForm({
+      nome:      time.nome ?? '',
+      cor:       time.cor  ?? '#4a9eda',
+      fuso:      time.fuso ?? FUSO_PADRAO,
+      jogadores: (time.jogadores ?? []).map(j => ({ ...j })),
+    })
+    setConfirmDelete(null)
+  }
+
+  function editAddJogador() {
+    setEditForm(f => ({ ...f, jogadores: [...f.jogadores, { nome: '', role: 'Flex' }] }))
+  }
+
+  function editUpdateJogador(i, field, val) {
+    setEditForm(f => {
+      const js = [...f.jogadores]
+      js[i] = { ...js[i], [field]: val }
+      return { ...f, jogadores: js }
+    })
+  }
+
+  function editRemoveJogador(i) {
+    setEditForm(f => ({ ...f, jogadores: f.jogadores.filter((_, idx) => idx !== i) }))
+  }
+
+  async function salvarEdicao(id) {
+    if (!editForm.nome.trim())          return flash('erro', 'Informe o nome do time.')
+    if (editForm.jogadores.length < 1)  return flash('erro', 'O time precisa ter pelo menos 1 jogador.')
+    if (editForm.jogadores.some(j => !j.nome.trim())) return flash('erro', 'Todos os jogadores precisam ter nome.')
+
+    setSalvando(true)
+    try {
+      await update(ref(db, `${teamPath(campeonatoId)}/${id}`), {
+        nome:      editForm.nome.trim(),
+        cor:       editForm.cor,
+        fuso:      editForm.fuso,
+        jogadores: editForm.jogadores.map(j => ({
+          nome: j.nome.trim(),
+          role: j.role,
+          ...(j.playerId   ? { playerId:   j.playerId   } : {}),
+          ...(j.isCaptain  ? { isCaptain:  true          } : {}),
+        })),
+      })
+      setEditando(null)
+      setEditForm(null)
+      flash('ok', `Time "${editForm.nome.trim()}" atualizado!`)
+    } catch (e) {
+      flash('erro', `Erro: ${e.message}`)
+    } finally {
+      setSalvando(false)
+    }
+  }
+
   async function handleDeletar(id) {
     try {
       await remove(ref(db, `${teamPath(campeonatoId)}/${id}`))
@@ -230,10 +287,88 @@ export default function AdminTeamsSection() {
         {/* ── Times salvos ─────────────────────────────────────────────────── */}
         {timesArr.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {timesArr.map(([id, time]) => (
+            {timesArr.map(([id, time]) => editando === id ? (
+              /* ── Modo edição inline ── */
+              <div key={id} style={{
+                background: 'var(--bg3)', border: '1px solid var(--border2)',
+                borderLeft: `3px solid ${editForm.cor}`,
+                borderRadius: 6, padding: 16,
+                display: 'flex', flexDirection: 'column', gap: 12,
+              }}>
+                {/* Nome + cor */}
+                <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+                  <div style={{ flex: 1 }}>
+                    <FieldLabel label="Nome do time" />
+                    <input value={editForm.nome}
+                      onChange={e => setEditForm(f => ({ ...f, nome: e.target.value }))}
+                      style={inputStyle} />
+                  </div>
+                  <div>
+                    <FieldLabel label="Cor" />
+                    <input type="color" value={editForm.cor}
+                      onChange={e => setEditForm(f => ({ ...f, cor: e.target.value }))}
+                      style={{ width: 38, height: 36, border: 'none', borderRadius: 4, cursor: 'pointer', background: 'none' }} />
+                  </div>
+                </div>
+
+                {/* Fuso */}
+                <div>
+                  <FieldLabel label="Fuso horário" />
+                  <select value={editForm.fuso}
+                    onChange={e => setEditForm(f => ({ ...f, fuso: e.target.value }))}
+                    style={{ ...inputStyle }}>
+                    {FUSOS.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
+                  </select>
+                </div>
+
+                {/* Jogadores */}
+                <div>
+                  <FieldLabel label="Jogadores" />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {editForm.jogadores.map((j, i) => (
+                      <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        {j.isCaptain && <span style={{ color: 'var(--gold)', fontSize: 13, flexShrink: 0 }}>★</span>}
+                        <input value={j.nome}
+                          onChange={e => editUpdateJogador(i, 'nome', e.target.value)}
+                          placeholder="Nome" style={{ ...inputStyle, flex: 1 }} />
+                        <select value={j.role}
+                          onChange={e => editUpdateJogador(i, 'role', e.target.value)}
+                          style={{ ...inputStyle, width: 'auto', flex: 'none' }}>
+                          {ROLES_LISTA.map(r => <option key={r} value={r}>{r}</option>)}
+                        </select>
+                        <button className="btn" onClick={() => editRemoveJogador(i)}
+                          style={{ fontSize: 12, padding: '4px 8px', borderColor: 'rgba(224,85,85,0.4)', color: 'var(--text2)', flexShrink: 0 }}>
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                    <button className="btn"
+                      style={{ fontSize: 12, padding: '5px 12px', alignSelf: 'flex-start' }}
+                      onClick={editAddJogador}>
+                      + Jogador
+                    </button>
+                  </div>
+                </div>
+
+                {/* Ações */}
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button className="btn primary"
+                    style={{ fontSize: 13, padding: '7px 18px' }}
+                    onClick={() => salvarEdicao(id)} disabled={salvando}>
+                    {salvando ? 'Salvando...' : 'Salvar'}
+                  </button>
+                  <button className="btn"
+                    style={{ fontSize: 13, padding: '7px 14px' }}
+                    onClick={() => { setEditando(null); setEditForm(null) }}>
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            ) : (
               <TeamCard
                 key={id} id={id} time={time}
                 confirmando={confirmDelete === id}
+                onEditar={() => iniciarEdicao(id, time)}
                 onDeletar={() => setConfirmDelete(id)}
                 onConfirmar={() => handleDeletar(id)}
                 onCancelar={() => setConfirmDelete(null)}
@@ -424,7 +559,7 @@ export default function AdminTeamsSection() {
 
 // ── Subcomponentes ─────────────────────────────────────────────────────────────
 
-function TeamCard({ time, confirmando, onDeletar, onConfirmar, onCancelar }) {
+function TeamCard({ time, confirmando, onEditar, onDeletar, onConfirmar, onCancelar }) {
   const fonteLabel = { manual: 'Manual', planilha: 'Planilha', leilao: 'Leilão' }
 
   return (
@@ -483,10 +618,17 @@ function TeamCard({ time, confirmando, onDeletar, onConfirmar, onCancelar }) {
             </button>
           </>
         ) : (
-          <button className="btn" onClick={onDeletar}
-            style={{ fontSize: 11, padding: '3px 8px', borderColor: 'rgba(224,85,85,0.4)', color: 'var(--text2)' }}>
-            🗑
-          </button>
+          <>
+            <button className="btn" onClick={onEditar}
+              style={{ fontSize: 11, padding: '3px 8px', color: 'var(--text2)' }}
+              title="Editar time">
+              ✏️
+            </button>
+            <button className="btn" onClick={onDeletar}
+              style={{ fontSize: 11, padding: '3px 8px', borderColor: 'rgba(224,85,85,0.4)', color: 'var(--text2)' }}>
+              🗑
+            </button>
+          </>
         )}
       </div>
     </div>
