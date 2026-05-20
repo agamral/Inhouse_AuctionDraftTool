@@ -11,8 +11,12 @@ import EloIcon, { ELO_CONFIG } from '../components/EloIcon'
 import PaginaInativa from '../components/PaginaInativa'
 import './Inscritos.css'
 
-const LINGUA_FLAG  = { pt: '🇧🇷', es: '🇪🇸', en: '🇺🇸' }
-const LINGUA_ORDER = { pt: 1, es: 2, en: 3 }
+const LINGUA_ORDER  = { pt: 1, es: 2, en: 3 }
+const LINGUA_CONFIG = {
+  pt: { label: 'PT', color: '#f0cc6e',           bg: 'rgba(240,204,110,0.10)', border: 'rgba(240,204,110,0.30)' },
+  es: { label: 'ES', color: '#e05555',           bg: 'rgba(224,85,85,0.10)',   border: 'rgba(224,85,85,0.30)'   },
+  en: { label: 'EN', color: 'var(--blue)',        bg: 'rgba(74,158,218,0.10)', border: 'rgba(74,158,218,0.30)'  },
+}
 
 function parseLinguas(raw) {
   if (!raw) return []
@@ -24,12 +28,22 @@ function LinguasBadge({ linguas }) {
   const list = parseLinguas(linguas)
   if (!list.length) return <span style={{ color: 'var(--text3)' }}>—</span>
   return (
-    <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
-      {list.map(l => (
-        <span key={l} title={l.toUpperCase()} style={{ fontSize: 17, lineHeight: 1 }}>
-          {LINGUA_FLAG[l] ?? <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 10, letterSpacing: '0.06em', color: 'var(--text2)', background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 3, padding: '1px 4px' }}>{l.toUpperCase()}</span>}
-        </span>
-      ))}
+    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+      {list.map(l => {
+        const cfg = LINGUA_CONFIG[l]
+        return (
+          <span key={l} style={{
+            fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700,
+            fontSize: 11, letterSpacing: '0.08em',
+            color:      cfg?.color  ?? 'var(--text2)',
+            background: cfg?.bg     ?? 'var(--bg3)',
+            border:     `1px solid ${cfg?.border ?? 'var(--border)'}`,
+            borderRadius: 3, padding: '1px 5px',
+          }}>
+            {cfg?.label ?? l.toUpperCase()}
+          </span>
+        )
+      })}
     </div>
   )
 }

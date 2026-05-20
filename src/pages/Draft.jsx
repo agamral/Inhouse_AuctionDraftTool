@@ -1064,7 +1064,11 @@ function SectionLabel({ children, accent }) {
   )
 }
 
-const LINGUA_FLAG_DRAFT = { pt: '🇧🇷', es: '🇪🇸', en: '🇺🇸' }
+const LINGUA_CONFIG_DRAFT = {
+  pt: { label: 'PT', color: '#f0cc6e',    border: 'rgba(240,204,110,0.35)' },
+  es: { label: 'ES', color: '#e05555',    border: 'rgba(224,85,85,0.35)'   },
+  en: { label: 'EN', color: '#4a9eda',    border: 'rgba(74,158,218,0.35)'  },
+}
 
 function parseLinguasDraft(raw) {
   if (!raw) return []
@@ -1102,11 +1106,20 @@ function PlayerRow({ player, preco, canAct, onAct, isSteal, owner, privacidade, 
             {linguas.length > 0 && (
               <>
                 <span style={{ opacity: 0.4 }}>·</span>
-                {linguas.map(l => (
-                  <span key={l} title={l.toUpperCase()} style={{ fontSize: 13, lineHeight: 1 }}>
-                    {LINGUA_FLAG_DRAFT[l] ?? l.toUpperCase()}
-                  </span>
-                ))}
+                {linguas.map(l => {
+                  const cfg = LINGUA_CONFIG_DRAFT[l]
+                  return (
+                    <span key={l} style={{
+                      fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700,
+                      fontSize: 10, letterSpacing: '0.06em',
+                      color: cfg?.color ?? 'var(--text2)',
+                      border: `1px solid ${cfg?.border ?? 'var(--border)'}`,
+                      borderRadius: 3, padding: '0px 4px',
+                    }}>
+                      {cfg?.label ?? l.toUpperCase()}
+                    </span>
+                  )
+                })}
               </>
             )}
             {isSteal && owner && (
