@@ -611,7 +611,7 @@ export default function Draft() {
               ⏱ {tempoRestante}s
             </span>
           )}
-          {isAdmin && <AdminDraftBar draftState={draftState} sortedCaptains={sortedCaptains} captains={captains} draftConfig={draftConfig} idPublico={idPublico} compact />
+          {isAdmin && <AdminDraftBar draftState={draftState} sortedCaptains={sortedCaptains} captains={captains} draftConfig={draftConfig} idPublico={idPublico} compact />}
         </div>
       </div>
 
