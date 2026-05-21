@@ -125,19 +125,22 @@ export default function Draft() {
   // ── Timer de turno (deve ficar antes de qualquer return condicional) ─────────
   useEffect(() => {
     const dur = draftConfig.timerDuracao ?? 60
-    if (!dur || draftState.status !== 'rodando' || !draftState.turnoIniciadoEm) {
+    if (!dur || draftState.status !== 'rodando') {
       setTempoRestante(null)
       return
     }
+    // Se turnoIniciadoEm não existe (draft iniciado antes do timer), começa do zero agora
+    const ts = draftState.turnoIniciadoEm ?? Date.now()
     const tick = () => {
-      const elapsed  = Math.floor((Date.now() - draftState.turnoIniciadoEm) / 1000)
+      const elapsed  = Math.floor((Date.now() - ts) / 1000)
       const restante = Math.max(0, dur - elapsed)
       setTempoRestante(restante)
       if (restante > 0) return
       const { isMyTurn: imt, myCap: mc, availablePlayers: ap, playerState: ps, draftConfig: dc, fase: f } = liveRef.current
       if (!imt || !mc || mc.exitou) return
-      if (autoPickRef.current === draftState.turnoIniciadoEm) return
-      autoPickRef.current = draftState.turnoIniciadoEm
+      const tsKey = draftState.turnoIniciadoEm ?? draftState.turnoAtual ?? 'now'
+      if (autoPickRef.current === tsKey) return
+      autoPickRef.current = tsKey
       const acessiveis = ap.filter(p => (mc.moedas ?? 0) >= (ps[p.id]?.preco ?? 0) &&
         (f === 'reservas' ? true : Object.keys(mc.roster ?? {}).length + 1 < (dc.maxPlayers ?? 7)))
       if (acessiveis.length === 0) return
@@ -615,8 +618,8 @@ export default function Draft() {
       </div>
 
       {/* Timer bar */}
-      {tempoRestante !== null && (draftConfig.timerDuracao ?? 0) > 0 && (() => {
-        const dur  = draftConfig.timerDuracao
+      {tempoRestante !== null && (draftConfig.timerDuracao ?? 60) > 0 && (() => {
+        const dur  = draftConfig.timerDuracao ?? 60
         const pct  = (tempoRestante / dur) * 100
         const cor  = tempoRestante > dur * 0.5 ? 'var(--green)' : tempoRestante > dur * 0.2 ? '#f0cc6e' : 'var(--red)'
         const urgente = tempoRestante <= 10
