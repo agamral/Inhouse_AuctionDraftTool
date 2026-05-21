@@ -26,6 +26,14 @@ export default function Draft() {
     try { return JSON.parse(sessionStorage.getItem('captainSession')) } catch { return null }
   })
 
+  // Lê params do link personalizado UMA vez (antes de URL ser limpa)
+  const [captainLink] = useState(() => {
+    const p = new URLSearchParams(window.location.search)
+    return { cap: p.get('cap'), pin: p.get('pin') }
+  })
+  const hasCaptainLink = !!(captainLink.cap && captainLink.pin)
+  const [autoAuthFailed, setAutoAuthFailed] = useState(false)
+
   const [captains,    setCaptains]    = useState({})
   const [draftState,  setDraftState]  = useState(DEFAULT_STATE)
   const [playerState, setPlayerState] = useState({})
@@ -86,18 +94,18 @@ export default function Draft() {
   // Auto-login via link personalizado (?cap=ID&pin=1234)
   const autoAuthDone = useRef(false)
   useEffect(() => {
-    if (autoAuthDone.current || captainSession || loading) return
+    if (autoAuthDone.current || captainSession || !hasCaptainLink) return
     if (Object.keys(captains).length === 0) return
 
-    const params = new URLSearchParams(window.location.search)
-    const capId  = params.get('cap')
-    const capPin = params.get('pin')
-    if (!capId || !capPin) return
-
-    const cap = captains[capId]
-    if (!cap || String(cap.pin) !== String(capPin)) return
-
     autoAuthDone.current = true
+    const { cap: capId, pin: capPin } = captainLink
+    const cap = captains[capId]
+
+    if (!cap || String(cap.pin) !== String(capPin)) {
+      setAutoAuthFailed(true)
+      return
+    }
+
     const session = {
       captainId:   capId,
       nome:        cap.nome,
@@ -108,16 +116,25 @@ export default function Draft() {
     }
     sessionStorage.setItem('captainSession', JSON.stringify(session))
     setCaptainSession(session)
-    // Remove PIN da URL sem recarregar a página
-    const clean = window.location.pathname
-    window.history.replaceState({}, '', clean)
-  }, [captains, captainSession, loading])
+    window.history.replaceState({}, '', window.location.pathname)
+  }, [captains, captainSession, hasCaptainLink, captainLink])
 
-  if (!modules.loading && !isAdmin && !capitao && !modules.draftAtivo) {
+  // Bloqueio público — bypass se vier de link personalizado (com ou sem draftAtivo)
+  if (!modules.loading && !isAdmin && !capitao && !captainSession && !hasCaptainLink && !modules.draftAtivo) {
     return <PaginaInativa icone="⚔️" titulo="Leilão não iniciado" descricao="O leilão de times ainda não foi aberto pelos organizadores." />
   }
 
-  // Só mostra tela de PIN se não está logado via Firebase Auth nem como admin
+  // Link personalizado presente mas auto-auth ainda processando
+  if (hasCaptainLink && !captainSession && !isAdmin && !capitao && !autoAuthFailed) {
+    return (
+      <main style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 'calc(100vh - 65px)', flexDirection: 'column', gap: 16 }}>
+        <div style={{ fontSize: 36 }}>⏳</div>
+        <p style={{ color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.06em', fontSize: 15 }}>Verificando acesso...</p>
+      </main>
+    )
+  }
+
+  // Sem sessão e sem link válido → tela de PIN
   if (!captainSession && !isAdmin && !capitao) return <CaptainLogin onLogin={handleLogin} />
   if (loading) return <main className="page"><p style={{ color: 'var(--text2)' }}>Carregando draft...</p></main>
 
