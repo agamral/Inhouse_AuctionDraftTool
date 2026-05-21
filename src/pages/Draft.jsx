@@ -122,6 +122,33 @@ export default function Draft() {
     window.history.replaceState({}, '', window.location.pathname)
   }, [captains, captainSession, hasCaptainLink, captainLink])
 
+  // ── Timer de turno (deve ficar antes de qualquer return condicional) ─────────
+  useEffect(() => {
+    const dur = draftConfig.timerDuracao ?? 60
+    if (!dur || draftState.status !== 'rodando' || !draftState.turnoIniciadoEm) {
+      setTempoRestante(null)
+      return
+    }
+    const tick = () => {
+      const elapsed  = Math.floor((Date.now() - draftState.turnoIniciadoEm) / 1000)
+      const restante = Math.max(0, dur - elapsed)
+      setTempoRestante(restante)
+      if (restante > 0) return
+      const { isMyTurn: imt, myCap: mc, availablePlayers: ap, playerState: ps, draftConfig: dc, fase: f } = liveRef.current
+      if (!imt || !mc || mc.exitou) return
+      if (autoPickRef.current === draftState.turnoIniciadoEm) return
+      autoPickRef.current = draftState.turnoIniciadoEm
+      const acessiveis = ap.filter(p => (mc.moedas ?? 0) >= (ps[p.id]?.preco ?? 0) &&
+        (f === 'reservas' ? true : Object.keys(mc.roster ?? {}).length + 1 < (dc.maxPlayers ?? 7)))
+      if (acessiveis.length === 0) return
+      const pick = acessiveis[Math.floor(Math.random() * acessiveis.length)]
+      f === 'reservas' ? liveRef.current.comprarReserva?.(pick) : liveRef.current.comprar?.(pick)
+    }
+    tick()
+    const iv = setInterval(tick, 500)
+    return () => clearInterval(iv)
+  }, [draftState.turnoIniciadoEm, draftState.status, draftConfig.timerDuracao]) // eslint-disable-line
+
   // Bloqueio público — bypass se vier de link personalizado (com ou sem draftAtivo)
   if (!modules.loading && !isAdmin && !capitao && !captainSession && !hasCaptainLink && !modules.draftAtivo) {
     return <PaginaInativa icone="⚔️" titulo="Leilão não iniciado" descricao="O leilão de times ainda não foi aberto pelos organizadores." />
@@ -179,35 +206,7 @@ export default function Draft() {
   })
 
   // Ref ao vivo para o auto-pick do timer (evita closure stale)
-  // comprar/comprarReserva são function declarations — hoisted, acessíveis aqui
   liveRef.current = { isMyTurn, myCap, availablePlayers, playerState, draftConfig, fase, comprar, comprarReserva }
-
-  // ── Timer de turno ────────────────────────────────────────
-  useEffect(() => { // eslint-disable-line react-hooks/rules-of-hooks
-    const dur = draftConfig.timerDuracao ?? 60
-    if (!dur || draftState.status !== 'rodando' || !draftState.turnoIniciadoEm) {
-      setTempoRestante(null)
-      return
-    }
-    const tick = () => {
-      const elapsed   = Math.floor((Date.now() - draftState.turnoIniciadoEm) / 1000)
-      const restante  = Math.max(0, dur - elapsed)
-      setTempoRestante(restante)
-      if (restante > 0) return
-      const { isMyTurn: imt, myCap: mc, availablePlayers: ap, playerState: ps, draftConfig: dc, fase: f } = liveRef.current
-      if (!imt || !mc || mc.exitou) return
-      if (autoPickRef.current === draftState.turnoIniciadoEm) return
-      autoPickRef.current = draftState.turnoIniciadoEm
-      const acessiveis = ap.filter(p => (mc.moedas ?? 0) >= (ps[p.id]?.preco ?? 0) &&
-        (f === 'reservas' ? true : Object.keys(mc.roster ?? {}).length + 1 < (dc.maxPlayers ?? 7)))
-      if (acessiveis.length === 0) return
-      const pick = acessiveis[Math.floor(Math.random() * acessiveis.length)]
-      f === 'reservas' ? liveRef.current.comprarReserva?.(pick) : liveRef.current.comprar?.(pick)
-    }
-    tick()
-    const iv = setInterval(tick, 500)
-    return () => clearInterval(iv)
-  }, [draftState.turnoIniciadoEm, draftState.status, draftConfig.timerDuracao]) // eslint-disable-line
 
   // ── Ação de compra ────────────────────────────────────────
   async function comprar(player) {
