@@ -608,32 +608,31 @@ export default function Draft() {
               🪙 {myCap.moedas} {t('draft.coins')}
             </div>
           )}
-          {tempoRestante !== null && tempoRestante <= 10 && (
-            <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 4, border: '1px solid rgba(224,85,85,0.5)', background: 'rgba(224,85,85,0.12)', color: 'var(--red)', animation: 'hd-pulse 0.6s ease-in-out infinite' }}>
-              ⏱ {tempoRestante}s
-            </span>
-          )}
           {isAdmin && <AdminDraftBar draftState={draftState} sortedCaptains={sortedCaptains} captains={captains} draftConfig={draftConfig} idPublico={idPublico} compact />}
         </div>
       </div>
 
       {/* Timer bar */}
       {tempoRestante !== null && (draftConfig.timerDuracao ?? 60) > 0 && (() => {
-        const dur  = draftConfig.timerDuracao ?? 60
-        const pct  = (tempoRestante / dur) * 100
-        const cor  = tempoRestante > dur * 0.5 ? 'var(--green)' : tempoRestante > dur * 0.2 ? '#f0cc6e' : 'var(--red)'
+        const dur     = draftConfig.timerDuracao ?? 60
+        const pct     = (tempoRestante / dur) * 100
         const urgente = tempoRestante <= 10
+        const cor     = tempoRestante > dur * 0.5 ? 'var(--green)' : tempoRestante > dur * 0.2 ? '#f0cc6e' : 'var(--red)'
         return (
-          <div style={{ position: 'relative', height: 4, background: 'var(--bg3)', flexShrink: 0 }}>
-            <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${pct}%`, background: cor, transition: 'width 0.5s linear, background 0.5s' }} />
+          <div style={{ position: 'relative', height: 28, background: 'var(--bg3)', flexShrink: 0, overflow: 'hidden' }}>
+            {/* barra de progresso */}
+            <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${pct}%`, background: cor + '28', transition: 'width 0.5s linear, background 0.5s' }} />
+            {/* número centralizado */}
             <div style={{
-              position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
+              position: 'absolute', inset: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
               fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700,
-              fontSize: 11, color: urgente ? cor : 'var(--text3)',
-              lineHeight: 1, pointerEvents: 'none',
+              fontSize: 13, letterSpacing: '0.08em', color: cor,
+              transition: 'color 0.5s',
               animation: urgente ? 'hd-pulse 0.6s ease-in-out infinite' : 'none',
             }}>
-              {tempoRestante}s
+              <span style={{ opacity: 0.6, fontSize: 11 }}>⏱</span>
+              <span style={{ fontSize: urgente ? 16 : 13 }}>{tempoRestante}s</span>
             </div>
           </div>
         )
