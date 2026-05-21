@@ -428,6 +428,8 @@ export default function Admin() {
               <NumberField label="Mínimo de players"    value={draft.minPlayers}  min={2}               max={draft.maxPlayers} onChange={v => setDraftNum('minPlayers', v)} />
               <NumberField label="Máximo de players"    value={draft.maxPlayers}  min={draft.minPlayers} max={15}           onChange={v => setDraftNum('maxPlayers', v)} />
               <ToggleRow label="Roubo ativo" desc="Capitães podem roubar players já comprados" checked={draft.rouboAtivo} onChange={() => toggleDraft('rouboAtivo')} />
+              <NumberField label="Timer por turno (s)" value={draft.timerDuracao ?? 60} min={0} max={300} onChange={v => setDraftNum('timerDuracao', v)} />
+              <div style={{ fontSize: 12, color: 'var(--text3)', fontFamily: "'Barlow', sans-serif", marginTop: -8, paddingLeft: 2 }}>0 = sem timer. Ao expirar, auto-pick aleatório para o capitão da vez.</div>
             </div>
           </section>
 

@@ -37,6 +37,7 @@ export const DEFAULT_DRAFT = {
   maxCaptains: 8,
   rouboAtivo:  true,
   leilaoReservas: false,
+  timerDuracao: 60,
 }
 
 export const DEFAULT_CONTEUDO = {

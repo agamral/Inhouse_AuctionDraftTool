@@ -41,9 +41,12 @@ export default function Draft() {
   const [overrides,   setOverrides]   = useState({})
   const [players,     setPlayers]     = useState([])
   const [loading,     setLoading]     = useState(true)
-  const [logAcoes,    setLogAcoes]    = useState([])
-  const [guiaAberto,  setGuiaAberto]  = useState(false)
-  const lastActionTsRef = useRef(null)
+  const [logAcoes,       setLogAcoes]       = useState([])
+  const [guiaAberto,     setGuiaAberto]     = useState(false)
+  const [tempoRestante,  setTempoRestante]  = useState(null)
+  const lastActionTsRef  = useRef(null)
+  const autoPickRef      = useRef(null)
+  const liveRef          = useRef({})
 
   useEffect(() => {
     let n = 0
@@ -175,6 +178,37 @@ export default function Draft() {
     return true
   })
 
+  // Ref ao vivo para o auto-pick do timer (evita closure stale)
+  // comprar/comprarReserva são function declarations — hoisted, acessíveis aqui
+  liveRef.current = { isMyTurn, myCap, availablePlayers, playerState, draftConfig, fase, comprar, comprarReserva }
+
+  // ── Timer de turno ────────────────────────────────────────
+  useEffect(() => { // eslint-disable-line react-hooks/rules-of-hooks
+    const dur = draftConfig.timerDuracao ?? 60
+    if (!dur || draftState.status !== 'rodando' || !draftState.turnoIniciadoEm) {
+      setTempoRestante(null)
+      return
+    }
+    const tick = () => {
+      const elapsed   = Math.floor((Date.now() - draftState.turnoIniciadoEm) / 1000)
+      const restante  = Math.max(0, dur - elapsed)
+      setTempoRestante(restante)
+      if (restante > 0) return
+      const { isMyTurn: imt, myCap: mc, availablePlayers: ap, playerState: ps, draftConfig: dc, fase: f } = liveRef.current
+      if (!imt || !mc || mc.exitou) return
+      if (autoPickRef.current === draftState.turnoIniciadoEm) return
+      autoPickRef.current = draftState.turnoIniciadoEm
+      const acessiveis = ap.filter(p => (mc.moedas ?? 0) >= (ps[p.id]?.preco ?? 0) &&
+        (f === 'reservas' ? true : Object.keys(mc.roster ?? {}).length + 1 < (dc.maxPlayers ?? 7)))
+      if (acessiveis.length === 0) return
+      const pick = acessiveis[Math.floor(Math.random() * acessiveis.length)]
+      f === 'reservas' ? liveRef.current.comprarReserva?.(pick) : liveRef.current.comprar?.(pick)
+    }
+    tick()
+    const iv = setInterval(tick, 500)
+    return () => clearInterval(iv)
+  }, [draftState.turnoIniciadoEm, draftState.status, draftConfig.timerDuracao]) // eslint-disable-line
+
   // ── Ação de compra ────────────────────────────────────────
   async function comprar(player) {
     if (!isMyTurn || !myCap) return
@@ -225,6 +259,7 @@ export default function Draft() {
       }
     }
 
+    updates[`${ses}/state/turnoIniciadoEm`] = Date.now()
     await update(ref(db), updates)
   }
 
@@ -285,6 +320,7 @@ export default function Draft() {
       }
     }
 
+    updates[`${ses}/state/turnoIniciadoEm`] = Date.now()
     await update(ref(db), updates)
   }
 
@@ -333,6 +369,7 @@ export default function Draft() {
         if (next.novaRodada) updates[`${ses}/state/rodada`] = (draftState.rodada ?? 1) + 1
       }
     }
+    updates[`${ses}/state/turnoIniciadoEm`] = Date.now()
     await update(ref(db), updates)
   }
 
@@ -378,6 +415,7 @@ export default function Draft() {
         updates[`${ses}/state/turnoAtual`] = null
       }
     }
+    updates[`${ses}/state/turnoIniciadoEm`] = Date.now()
     await update(ref(db), updates)
   }
 
@@ -399,6 +437,7 @@ export default function Draft() {
         if (next.novaRodada) updates[`${ses}/state/rodada`] = (draftState.rodada ?? 1) + 1
       }
     }
+    updates[`${ses}/state/turnoIniciadoEm`] = Date.now()
     await update(ref(db), updates)
   }
 
@@ -567,9 +606,36 @@ export default function Draft() {
               🪙 {myCap.moedas} {t('draft.coins')}
             </div>
           )}
-          {isAdmin && <AdminDraftBar draftState={draftState} sortedCaptains={sortedCaptains} captains={captains} draftConfig={draftConfig} idPublico={idPublico} compact />}
+          {tempoRestante !== null && tempoRestante <= 10 && (
+            <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 4, border: '1px solid rgba(224,85,85,0.5)', background: 'rgba(224,85,85,0.12)', color: 'var(--red)', animation: 'hd-pulse 0.6s ease-in-out infinite' }}>
+              ⏱ {tempoRestante}s
+            </span>
+          )}
+          {isAdmin && <AdminDraftBar draftState={draftState} sortedCaptains={sortedCaptains} captains={captains} draftConfig={draftConfig} idPublico={idPublico} compact />
         </div>
       </div>
+
+      {/* Timer bar */}
+      {tempoRestante !== null && (draftConfig.timerDuracao ?? 0) > 0 && (() => {
+        const dur  = draftConfig.timerDuracao
+        const pct  = (tempoRestante / dur) * 100
+        const cor  = tempoRestante > dur * 0.5 ? 'var(--green)' : tempoRestante > dur * 0.2 ? '#f0cc6e' : 'var(--red)'
+        const urgente = tempoRestante <= 10
+        return (
+          <div style={{ position: 'relative', height: 4, background: 'var(--bg3)', flexShrink: 0 }}>
+            <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${pct}%`, background: cor, transition: 'width 0.5s linear, background 0.5s' }} />
+            <div style={{
+              position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
+              fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700,
+              fontSize: 11, color: urgente ? cor : 'var(--text3)',
+              lineHeight: 1, pointerEvents: 'none',
+              animation: urgente ? 'hd-pulse 0.6s ease-in-out infinite' : 'none',
+            }}>
+              {tempoRestante}s
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Layout 3 colunas */}
       <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr 260px', flex: 1, overflow: 'hidden' }}>
@@ -875,7 +941,7 @@ function AdminDraftBar({ draftState, sortedCaptains, captains, draftConfig, idPu
     if (!podeIniciar) return
     const primeiro = sortedCaptains[0]?.[0]
     if (!primeiro) return
-    await set(ref(db, `${ses}/state`), { status: 'rodando', fase: 'titulares', turnoAtual: primeiro, turnoExtra: null, rodada: 1 })
+    await set(ref(db, `${ses}/state`), { status: 'rodando', fase: 'titulares', turnoAtual: primeiro, turnoExtra: null, rodada: 1, turnoIniciadoEm: Date.now() })
   }
 
   async function iniciarReservas() {
@@ -884,11 +950,12 @@ function AdminDraftBar({ draftState, sortedCaptains, captains, draftConfig, idPu
       updates[`${ses}/captains/${id}/moedas`] = Math.max(cap.moedas ?? 0, 6)
     })
     const primeiro = sortedCaptains[0]?.[0]
-    updates[`${ses}/state/status`]    = 'rodando'
-    updates[`${ses}/state/fase`]      = 'reservas'
-    updates[`${ses}/state/rodada`]    = 1
-    updates[`${ses}/state/turnoAtual`]= primeiro ?? null
-    updates[`${ses}/state/turnoExtra`]= null
+    updates[`${ses}/state/status`]         = 'rodando'
+    updates[`${ses}/state/fase`]            = 'reservas'
+    updates[`${ses}/state/rodada`]          = 1
+    updates[`${ses}/state/turnoAtual`]      = primeiro ?? null
+    updates[`${ses}/state/turnoExtra`]      = null
+    updates[`${ses}/state/turnoIniciadoEm`] = Date.now()
     await update(ref(db), updates)
     setOpen(false)
   }
@@ -914,8 +981,9 @@ function AdminDraftBar({ draftState, sortedCaptains, captains, draftConfig, idPu
       return
     }
     const updates = {
-      [`${ses}/state/turnoAtual`]: next.id,
-      [`${ses}/state/turnoExtra`]: null,
+      [`${ses}/state/turnoAtual`]:      next.id,
+      [`${ses}/state/turnoExtra`]:      null,
+      [`${ses}/state/turnoIniciadoEm`]: Date.now(),
     }
     if (next.novaRodada) updates[`${ses}/state/rodada`] = (draftState.rodada ?? 1) + 1
     await update(ref(db), updates)
