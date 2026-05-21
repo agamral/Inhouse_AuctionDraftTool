@@ -620,8 +620,10 @@ export default function Draft() {
         const cor     = tempoRestante > dur * 0.5 ? 'var(--green)' : tempoRestante > dur * 0.2 ? '#f0cc6e' : 'var(--red)'
         return (
           <div style={{ position: 'relative', height: 28, background: 'var(--bg3)', flexShrink: 0, overflow: 'hidden' }}>
-            {/* barra de progresso */}
-            <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${pct}%`, background: cor + '28', transition: 'width 0.5s linear, background 0.5s' }} />
+            {/* barra de progresso sólida */}
+            <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${pct}%`, background: cor + '40', transition: 'width 0.5s linear, background 0.5s' }} />
+            {/* linha sólida na base */}
+            <div style={{ position: 'absolute', left: 0, bottom: 0, height: 3, width: `${pct}%`, background: cor, transition: 'width 0.5s linear, background 0.5s' }} />
             {/* número centralizado */}
             <div style={{
               position: 'absolute', inset: 0,
