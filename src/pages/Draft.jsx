@@ -47,6 +47,8 @@ export default function Draft() {
   const lastActionTsRef  = useRef(null)
   const autoPickRef      = useRef(null)
   const liveRef          = useRef({})
+  const audioRef         = useRef(null)
+  const audioTurnRef     = useRef(null)
 
   useEffect(() => {
     let n = 0
@@ -122,6 +124,14 @@ export default function Draft() {
     window.history.replaceState({}, '', window.location.pathname)
   }, [captains, captainSession, hasCaptainLink, captainLink])
 
+  // Preload do áudio de countdown (arquivo em /public/sounds/)
+  useEffect(() => {
+    const a = new Audio('/sounds/ui_bnet_draft_countdownten01.wav')
+    a.preload = 'auto'
+    audioRef.current = a
+    return () => { a.pause() }
+  }, [])
+
   // ── Timer de turno (deve ficar antes de qualquer return condicional) ─────────
   useEffect(() => {
     const dur = draftConfig.timerDuracao ?? 60
@@ -135,6 +145,15 @@ export default function Draft() {
       const elapsed  = Math.floor((Date.now() - ts) / 1000)
       const restante = Math.max(0, dur - elapsed)
       setTempoRestante(restante)
+
+      // Dispara o áudio de countdown quando faltam ~11s (1s de silêncio inicial alinha o 1º beep em 10s)
+      const tsKey = draftState.turnoIniciadoEm ?? draftState.turnoAtual ?? 'now'
+      if (restante <= 11 && audioRef.current && audioTurnRef.current !== tsKey) {
+        audioTurnRef.current = tsKey
+        audioRef.current.currentTime = 0
+        audioRef.current.play().catch(() => {})
+      }
+
       if (restante > 0) return
       const { isMyTurn: imt, myCap: mc, availablePlayers: ap, playerState: ps, draftConfig: dc, fase: f } = liveRef.current
       if (!imt || !mc || mc.exitou) return
@@ -149,7 +168,14 @@ export default function Draft() {
     }
     tick()
     const iv = setInterval(tick, 500)
-    return () => clearInterval(iv)
+    return () => {
+      clearInterval(iv)
+      // Para o áudio quando o turno muda (novo turno ou draft encerrado)
+      if (audioRef.current) {
+        audioRef.current.pause()
+        audioRef.current.currentTime = 0
+      }
+    }
   }, [draftState.turnoIniciadoEm, draftState.status, draftConfig.timerDuracao]) // eslint-disable-line
 
   // Bloqueio público — bypass se vier de link personalizado (com ou sem draftAtivo)
