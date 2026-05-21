@@ -135,8 +135,8 @@ export default function AdminCaptainsSection({ draftConfig }) {
     setTimeout(() => setMsg(''), 2500)
   }
 
-  function copiarLink(id) {
-    const url = `${window.location.origin}/campeonatos/${campeonatoId}/draft`
+  function copiarLink(id, cap) {
+    const url = `${window.location.origin}/campeonatos/${campeonatoId}/draft?cap=${id}&pin=${cap.pin}`
     navigator.clipboard.writeText(url).then(() => {
       setCopied(id)
       setTimeout(() => setCopied(null), 2000)
@@ -244,7 +244,7 @@ export default function AdminCaptainsSection({ draftConfig }) {
                     <button className="ap-btn" onClick={() => moverSeed(id, 1)} disabled={idx === list.length - 1} title="Descer">↓</button>
                     <button className="ap-btn" onClick={() => iniciarEdicao(id, cap)} title="Editar time">✏️</button>
                     <button className="ap-btn" onClick={() => regenerarPin(id)} title="Novo PIN">🔄 PIN</button>
-                    <button className="ap-btn" onClick={() => copiarLink(id)} title="Copiar link" style={{ color: copied === id ? 'var(--green)' : 'var(--text2)' }}>
+                    <button className="ap-btn" onClick={() => copiarLink(id, cap)} title="Copiar link personalizado" style={{ color: copied === id ? 'var(--green)' : 'var(--text2)' }}>
                       {copied === id ? '✓' : '🔗'}
                     </button>
                     <button className="ap-btn ap-btn-discard" onClick={() => removerCapitao(id)}>✕</button>

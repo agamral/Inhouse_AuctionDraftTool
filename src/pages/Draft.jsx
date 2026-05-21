@@ -83,6 +83,36 @@ export default function Draft() {
     setCaptainSession(null)
   }
 
+  // Auto-login via link personalizado (?cap=ID&pin=1234)
+  const autoAuthDone = useRef(false)
+  useEffect(() => {
+    if (autoAuthDone.current || captainSession || loading) return
+    if (Object.keys(captains).length === 0) return
+
+    const params = new URLSearchParams(window.location.search)
+    const capId  = params.get('cap')
+    const capPin = params.get('pin')
+    if (!capId || !capPin) return
+
+    const cap = captains[capId]
+    if (!cap || String(cap.pin) !== String(capPin)) return
+
+    autoAuthDone.current = true
+    const session = {
+      captainId:   capId,
+      nome:        cap.nome,
+      capitaoNome: cap.capitaoNome ?? null,
+      emoji:       cap.emoji,
+      cor:         cap.cor,
+      seed:        cap.seed,
+    }
+    sessionStorage.setItem('captainSession', JSON.stringify(session))
+    setCaptainSession(session)
+    // Remove PIN da URL sem recarregar a página
+    const clean = window.location.pathname
+    window.history.replaceState({}, '', clean)
+  }, [captains, captainSession, loading])
+
   if (!modules.loading && !isAdmin && !capitao && !modules.draftAtivo) {
     return <PaginaInativa icone="⚔️" titulo="Leilão não iniciado" descricao="O leilão de times ainda não foi aberto pelos organizadores." />
   }
