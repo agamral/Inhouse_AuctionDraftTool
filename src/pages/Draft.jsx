@@ -129,7 +129,22 @@ export default function Draft() {
     const a = new Audio('/sounds/ui_bnet_draft_countdownten01.wav')
     a.preload = 'auto'
     audioRef.current = a
-    return () => { a.pause() }
+
+    // Desbloqueia autoplay na primeira interação do usuário com a página
+    // (Chrome/Firefox bloqueiam áudio programático sem gesto prévio do usuário)
+    const unlock = () => {
+      a.play().then(() => { a.pause(); a.currentTime = 0 }).catch(() => {})
+      document.removeEventListener('click',   unlock)
+      document.removeEventListener('keydown', unlock)
+    }
+    document.addEventListener('click',   unlock, { once: true })
+    document.addEventListener('keydown', unlock, { once: true })
+
+    return () => {
+      a.pause()
+      document.removeEventListener('click',   unlock)
+      document.removeEventListener('keydown', unlock)
+    }
   }, [])
 
   // ── Timer de turno (deve ficar antes de qualquer return condicional) ─────────
