@@ -48,6 +48,10 @@ export default function Draft() {
   const [turnAlert,      setTurnAlert]      = useState(false)
   const [turnAlertOpacity, setTurnAlertOpacity] = useState(1)
   const prevIsMyTurnRef = useRef(false)
+
+  // Computados cedo — necessários nos useEffects antes dos early returns
+  const myIdEarly    = captainSession?.captainId ?? null
+  const isMyTurnEarly = myIdEarly ? draftState.turnoAtual === myIdEarly : false
   const lastActionTsRef  = useRef(null)
   const autoPickRef      = useRef(null)
   const liveRef          = useRef({})
@@ -210,15 +214,15 @@ export default function Draft() {
 
   // Alerta visual quando chega o turno do capitão
   useEffect(() => {
-    if (isMyTurn && !prevIsMyTurnRef.current && draftState.status === 'rodando') {
+    if (isMyTurnEarly && !prevIsMyTurnRef.current && draftState.status === 'rodando') {
       setTurnAlert(true)
       setTurnAlertOpacity(1)
       const fade = setTimeout(() => setTurnAlertOpacity(0), 1800)
       const hide = setTimeout(() => setTurnAlert(false), 2400)
       return () => { clearTimeout(fade); clearTimeout(hide) }
     }
-    prevIsMyTurnRef.current = isMyTurn
-  }, [isMyTurn, draftState.status]) // eslint-disable-line
+    prevIsMyTurnRef.current = isMyTurnEarly
+  }, [isMyTurnEarly, draftState.status]) // eslint-disable-line
 
   // ── Timer de turno (deve ficar antes de qualquer return condicional) ─────────
   useEffect(() => {
