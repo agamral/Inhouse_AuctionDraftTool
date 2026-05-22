@@ -218,7 +218,10 @@ export default function Draft() {
     }
     tick()
     const iv = setInterval(tick, 500)
-    return () => clearInterval(iv)
+    return () => {
+      clearInterval(iv)
+      if (audioRef.current) { audioRef.current.pause(); audioRef.current.currentTime = 0 }
+    }
   }, [draftState.turnoIniciadoEm, draftState.status, draftConfig.timerDuracao]) // eslint-disable-line
 
   // Bloqueio público — bypass se vier de link personalizado (com ou sem draftAtivo)
