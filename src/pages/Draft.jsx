@@ -50,6 +50,7 @@ export default function Draft() {
   const liveRef          = useRef({})
   const audioRef         = useRef(null)
   const audioTurnRef     = useRef(null)
+  const audioPickRef     = useRef(null)
 
   useEffect(() => {
     let n = 0
@@ -158,11 +159,16 @@ export default function Draft() {
   }
 
   useEffect(() => {
-    // Tenta carregar o MP3; se falhar, mantém fallback de beeps sintéticos
+    // Countdown MP3 — fallback para beeps sintéticos se falhar
     const mp3 = new Audio('/sounds/ui_bnet_draft_countdownten01.mp3')
     mp3.preload = 'auto'
     mp3.onerror = () => console.info('[Draft] MP3 não encontrado, usando beeps sintéticos')
     mp3.oncanplaythrough = () => { audioRef.current = mp3 }
+
+    // Som de pick/compra (OGG)
+    const pick = new Audio('/sounds/ui_bnet_ready02.ogg')
+    pick.preload = 'auto'
+    pick.oncanplaythrough = () => { audioPickRef.current = pick }
 
     // Desbloqueia na primeira interação (MP3 e AudioContext)
     const unlock = () => {
@@ -179,7 +185,8 @@ export default function Draft() {
     document.addEventListener('click',   unlock, { once: true })
     document.addEventListener('keydown', unlock, { once: true })
     return () => {
-      mp3.src = ''
+      mp3.src  = ''
+      pick.src = ''
       document.removeEventListener('click',   unlock)
       document.removeEventListener('keydown', unlock)
     }
@@ -280,6 +287,13 @@ export default function Draft() {
     return true
   })
 
+  function playPickSound() {
+    if (audioPickRef.current) {
+      audioPickRef.current.currentTime = 0
+      audioPickRef.current.play().catch(() => {})
+    }
+  }
+
   // Pular turno — chamado pelo timer quando tempo esgota
   async function pularTurno() {
     const ses       = draftSessionPath(idPublico)
@@ -355,6 +369,7 @@ export default function Draft() {
     }
 
     updates[`${ses}/state/turnoIniciadoEm`] = Date.now()
+    playPickSound()
     await update(ref(db), updates)
   }
 
@@ -416,6 +431,7 @@ export default function Draft() {
     }
 
     updates[`${ses}/state/turnoIniciadoEm`] = Date.now()
+    playPickSound()
     await update(ref(db), updates)
   }
 
@@ -465,6 +481,7 @@ export default function Draft() {
       }
     }
     updates[`${ses}/state/turnoIniciadoEm`] = Date.now()
+    playPickSound()
     await update(ref(db), updates)
   }
 
@@ -511,6 +528,7 @@ export default function Draft() {
       }
     }
     updates[`${ses}/state/turnoIniciadoEm`] = Date.now()
+    playPickSound()
     await update(ref(db), updates)
   }
 
