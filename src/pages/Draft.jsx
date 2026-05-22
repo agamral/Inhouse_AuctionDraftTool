@@ -51,6 +51,7 @@ export default function Draft() {
   const audioRef         = useRef(null)
   const audioTurnRef     = useRef(null)
   const audioPickRef     = useRef(null)
+  const audioStealRef    = useRef(null)
 
   useEffect(() => {
     let n = 0
@@ -170,6 +171,11 @@ export default function Draft() {
     pick.preload = 'auto'
     pick.oncanplaythrough = () => { audioPickRef.current = pick }
 
+    // Som de roubo (MP3)
+    const steal = new Audio('/sounds/ui_ping_careful01.mp3')
+    steal.preload = 'auto'
+    steal.oncanplaythrough = () => { audioStealRef.current = steal }
+
     // Desbloqueia na primeira interação (MP3 e AudioContext)
     const unlock = () => {
       try {
@@ -185,8 +191,9 @@ export default function Draft() {
     document.addEventListener('click',   unlock, { once: true })
     document.addEventListener('keydown', unlock, { once: true })
     return () => {
-      mp3.src  = ''
-      pick.src = ''
+      mp3.src   = ''
+      pick.src  = ''
+      steal.src = ''
       document.removeEventListener('click',   unlock)
       document.removeEventListener('keydown', unlock)
     }
@@ -291,6 +298,13 @@ export default function Draft() {
     if (audioPickRef.current) {
       audioPickRef.current.currentTime = 0
       audioPickRef.current.play().catch(() => {})
+    }
+  }
+
+  function playStealSound() {
+    if (audioStealRef.current) {
+      audioStealRef.current.currentTime = 0
+      audioStealRef.current.play().catch(() => {})
     }
   }
 
@@ -431,7 +445,7 @@ export default function Draft() {
     }
 
     updates[`${ses}/state/turnoIniciadoEm`] = Date.now()
-    playPickSound()
+    playStealSound()
     await update(ref(db), updates)
   }
 
@@ -528,7 +542,7 @@ export default function Draft() {
       }
     }
     updates[`${ses}/state/turnoIniciadoEm`] = Date.now()
-    playPickSound()
+    playStealSound()
     await update(ref(db), updates)
   }
 
