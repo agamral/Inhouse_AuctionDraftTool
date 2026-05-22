@@ -155,7 +155,6 @@ export default function Draft() {
       }
 
       if (restante > 0) return
-      const tsKey = draftState.turnoIniciadoEm ?? draftState.turnoAtual ?? 'now'
       if (autoPickRef.current === tsKey) return
       autoPickRef.current = tsKey
       liveRef.current.pularTurno?.()
