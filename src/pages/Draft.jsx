@@ -155,16 +155,10 @@ export default function Draft() {
       }
 
       if (restante > 0) return
-      const { isMyTurn: imt, myCap: mc, availablePlayers: ap, playerState: ps, draftConfig: dc, fase: f } = liveRef.current
-      if (!imt || !mc || mc.exitou) return
       const tsKey = draftState.turnoIniciadoEm ?? draftState.turnoAtual ?? 'now'
       if (autoPickRef.current === tsKey) return
       autoPickRef.current = tsKey
-      const acessiveis = ap.filter(p => (mc.moedas ?? 0) >= (ps[p.id]?.preco ?? 0) &&
-        (f === 'reservas' ? true : Object.keys(mc.roster ?? {}).length + 1 < (dc.maxPlayers ?? 7)))
-      if (acessiveis.length === 0) return
-      const pick = acessiveis[Math.floor(Math.random() * acessiveis.length)]
-      f === 'reservas' ? liveRef.current.comprarReserva?.(pick) : liveRef.current.comprar?.(pick)
+      liveRef.current.pularTurno?.()
     }
     tick()
     const iv = setInterval(tick, 500)
@@ -234,8 +228,29 @@ export default function Draft() {
     return true
   })
 
+  // Pular turno — chamado pelo timer quando tempo esgota
+  async function pularTurno() {
+    const ses       = draftSessionPath(idPublico)
+    const currentId = draftState.turnoExtra ?? draftState.turnoAtual
+    const currentCap = captains[currentId] ?? {}
+    const currentSize = fase === 'reservas'
+      ? Object.keys(currentCap.reservas ?? {}).length
+      : Object.keys(currentCap.roster  ?? {}).length + 1
+    const next = proximoCom(sortedCaptains, captains, currentId, currentSize, draftConfig, fase)
+    if (!next) {
+      await update(ref(db, `${ses}/state`), { status: fase === 'titulares' ? 'entre_fases' : 'encerrado' })
+      return
+    }
+    await update(ref(db), {
+      [`${ses}/state/turnoAtual`]:      next.id,
+      [`${ses}/state/turnoExtra`]:      null,
+      [`${ses}/state/turnoIniciadoEm`]: Date.now(),
+      ...(next.novaRodada ? { [`${ses}/state/rodada`]: (draftState.rodada ?? 1) + 1 } : {}),
+    })
+  }
+
   // Ref ao vivo para o auto-pick do timer (evita closure stale)
-  liveRef.current = { isMyTurn, myCap, availablePlayers, playerState, draftConfig, fase, comprar, comprarReserva }
+  liveRef.current = { isMyTurn, myCap, availablePlayers, playerState, draftConfig, fase, comprar, comprarReserva, pularTurno }
 
   // ── Ação de compra ────────────────────────────────────────
   async function comprar(player) {
