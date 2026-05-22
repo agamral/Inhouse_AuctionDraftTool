@@ -38,6 +38,7 @@ export const DEFAULT_DRAFT = {
   rouboAtivo:  true,
   leilaoReservas: false,
   timerDuracao: 60,
+  volumeSons:   80,
 }
 
 export const DEFAULT_CONTEUDO = {

@@ -429,7 +429,19 @@ export default function Admin() {
               <NumberField label="Máximo de players"    value={draft.maxPlayers}  min={draft.minPlayers} max={15}           onChange={v => setDraftNum('maxPlayers', v)} />
               <ToggleRow label="Roubo ativo" desc="Capitães podem roubar players já comprados" checked={draft.rouboAtivo} onChange={() => toggleDraft('rouboAtivo')} />
               <NumberField label="Timer por turno (s)" value={draft.timerDuracao ?? 60} min={0} max={300} onChange={v => setDraftNum('timerDuracao', v)} />
-              <div style={{ fontSize: 12, color: 'var(--text3)', fontFamily: "'Barlow', sans-serif", marginTop: -8, paddingLeft: 2 }}>0 = sem timer. Ao expirar, auto-pick aleatório para o capitão da vez.</div>
+              <div style={{ fontSize: 12, color: 'var(--text3)', fontFamily: "'Barlow', sans-serif", marginTop: -8, paddingLeft: 2 }}>0 = sem timer. Ao expirar, pula o turno automaticamente.</div>
+              <div className="admin-field-row" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span className="admin-toggle-label" style={{ minWidth: 160 }}>Volume dos sons ({draft.volumeSons ?? 80}%)</span>
+                <input
+                  type="range" min={0} max={100} step={5}
+                  value={draft.volumeSons ?? 80}
+                  onChange={e => { setDraftNum('volumeSons', Number(e.target.value)); setSaved(false) }}
+                  style={{ flex: 1, accentColor: 'var(--gold)', cursor: 'pointer' }}
+                />
+                <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 13, color: 'var(--text2)', width: 36, textAlign: 'right' }}>
+                  {draft.volumeSons ?? 80}%
+                </span>
+              </div>
             </div>
           </section>
 

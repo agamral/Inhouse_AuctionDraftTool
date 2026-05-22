@@ -134,6 +134,7 @@ export default function Draft() {
 
   // Áudio de countdown — tenta MP3 primeiro, fallback para beeps sintéticos
   const audioCtxRef = useRef(null)
+  const volRef      = useRef(0.8) // atualizado a cada render com o valor atual
 
   function playCountdownBeeps() {
     try {
@@ -153,7 +154,7 @@ export default function Draft() {
         osc.type = 'sine'
         osc.frequency.setValueAtTime(freq, t)
         gain.gain.setValueAtTime(0, t)
-        gain.gain.linearRampToValueAtTime(0.35, t + 0.01)
+        gain.gain.linearRampToValueAtTime(0.35 * volRef.current, t + 0.01)
         gain.gain.exponentialRampToValueAtTime(0.001, t + dur)
         osc.start(t)
         osc.stop(t + dur + 0.05)
@@ -223,6 +224,7 @@ export default function Draft() {
       if (restante <= 11 && restante > 0 && audioTurnRef.current !== tsKey) {
         audioTurnRef.current = tsKey
         if (audioRef.current) {
+          audioRef.current.volume = volRef.current
           audioRef.current.currentTime = 0
           audioRef.current.play().catch(() => playCountdownBeeps())
         } else {
@@ -299,8 +301,11 @@ export default function Draft() {
     return true
   })
 
+  volRef.current = (draftConfig.volumeSons ?? 80) / 100
+
   function playPickSound() {
     if (audioPickRef.current) {
+      audioPickRef.current.volume = volRef.current
       audioPickRef.current.currentTime = 0
       audioPickRef.current.play().catch(() => {})
     }
@@ -308,6 +313,7 @@ export default function Draft() {
 
   function playStealSound() {
     if (audioStealRef.current) {
+      audioStealRef.current.volume = volRef.current
       audioStealRef.current.currentTime = 0
       audioStealRef.current.play().catch(() => {})
     }
