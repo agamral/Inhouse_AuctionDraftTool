@@ -45,6 +45,9 @@ export default function Draft() {
   const [guiaAberto,     setGuiaAberto]     = useState(false)
   const [tempoRestante,  setTempoRestante]  = useState(null)
   const [audioUnlocked,  setAudioUnlocked]  = useState(false)
+  const [turnAlert,      setTurnAlert]      = useState(false)
+  const [turnAlertOpacity, setTurnAlertOpacity] = useState(1)
+  const prevIsMyTurnRef = useRef(false)
   const lastActionTsRef  = useRef(null)
   const autoPickRef      = useRef(null)
   const liveRef          = useRef({})
@@ -204,6 +207,18 @@ export default function Draft() {
       document.removeEventListener('keydown', unlock)
     }
   }, [])
+
+  // Alerta visual quando chega o turno do capitão
+  useEffect(() => {
+    if (isMyTurn && !prevIsMyTurnRef.current && draftState.status === 'rodando') {
+      setTurnAlert(true)
+      setTurnAlertOpacity(1)
+      const fade = setTimeout(() => setTurnAlertOpacity(0), 1800)
+      const hide = setTimeout(() => setTurnAlert(false), 2400)
+      return () => { clearTimeout(fade); clearTimeout(hide) }
+    }
+    prevIsMyTurnRef.current = isMyTurn
+  }, [isMyTurn, draftState.status]) // eslint-disable-line
 
   // ── Timer de turno (deve ficar antes de qualquer return condicional) ─────────
   useEffect(() => {
@@ -655,6 +670,33 @@ export default function Draft() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 65px)' }}>
 
+      {/* Alerta de turno — só para o capitão da vez */}
+      {turnAlert && myCap && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 999, pointerEvents: 'none',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: `rgba(0,0,0,${0.65 * turnAlertOpacity})`,
+          opacity: turnAlertOpacity, transition: 'opacity 0.6s ease-out',
+        }}>
+          <div style={{ textAlign: 'center', userSelect: 'none' }}>
+            <div style={{ fontSize: 72, lineHeight: 1, marginBottom: 12 }}>{myCap.emoji}</div>
+            <div style={{
+              fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 52,
+              color: myCap.cor, textShadow: `0 0 40px ${myCap.cor}99`,
+              letterSpacing: '0.05em',
+            }}>
+              SUA VEZ!
+            </div>
+            <div style={{
+              fontFamily: "'Barlow Condensed', sans-serif", fontSize: 18,
+              color: 'var(--text2)', marginTop: 8, letterSpacing: '0.1em', textTransform: 'uppercase',
+            }}>
+              {myCap.nome}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Sub-header */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -774,69 +816,59 @@ export default function Draft() {
             </div>
           )}
 
-          {/* Disponíveis */}
+          {/* ── Roubáveis — no topo, com destaque vermelho ── */}
+          {draftConfig.rouboAtivo && stealablePlayers.length > 0 && (
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <SectionLabel accent="red">⚔ {t('draft.steal')} ({stealablePlayers.length})</SectionLabel>
+                <button
+                  onClick={() => setGuiaAberto(v => !v)}
+                  style={{ background: 'none', border: '1px solid var(--border2)', borderRadius: 10, padding: '1px 8px', fontSize: 11, color: 'var(--text2)', cursor: 'pointer', fontFamily: "'Barlow Condensed', sans-serif" }}
+                >
+                  ? regras
+                </button>
+              </div>
+              {guiaAberto && (
+                <div style={{ marginBottom: 10, padding: '8px 12px', borderRadius: 7, background: 'rgba(224,85,85,0.06)', border: '1px solid rgba(224,85,85,0.2)', fontFamily: "'Barlow Condensed', sans-serif", fontSize: 12, color: 'var(--text2)', lineHeight: 1.7 }}>
+                  <div style={{ color: 'var(--red)', fontWeight: 700, marginBottom: 3, fontSize: 13 }}>⚔ Como funciona o roubo</div>
+                  <div>• Custo = <strong>preço atual</strong> do jogador</div>
+                  <div>• Dono anterior recebe de volta o que pagou</div>
+                  <div>• A cada roubo o preço sobe +1</div>
+                  {fase === 'reservas' && <div>• Apenas reservas podem ser roubadas nesta fase</div>}
+                </div>
+              )}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(148px, 1fr))', gap: 8 }}>
+                {stealablePlayers.map(p => {
+                  const ps       = playerState[p.id]
+                  const preco    = ps?.preco ?? 0
+                  const owner    = captains[ps?.ownedBy]
+                  const rosterOk = fase === 'reservas'
+                    ? Object.keys(myCap?.reservas ?? {}).length < 2
+                    : Object.keys(myCap?.roster ?? {}).length + 1 < draftConfig.maxPlayers
+                  const canSteal = isMyTurn && !myCap?.exitou && (myCap?.moedas ?? 0) >= preco && rosterOk
+                  const onSteal  = fase === 'reservas' ? () => roubarReserva(p) : () => roubar(p)
+                  return <PlayerCard key={p.id} player={p} preco={preco} canAct={canSteal} onAct={onSteal} isSteal owner={owner} privacidade={privacidade} t={t} />
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ── Disponíveis ── */}
           <SectionLabel>{t('draft.available')} ({availablePlayers.length})</SectionLabel>
           {availablePlayers.length === 0 && players.length === 0 && (
             <p style={{ color: 'var(--text2)', fontSize: '13px' }}>Carregando jogadores...</p>
           )}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px' }}>
-            {availablePlayers.map((p) => {
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(148px, 1fr))', gap: 8, marginBottom: 16 }}>
+            {availablePlayers.map(p => {
               const preco  = playerState[p.id]?.preco ?? 0
               const canBuy = isMyTurn && !myCap?.exitou &&
                 (fase === 'reservas'
                   ? (myCap?.moedas ?? 0) >= preco && Object.keys(myCap?.reservas ?? {}).length < 2
                   : (myCap?.moedas ?? 0) >= preco && Object.keys(myCap?.roster ?? {}).length + 1 < draftConfig.maxPlayers)
               const onAct  = fase === 'reservas' ? () => comprarReserva(p) : () => comprar(p)
-              return <PlayerRow key={p.id} player={p} preco={preco} canAct={canBuy} onAct={onAct} privacidade={privacidade} t={t} />
+              return <PlayerCard key={p.id} player={p} preco={preco} canAct={canBuy} onAct={onAct} privacidade={privacidade} t={t} />
             })}
           </div>
-
-          {/* Roubáveis */}
-          {draftConfig.rouboAtivo && stealablePlayers.length > 0 && (() => {
-            return (
-              <>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                  <SectionLabel accent="red">{t('draft.steal')} ({stealablePlayers.length})</SectionLabel>
-                  <button
-                    onClick={() => setGuiaAberto(v => !v)}
-                    style={{ background: 'none', border: '1px solid var(--border2)', borderRadius: 10, padding: '1px 8px', fontSize: 11, color: 'var(--text2)', cursor: 'pointer', fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.04em' }}
-                  >
-                    ? regras
-                  </button>
-                </div>
-                {guiaAberto && (
-                  <div style={{ marginBottom: 12, padding: '10px 14px', borderRadius: 7, background: 'rgba(224,85,85,0.06)', border: '1px solid rgba(224,85,85,0.2)', fontFamily: "'Barlow Condensed', sans-serif", fontSize: 12, color: 'var(--text2)', lineHeight: 1.7 }}>
-                    <div style={{ color: 'var(--red)', fontWeight: 700, marginBottom: 4, fontSize: 13 }}>⚔ Como funciona o roubo</div>
-                    <div>• Custo do roubo = <strong>preço atual</strong> do jogador</div>
-                    <div>• O dono anterior recebe de volta o que pagou originalmente</div>
-                    <div>• O dono anterior ganha um <strong>turno extra</strong> imediatamente</div>
-                    <div>• A cada roubo, o preço do jogador sobe +1</div>
-                    {fase === 'reservas' && <div>• Apenas reservas podem ser roubadas nesta fase</div>}
-                  </div>
-                )}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {stealablePlayers.map((p) => {
-                    const ps       = playerState[p.id]
-                    const preco    = ps?.preco ?? 0
-                    const owner    = captains[ps?.ownedBy]
-                    const rosterOk = fase === 'reservas'
-                      ? Object.keys(myCap?.reservas ?? {}).length < 2
-                      : Object.keys(myCap?.roster ?? {}).length + 1 < draftConfig.maxPlayers
-                    const canSteal = isMyTurn && !myCap?.exitou &&
-                                     (myCap?.moedas ?? 0) >= preco && rosterOk
-                    const onSteal  = fase === 'reservas' ? () => roubarReserva(p) : () => roubar(p)
-                    return (
-                      <PlayerRow
-                        key={p.id} player={p} preco={preco}
-                        canAct={canSteal} onAct={onSteal}
-                        isSteal owner={owner} privacidade={privacidade} t={t}
-                      />
-                    )
-                  })}
-                </div>
-              </>
-            )
-          })()}
         </div>
 
         {/* Coluna direita */}
@@ -1284,7 +1316,85 @@ function parseLinguasDraft(raw) {
   return String(raw).split(',').map(l => l.trim().toLowerCase()).filter(Boolean)
 }
 
+function PlayerCard({ player, preco, canAct, onAct, isSteal, owner, privacidade, t }) {
+  const nomeExibido = privacidade ? `${player.rolePrimaria ?? 'Jogador'}` : player.discord
+  const linguas     = parseLinguasDraft(player.linguas)
+  const eloCfg      = ELO_CONFIG[player.elo] ?? {}
+  const accentCor   = isSteal ? (owner?.cor ?? '#e05555') : null
+
+  return (
+    <div style={{
+      borderRadius: 8, overflow: 'hidden', display: 'flex', flexDirection: 'column',
+      border: `1px solid ${accentCor ? accentCor + '55' : 'var(--border)'}`,
+      background: accentCor ? accentCor + '08' : 'var(--bg2)',
+    }}>
+      {/* Dono (só roubáveis) */}
+      {isSteal && owner && (
+        <div style={{
+          padding: '3px 8px', background: owner.cor + '20',
+          borderBottom: `1px solid ${owner.cor}30`,
+          fontFamily: "'Barlow Condensed', sans-serif", fontSize: 10,
+          letterSpacing: '0.06em', color: owner.cor,
+          display: 'flex', alignItems: 'center', gap: 4,
+        }}>
+          {owner.emoji} {owner.nome}
+        </div>
+      )}
+
+      {/* Conteúdo */}
+      <div style={{ padding: '8px 10px', flex: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
+        <div style={{
+          fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 14,
+          color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+        }}>
+          {nomeExibido}
+          {player.premium && <span style={{ marginLeft: 4, fontSize: 9, padding: '1px 4px', borderRadius: 2, background: 'rgba(201,168,76,0.15)', border: '1px solid rgba(201,168,76,0.25)', color: 'var(--gold)' }}>★</span>}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <EloIcon elo={player.elo} size={11} />
+          <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 11, color: eloCfg.color }}>{player.elo}</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <RoleIcon role={player.rolePrimaria} size={13} />
+          <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 11, color: 'var(--text2)' }}>{player.rolePrimaria}</span>
+        </div>
+        {linguas.length > 0 && (
+          <div style={{ display: 'flex', gap: 3, marginTop: 2 }}>
+            {linguas.map(l => {
+              const src = LINGUA_FLAG_CDN_DRAFT[l]
+              return src
+                ? <img key={l} src={src} alt={l} style={{ width: 16, height: 11, objectFit: 'cover', borderRadius: 1 }} />
+                : <span key={l} style={{ fontSize: 9, color: 'var(--text3)' }}>{l.toUpperCase()}</span>
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Footer */}
+      <div style={{
+        padding: '5px 10px', borderTop: `1px solid ${accentCor ? accentCor + '22' : 'var(--border)'}`,
+        background: 'rgba(0,0,0,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      }}>
+        <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 12, color: 'var(--gold)', fontWeight: 700 }}>🪙 {preco}</span>
+        <button
+          className={`btn${isSteal ? '' : ' primary'}`}
+          style={{
+            padding: '2px 9px', fontSize: 11,
+            opacity: canAct ? 1 : 0.35, cursor: canAct ? 'pointer' : 'not-allowed',
+            ...(isSteal && canAct ? { color: 'var(--red)', borderColor: 'rgba(224,85,85,0.4)' } : {}),
+          }}
+          disabled={!canAct}
+          onClick={onAct}
+        >
+          {isSteal ? t('draft.steal') : t('draft.buy')}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function PlayerRow({ player, preco, canAct, onAct, isSteal, owner, privacidade, t }) {
+  // mantido para compatibilidade com espectador e outras telas
   const borderColor = isSteal ? `${owner?.cor ?? 'var(--border)'}55` : 'var(--border)'
   const bgColor     = isSteal ? `${owner?.cor ?? 'transparent'}08`   : 'var(--bg2)'
   const nomeExibido = privacidade ? `${player.rolePrimaria ?? 'Jogador'}` : player.discord
