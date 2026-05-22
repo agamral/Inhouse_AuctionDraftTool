@@ -125,9 +125,7 @@ export default function Draft() {
     window.history.replaceState({}, '', window.location.pathname)
   }, [captains, captainSession, hasCaptainLink, captainLink])
 
-  // Áudio de countdown via AudioContext (funciona sem arquivo externo)
-  // Tenta carregar /sounds/ui_bnet_draft_countdownten01.mp3 se disponível;
-  // caso contrário usa beeps sintéticos (10 beeps, mudança de tom no 5º)
+  // Áudio de countdown — tenta MP3 primeiro, fallback para beeps sintéticos
   const audioCtxRef = useRef(null)
 
   function playCountdownBeeps() {
@@ -160,18 +158,28 @@ export default function Draft() {
   }
 
   useEffect(() => {
-    // Desbloqueia AudioContext na primeira interação do usuário
+    // Tenta carregar o MP3; se falhar, mantém fallback de beeps sintéticos
+    const mp3 = new Audio('/sounds/ui_bnet_draft_countdownten01.mp3')
+    mp3.preload = 'auto'
+    mp3.onerror = () => console.info('[Draft] MP3 não encontrado, usando beeps sintéticos')
+    mp3.oncanplaythrough = () => { audioRef.current = mp3 }
+
+    // Desbloqueia na primeira interação (MP3 e AudioContext)
     const unlock = () => {
       try {
-        if (!audioCtxRef.current) {
+        if (!audioCtxRef.current)
           audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)()
-        }
-        audioCtxRef.current.resume().then(() => setAudioUnlocked(true)).catch(() => {})
+        audioCtxRef.current.resume().catch(() => {})
       } catch (e) {}
+      if (audioRef.current) {
+        audioRef.current.play().then(() => { audioRef.current.pause(); audioRef.current.currentTime = 0 }).catch(() => {})
+      }
+      setAudioUnlocked(true)
     }
     document.addEventListener('click',   unlock, { once: true })
     document.addEventListener('keydown', unlock, { once: true })
     return () => {
+      mp3.src = ''
       document.removeEventListener('click',   unlock)
       document.removeEventListener('keydown', unlock)
     }
@@ -195,7 +203,12 @@ export default function Draft() {
       const tsKey = draftState.turnoIniciadoEm ?? draftState.turnoAtual ?? 'now'
       if (restante <= 10 && restante > 0 && audioTurnRef.current !== tsKey) {
         audioTurnRef.current = tsKey
-        playCountdownBeeps()
+        if (audioRef.current) {
+          audioRef.current.currentTime = 0
+          audioRef.current.play().catch(() => playCountdownBeeps())
+        } else {
+          playCountdownBeeps()
+        }
       }
 
       if (restante > 0) return
