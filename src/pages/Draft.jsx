@@ -125,23 +125,53 @@ export default function Draft() {
     window.history.replaceState({}, '', window.location.pathname)
   }, [captains, captainSession, hasCaptainLink, captainLink])
 
-  // Preload do áudio de countdown (arquivo em /public/sounds/)
-  useEffect(() => {
-    const a = new Audio('/sounds/ui_bnet_draft_countdownten01.wav')
-    a.preload = 'auto'
-    a.onerror = () => console.error('[Draft] Falha ao carregar áudio de countdown')
-    audioRef.current = a
+  // Áudio de countdown via AudioContext (funciona sem arquivo externo)
+  // Tenta carregar /sounds/ui_bnet_draft_countdownten01.mp3 se disponível;
+  // caso contrário usa beeps sintéticos (10 beeps, mudança de tom no 5º)
+  const audioCtxRef = useRef(null)
 
+  function playCountdownBeeps() {
+    try {
+      if (!audioCtxRef.current) {
+        audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)()
+      }
+      const ctx = audioCtxRef.current
+      if (ctx.state === 'suspended') ctx.resume()
+      for (let i = 0; i < 10; i++) {
+        const t    = ctx.currentTime + i           // 1 beep por segundo
+        const freq = i < 5 ? 660 : 880            // tom mais agudo nos últimos 5
+        const dur  = i === 9 ? 0.4 : 0.08         // último beep mais longo
+        const osc  = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.connect(gain)
+        gain.connect(ctx.destination)
+        osc.type = 'sine'
+        osc.frequency.setValueAtTime(freq, t)
+        gain.gain.setValueAtTime(0, t)
+        gain.gain.linearRampToValueAtTime(0.35, t + 0.01)
+        gain.gain.exponentialRampToValueAtTime(0.001, t + dur)
+        osc.start(t)
+        osc.stop(t + dur + 0.05)
+      }
+      setAudioUnlocked(true)
+    } catch (e) {
+      console.warn('[Draft] AudioContext indisponível:', e)
+    }
+  }
+
+  useEffect(() => {
+    // Desbloqueia AudioContext na primeira interação do usuário
     const unlock = () => {
-      a.play()
-        .then(() => { a.pause(); a.currentTime = 0; setAudioUnlocked(true) })
-        .catch(e => console.warn('[Draft] Falha ao desbloquear áudio:', e))
+      try {
+        if (!audioCtxRef.current) {
+          audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)()
+        }
+        audioCtxRef.current.resume().then(() => setAudioUnlocked(true)).catch(() => {})
+      } catch (e) {}
     }
     document.addEventListener('click',   unlock, { once: true })
     document.addEventListener('keydown', unlock, { once: true })
-
     return () => {
-      a.pause()
       document.removeEventListener('click',   unlock)
       document.removeEventListener('keydown', unlock)
     }
@@ -161,12 +191,11 @@ export default function Draft() {
       const restante = Math.max(0, dur - elapsed)
       setTempoRestante(restante)
 
-      // Dispara o áudio de countdown quando faltam ~11s (1s de silêncio inicial alinha o 1º beep em 10s)
+      // Dispara beeps de countdown quando faltam 10s
       const tsKey = draftState.turnoIniciadoEm ?? draftState.turnoAtual ?? 'now'
-      if (restante <= 11 && audioRef.current && audioTurnRef.current !== tsKey) {
+      if (restante <= 10 && restante > 0 && audioTurnRef.current !== tsKey) {
         audioTurnRef.current = tsKey
-        audioRef.current.currentTime = 0
-        audioRef.current.play().catch(() => {})
+        playCountdownBeeps()
       }
 
       if (restante > 0) return
@@ -176,14 +205,7 @@ export default function Draft() {
     }
     tick()
     const iv = setInterval(tick, 500)
-    return () => {
-      clearInterval(iv)
-      // Para o áudio quando o turno muda (novo turno ou draft encerrado)
-      if (audioRef.current) {
-        audioRef.current.pause()
-        audioRef.current.currentTime = 0
-      }
-    }
+    return () => clearInterval(iv)
   }, [draftState.turnoIniciadoEm, draftState.status, draftConfig.timerDuracao]) // eslint-disable-line
 
   // Bloqueio público — bypass se vier de link personalizado (com ou sem draftAtivo)
