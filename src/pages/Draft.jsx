@@ -85,12 +85,17 @@ export default function Draft() {
     }
   }, [capitao, captains]) // eslint-disable-line
 
-  // Acumula log local de ações
+  // Acumula log local de ações + toca som para todos os clientes
   useEffect(() => {
     const action = draftState.lastAction
     if (!action?.ts || action.ts === lastActionTsRef.current) return
     lastActionTsRef.current = action.ts
     setLogAcoes(prev => [action, ...prev].slice(0, 20))
+    if (action.type === 'steal') {
+      if (audioStealRef.current) { audioStealRef.current.currentTime = 0; audioStealRef.current.play().catch(() => {}) }
+    } else if (action.type === 'buy') {
+      if (audioPickRef.current)  { audioPickRef.current.currentTime  = 0; audioPickRef.current.play().catch(() => {})  }
+    }
   }, [draftState.lastAction?.ts]) // eslint-disable-line
 
   function handleLogin(session)  { setCaptainSession(session) }
@@ -383,7 +388,6 @@ export default function Draft() {
     }
 
     updates[`${ses}/state/turnoIniciadoEm`] = Date.now()
-    playPickSound()
     await update(ref(db), updates)
   }
 
@@ -445,7 +449,6 @@ export default function Draft() {
     }
 
     updates[`${ses}/state/turnoIniciadoEm`] = Date.now()
-    playStealSound()
     await update(ref(db), updates)
   }
 
@@ -495,7 +498,6 @@ export default function Draft() {
       }
     }
     updates[`${ses}/state/turnoIniciadoEm`] = Date.now()
-    playPickSound()
     await update(ref(db), updates)
   }
 
@@ -542,7 +544,6 @@ export default function Draft() {
       }
     }
     updates[`${ses}/state/turnoIniciadoEm`] = Date.now()
-    playStealSound()
     await update(ref(db), updates)
   }
 
