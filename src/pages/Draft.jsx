@@ -201,7 +201,7 @@ export default function Draft() {
 
       // Dispara beeps de countdown quando faltam 10s
       const tsKey = draftState.turnoIniciadoEm ?? draftState.turnoAtual ?? 'now'
-      if (restante <= 10 && restante > 0 && audioTurnRef.current !== tsKey) {
+      if (restante <= 11 && restante > 0 && audioTurnRef.current !== tsKey) {
         audioTurnRef.current = tsKey
         if (audioRef.current) {
           audioRef.current.currentTime = 0
