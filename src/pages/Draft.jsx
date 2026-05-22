@@ -44,6 +44,7 @@ export default function Draft() {
   const [logAcoes,       setLogAcoes]       = useState([])
   const [guiaAberto,     setGuiaAberto]     = useState(false)
   const [tempoRestante,  setTempoRestante]  = useState(null)
+  const [audioUnlocked,  setAudioUnlocked]  = useState(false)
   const lastActionTsRef  = useRef(null)
   const autoPickRef      = useRef(null)
   const liveRef          = useRef({})
@@ -128,14 +129,13 @@ export default function Draft() {
   useEffect(() => {
     const a = new Audio('/sounds/ui_bnet_draft_countdownten01.wav')
     a.preload = 'auto'
+    a.onerror = () => console.error('[Draft] Falha ao carregar áudio de countdown')
     audioRef.current = a
 
-    // Desbloqueia autoplay na primeira interação do usuário com a página
-    // (Chrome/Firefox bloqueiam áudio programático sem gesto prévio do usuário)
     const unlock = () => {
-      a.play().then(() => { a.pause(); a.currentTime = 0 }).catch(() => {})
-      document.removeEventListener('click',   unlock)
-      document.removeEventListener('keydown', unlock)
+      a.play()
+        .then(() => { a.pause(); a.currentTime = 0; setAudioUnlocked(true) })
+        .catch(e => console.warn('[Draft] Falha ao desbloquear áudio:', e))
     }
     document.addEventListener('click',   unlock, { once: true })
     document.addEventListener('keydown', unlock, { once: true })
@@ -662,6 +662,18 @@ export default function Draft() {
             <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: '12px', color: 'var(--gold)', border: '1px solid rgba(201,168,76,0.25)', padding: '3px 10px', borderRadius: '4px', background: 'var(--gold-dim)' }}>
               🪙 {myCap.moedas} {t('draft.coins')}
             </div>
+          )}
+          {(draftConfig.timerDuracao ?? 60) > 0 && !audioUnlocked && (
+            <button
+              onClick={() => {}} // o click em si já dispara o unlock via document listener
+              title="Clique para ativar o som do countdown"
+              style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 11, padding: '3px 9px', borderRadius: 4, border: '1px solid var(--border2)', background: 'var(--bg3)', color: 'var(--text2)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+            >
+              🔇 Ativar som
+            </button>
+          )}
+          {(draftConfig.timerDuracao ?? 60) > 0 && audioUnlocked && (
+            <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 11, color: 'var(--text3)' }}>🔊</span>
           )}
           {isAdmin && <AdminDraftBar draftState={draftState} sortedCaptains={sortedCaptains} captains={captains} draftConfig={draftConfig} idPublico={idPublico} compact />}
         </div>
