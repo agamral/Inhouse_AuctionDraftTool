@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import { ref, onValue } from 'firebase/database'
 import { db } from '../firebase/database'
 import { useTranslation } from 'react-i18next'
@@ -404,35 +404,39 @@ export default function Espectador() {
 }
 
 // ── Celebration overlay (framer-motion) ──────────────────────
-// Etapas:
-//   1. Mounta com layoutId — framer-motion anima do card pool até o centro
-//   2. Permanece no centro com a info da ação
-//   3. No exit: anima até a posição do card do time (data-team-id)
+// Animação em 3 etapas:
+//   1. Card aparece NA POSIÇÃO da origem (pool ou time roubado)
+//   2. Anima até o centro com spring
+//   3. No exit: anima até o time que pickou (data-team-id)
 function Celebration({ action, privacidade, t }) {
-  const cardRef     = useRef(null)
-  const [exitDelta, setExitDelta] = useState(null)
   const isSteal     = action.type === 'steal'
   const cor         = action.byTeamCor || '#f0cc6e'
   const nomeExibido = privacidade ? 'Jogador' : action.playerDiscord
   const actionLabel = isSteal ? `⚔ ${t('espectador.steal_label')}` : `✓ ${t('espectador.buy_label')}`
 
-  // Pouco antes do exit, mede a posição do time pra animação ir até lá
-  useEffect(() => {
-    const measure = () => {
-      const teamEl = document.querySelector(`[data-team-id="${action.byTeamId}"]`)
-      const cardEl = cardRef.current
-      if (!teamEl || !cardEl) return
-      const tr = teamEl.getBoundingClientRect()
-      const cr = cardEl.getBoundingClientRect()
-      setExitDelta({
-        x: (tr.left + tr.width / 2) - (cr.left + cr.width / 2),
-        y: (tr.top  + tr.height / 2) - (cr.top  + cr.height / 2),
-      })
+  // Mede source (origem) e target (destino) síncronamente antes do paint
+  const [positions, setPositions] = useState(null)
+  useLayoutEffect(() => {
+    const cx = window.innerWidth / 2
+    const cy = window.innerHeight / 2
+    const measure = (el) => {
+      if (!el) return null
+      const r = el.getBoundingClientRect()
+      return { x: r.left + r.width/2 - cx, y: r.top + r.height/2 - cy }
     }
-    // Medir após a animação de entrada estabilizar (~700ms)
-    const t1 = setTimeout(measure, 700)
-    return () => clearTimeout(t1)
-  }, [action.byTeamId])
+    // Origem: roubo vem do time anterior, compra vem do pool
+    const sourceEl = isSteal && action.fromTeamId
+      ? document.querySelector(`[data-team-id="${action.fromTeamId}"]`)
+      : action.playerId
+        ? document.querySelector(`[data-player-id="${action.playerId}"]`)
+        : null
+    // Destino: sempre o time que pickou
+    const targetEl = document.querySelector(`[data-team-id="${action.byTeamId}"]`)
+    setPositions({
+      source: measure(sourceEl) ?? { x: 0, y: 0 },
+      target: measure(targetEl) ?? { x: 0, y: 0 },
+    })
+  }, [action.byTeamId, action.fromTeamId, action.playerId, isSteal])
 
   return (
     <motion.div
@@ -446,35 +450,37 @@ function Celebration({ action, privacidade, t }) {
         background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(3px)', pointerEvents: 'none',
       }}
     >
-      <motion.div
-        ref={cardRef}
-        layoutId={action.playerId ? `player-${action.playerId}` : undefined}
-        exit={exitDelta ? { x: exitDelta.x, y: exitDelta.y, scale: 0.1, opacity: 0 } : { scale: 0.5, opacity: 0 }}
-        transition={{ type: 'spring', stiffness: 180, damping: 22, duration: 0.6 }}
-        className="celebration-card"
-        style={{ '--cel-color': cor }}
-      >
-        <div className="celebration-action">{actionLabel}</div>
-        <div className="celebration-name">{nomeExibido}</div>
-        <div className="celebration-meta">
-          <span style={{ color: ELO_CONFIG[action.playerElo]?.color }}>{action.playerElo}</span>
-          <span style={{ opacity: 0.3 }}>·</span>
-          <span>{action.playerRole}</span>
-          <span style={{ opacity: 0.3 }}>·</span>
-          <span style={{ color: 'var(--gold)' }}>🪙 {action.preco}</span>
-        </div>
-        <div className="celebration-team">
-          {action.byTeamEmoji} {action.byTeamNome}
-        </div>
-        {isSteal && action.fromTeamNome && (
-          <div className="celebration-from">
-            {t('espectador.stolen_from')}{' '}
-            <span style={{ color: action.fromTeamCor }}>
-              {action.fromTeamEmoji} {action.fromTeamNome}
-            </span>
+      {positions && (
+        <motion.div
+          initial={{ x: positions.source.x, y: positions.source.y, scale: 0.3, opacity: 0 }}
+          animate={{ x: 0, y: 0, scale: 1, opacity: 1 }}
+          exit={{ x: positions.target.x, y: positions.target.y, scale: 0.15, opacity: 0 }}
+          transition={{ type: 'spring', stiffness: 180, damping: 24, mass: 0.9 }}
+          className="celebration-card"
+          style={{ '--cel-color': cor }}
+        >
+          <div className="celebration-action">{actionLabel}</div>
+          <div className="celebration-name">{nomeExibido}</div>
+          <div className="celebration-meta">
+            <span style={{ color: ELO_CONFIG[action.playerElo]?.color }}>{action.playerElo}</span>
+            <span style={{ opacity: 0.3 }}>·</span>
+            <span>{action.playerRole}</span>
+            <span style={{ opacity: 0.3 }}>·</span>
+            <span style={{ color: 'var(--gold)' }}>🪙 {action.preco}</span>
           </div>
-        )}
-      </motion.div>
+          <div className="celebration-team">
+            {action.byTeamEmoji} {action.byTeamNome}
+          </div>
+          {isSteal && action.fromTeamNome && (
+            <div className="celebration-from">
+              {t('espectador.stolen_from')}{' '}
+              <span style={{ color: action.fromTeamCor }}>
+                {action.fromTeamEmoji} {action.fromTeamNome}
+              </span>
+            </div>
+          )}
+        </motion.div>
+      )}
     </motion.div>
   )
 }
@@ -532,9 +538,9 @@ function PlayerPool({ players, overrides, playerState, teamCaptainNames, privaci
           const eloColor = ELO_CONFIG[p.elo]?.color ?? 'rgba(255,255,255,0.45)'
           const linguas  = parseLinguas(p.linguas)
           return (
-            <motion.div
+            <div
               key={p.id}
-              layoutId={`player-${p.id}`}
+              data-player-id={p.id}
               className={`spec-player-card${sold ? ' sold' : ''}`}
             >
               <div className="spec-player-card-name">
@@ -555,7 +561,7 @@ function PlayerPool({ players, overrides, playerState, teamCaptainNames, privaci
                   })}
                 </div>
               )}
-            </motion.div>
+            </div>
           )
         })}
       </div>
