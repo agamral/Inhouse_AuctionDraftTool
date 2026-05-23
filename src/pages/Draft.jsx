@@ -15,12 +15,26 @@ import PaginaInativa from '../components/PaginaInativa'
 const DEFAULT_STATE  = { status: 'aguardando', turnoAtual: null, turnoExtra: null, rodada: 1 }
 const DEFAULT_CONFIG = { moedas: 15, minPlayers: 5, maxPlayers: 7 }
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches
+  )
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)')
+    const handler = e => setIsMobile(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
+  return isMobile
+}
+
 export default function Draft() {
   const { t } = useTranslation()
   const { isAdmin, capitao } = useAuth()
   const conteudo = useConteudo()
   const modules = useModules()
   const { idPublico } = useCampeonato()
+  const isMobile = useIsMobile()
 
   const [captainSession, setCaptainSession] = useState(() => {
     try { return JSON.parse(sessionStorage.getItem('captainSession')) } catch { return null }
@@ -668,7 +682,7 @@ export default function Draft() {
 
   // ── Draft ativo ───────────────────────────────────────────
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 65px)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: isMobile ? 'auto' : 'calc(100vh - 65px)', minHeight: 'calc(100vh - 65px)' }}>
 
       {/* Alerta de turno — só para o capitão da vez */}
       {turnAlert && myCap && (
@@ -699,9 +713,13 @@ export default function Draft() {
 
       {/* Sub-header */}
       <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '10px 24px', borderBottom: '1px solid var(--border)',
-        background: 'var(--bg2)', gap: '12px', flexWrap: 'wrap',
+        display: 'flex', alignItems: 'center',
+        justifyContent: isMobile ? 'center' : 'space-between',
+        padding: isMobile ? '8px 12px' : '10px 24px',
+        borderBottom: '1px solid var(--border)',
+        background: 'var(--bg2)',
+        gap: isMobile ? '8px' : '12px',
+        flexWrap: 'wrap',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: '11px', letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text2)' }}>
@@ -772,11 +790,23 @@ export default function Draft() {
         )
       })()}
 
-      {/* Layout 3 colunas */}
-      <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr 260px', flex: 1, overflow: 'hidden' }}>
+      {/* Layout 3 colunas (1 coluna no mobile) */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: isMobile ? '1fr' : '260px 1fr 260px',
+        flex: 1,
+        overflow: isMobile ? 'visible' : 'hidden',
+      }}>
 
-        {/* Coluna esquerda */}
-        <div style={{ borderRight: '1px solid var(--border)', background: 'var(--bg2)', overflowY: 'auto', padding: '12px' }}>
+        {/* Coluna esquerda (outros times) */}
+        <div style={{
+          borderRight: isMobile ? 'none' : '1px solid var(--border)',
+          borderTop:   isMobile ? '1px solid var(--border)' : 'none',
+          background: 'var(--bg2)',
+          overflowY: isMobile ? 'visible' : 'auto',
+          padding: '12px',
+          order: isMobile ? 3 : 0,
+        }}>
           <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: '10px', letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text2)', padding: '4px 6px 12px' }}>
             {t('draft.teams')}
           </div>
@@ -792,8 +822,12 @@ export default function Draft() {
           ))}
         </div>
 
-        {/* Centro — jogadores */}
-        <div style={{ overflowY: 'auto', padding: '20px 24px' }}>
+        {/* Centro — jogadores (primeiro no mobile) */}
+        <div style={{
+          overflowY: isMobile ? 'visible' : 'auto',
+          padding: isMobile ? '14px 14px 20px' : '20px 24px',
+          order: isMobile ? 1 : 0,
+        }}>
           {/* Badge de fase */}
           <div style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', padding: '3px 10px', borderRadius: 4, fontWeight: 700,
@@ -837,7 +871,7 @@ export default function Draft() {
                   {fase === 'reservas' && <div>• Apenas reservas podem ser roubadas nesta fase</div>}
                 </div>
               )}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(148px, 1fr))', gap: 8 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fill, minmax(${isMobile ? 140 : 148}px, 1fr))`, gap: 8 }}>
                 {stealablePlayers.map(p => {
                   const ps       = playerState[p.id]
                   const preco    = ps?.preco ?? 0
@@ -858,7 +892,7 @@ export default function Draft() {
           {availablePlayers.length === 0 && players.length === 0 && (
             <p style={{ color: 'var(--text2)', fontSize: '13px' }}>Carregando jogadores...</p>
           )}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(148px, 1fr))', gap: 8, marginBottom: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fill, minmax(${isMobile ? 140 : 148}px, 1fr))`, gap: 8, marginBottom: 16 }}>
             {availablePlayers.map(p => {
               const preco  = playerState[p.id]?.preco ?? 0
               const canBuy = isMyTurn && !myCap?.exitou &&
@@ -871,8 +905,16 @@ export default function Draft() {
           </div>
         </div>
 
-        {/* Coluna direita */}
-        <div style={{ borderLeft: '1px solid var(--border)', background: 'var(--bg2)', overflowY: 'auto', padding: '12px', display: 'flex', flexDirection: 'column', gap: 0 }}>
+        {/* Coluna direita (meu time + log) */}
+        <div style={{
+          borderLeft: isMobile ? 'none' : '1px solid var(--border)',
+          borderTop:  isMobile ? '1px solid var(--border)' : 'none',
+          background: 'var(--bg2)',
+          overflowY: isMobile ? 'visible' : 'auto',
+          padding: '12px',
+          display: 'flex', flexDirection: 'column', gap: 0,
+          order: isMobile ? 2 : 0,
+        }}>
           <div style={{ padding: '4px 6px 12px' }}>&nbsp;</div>
           {rightTeams.map(([id, team]) => (
             <TeamCard key={id} id={id} team={team}
@@ -1375,11 +1417,11 @@ function PlayerCard({ player, preco, canAct, onAct, isSteal, owner, privacidade,
         padding: '5px 10px', borderTop: `1px solid ${accentCor ? accentCor + '22' : 'var(--border)'}`,
         background: 'rgba(0,0,0,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       }}>
-        <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 12, color: 'var(--gold)', fontWeight: 700 }}>🪙 {preco}</span>
+        <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 13, color: 'var(--gold)', fontWeight: 700 }}>🪙 {preco}</span>
         <button
           className={`btn${isSteal ? '' : ' primary'}`}
           style={{
-            padding: '2px 9px', fontSize: 11,
+            padding: '5px 12px', fontSize: 12, minHeight: 30,
             opacity: canAct ? 1 : 0.35, cursor: canAct ? 'pointer' : 'not-allowed',
             ...(isSteal && canAct ? { color: 'var(--red)', borderColor: 'rgba(224,85,85,0.4)' } : {}),
           }}
