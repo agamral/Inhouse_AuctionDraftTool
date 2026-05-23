@@ -619,14 +619,8 @@ function SpectatorTeam({ id, team, isActive, players, privacidade, fase = 'titul
         <div className="spec-team-progress-fill" style={{ width: `${Math.min(titTotal / 5, 1) * 100}%`, background: exitou ? 'var(--text3)' : team.cor }} />
       </div>
 
-      {/* Titulares — fundo dourado */}
+      {/* Titulares — fundo dourado (capitão fica só no header pra economizar espaço) */}
       <div className="spec-roster" style={{ background: 'rgba(201,168,76,0.04)', borderBottom: fase === 'reservas' ? '1px solid var(--border)' : 'none' }}>
-        {team.capitaoNome && (
-          <div className="spec-roster-entry captain">
-            <span>⚑ {team.capitaoNome}</span>
-            <span className="spec-cap-tag">CAP</span>
-          </div>
-        )}
         {roster.map(([pid, entry], idx) => <RosterEntry key={pid} entry={entry} idx={idx} playerByDiscord={playerByDiscord} privacidade={privacidade} />)}
         {titTotal === 0 && <div className="spec-roster-empty">{t('espectador.no_players')}</div>}
       </div>

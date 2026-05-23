@@ -35,6 +35,13 @@ export default function Navbar() {
     navigate('/')
   }
 
+  // Páginas de transmissão/overlay não devem mostrar navbar (precisamos do espaço todo)
+  const isFullscreenView = location.pathname.endsWith('/espectador')
+    || location.pathname.includes('/hero-draft/overlay')
+    || location.pathname.includes('/hero-draft/espectador')
+    || location.pathname.endsWith('/showmatch/espectador')
+  if (isFullscreenView) return null
+
   return (
     <header className="navbar">
       <button

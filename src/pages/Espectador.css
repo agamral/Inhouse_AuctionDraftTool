@@ -4,7 +4,7 @@
 .espectador {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 65px);
+  height: 100vh;
   overflow: hidden;
   position: relative;
   background: #080a0e;
