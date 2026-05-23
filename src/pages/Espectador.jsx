@@ -512,19 +512,18 @@ function PlayerPool({ players, overrides, playerState, teamCaptainNames, privaci
               <motion.div
                 key={p.id}
                 layout
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: sold ? 0.18 : 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
+                initial={{ opacity: 0, scale: 0.92 }}
+                animate={{ opacity: sold ? 0.2 : 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.85 }}
                 transition={{ duration: 0.35, ease: [0.2, 1, 0.4, 1] }}
                 className={`spec-player-card${sold ? ' sold' : ''}`}
               >
                 <div className="spec-player-card-name">
                   {privacidade ? `Jogador #${idx + 1}` : p.discord}
                 </div>
-                <div className="spec-player-card-meta" style={{ color: eloColor }}>
-                  <span>{p.elo}</span>
-                </div>
-                <div className="spec-player-card-meta">
+                <div className="spec-player-card-info">
+                  <span style={{ color: eloColor, fontWeight: 700 }}>{p.elo}</span>
+                  <span className="dot" />
                   <span>{p.rolePrimaria}</span>
                 </div>
                 {linguas.length > 0 && (
