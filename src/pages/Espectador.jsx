@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useModules } from '../hooks/useConfig'
 import { useAuth } from '../hooks/useAuth'
 import { useCampeonato } from '../contexts/CampeonatoContext'
-import { draftSessionPath, playerOverridesPath } from '../utils/campeonatoPaths'
+import { draftSessionPath, playerOverridesPath, configDraftPath } from '../utils/campeonatoPaths'
 import { useConteudo } from '../hooks/useConfig'
 import EloIcon, { ELO_CONFIG } from '../components/EloIcon'
 import RoleIcon from '../components/RoleIcon'
@@ -27,17 +27,30 @@ export default function Espectador() {
   const [overrides,   setOverrides]   = useState({})
   const [players,     setPlayers]     = useState([])
   const [announceKey, setAnnounceKey] = useState(null)
+  const [draftConfig, setDraftConfig] = useState({ timerDuracao: 60, volumeSons: 80 })
+  const [tempoRestante, setTempoRestante] = useState(null)
+  const [audioUnlocked, setAudioUnlocked] = useState(false)
 
   const cupName = conteudo.cupName || 'Copa Inhouse'
 
-  const prevActionTs = useRef(null)
+  const prevActionTs   = useRef(null)
+  const audioRef       = useRef(null)  // countdown MP3
+  const audioPickRef   = useRef(null)
+  const audioStealRef  = useRef(null)
+  const audioCtxRef    = useRef(null)
+  const volRef         = useRef(0.8)
+  const audioTurnRef   = useRef(null)
+
+  // Volume sempre atualizado (antes de qualquer early return)
+  volRef.current = (draftConfig.volumeSons ?? 80) / 100
 
   useEffect(() => {
     const u1 = onValue(ref(db, `${draftSessionPath(idPublico)}/captains`),    s => setCaptains(s.val() ?? {}))
     const u2 = onValue(ref(db, `${draftSessionPath(idPublico)}/state`),       s => setDraftState(s.exists() ? { ...DEFAULT_STATE, ...s.val() } : DEFAULT_STATE))
     const u3 = onValue(ref(db, `${draftSessionPath(idPublico)}/playerState`), s => setPlayerState(s.val() ?? {}))
     const u4 = onValue(ref(db, playerOverridesPath(idPublico)),               s => setOverrides(s.val() ?? {}))
-    return () => { u1(); u2(); u3(); u4() }
+    const u5 = onValue(ref(db, configDraftPath(idPublico)),                   s => { if (s.exists()) setDraftConfig(c => ({ ...c, ...s.val() })) })
+    return () => { u1(); u2(); u3(); u4(); u5() }
   }, [idPublico])
 
   useEffect(() => {
@@ -47,15 +60,108 @@ export default function Espectador() {
       .catch(() => {})
   }, [])
 
-  // Trigger announce overlay only when a new action arrives; auto-dismiss after animation
+  // Beeps sintéticos fallback (igual ao Draft)
+  function playCountdownBeeps() {
+    try {
+      if (!audioCtxRef.current) audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)()
+      const ctx = audioCtxRef.current
+      if (ctx.state === 'suspended') ctx.resume()
+      for (let i = 0; i < 10; i++) {
+        const t    = ctx.currentTime + i
+        const freq = i < 5 ? 660 : 880
+        const dur  = i === 9 ? 0.4 : 0.08
+        const osc  = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.connect(gain); gain.connect(ctx.destination)
+        osc.type = 'sine'; osc.frequency.setValueAtTime(freq, t)
+        gain.gain.setValueAtTime(0, t)
+        gain.gain.linearRampToValueAtTime(0.35 * volRef.current, t + 0.01)
+        gain.gain.exponentialRampToValueAtTime(0.001, t + dur)
+        osc.start(t); osc.stop(t + dur + 0.05)
+      }
+    } catch (e) {}
+  }
+
+  // Preload dos áudios + unlock na primeira interação
   useEffect(() => {
-    const ts = draftState.lastAction?.ts
+    const mp3 = new Audio('/sounds/ui_bnet_draft_countdownten01.mp3')
+    mp3.preload = 'auto'
+    mp3.oncanplaythrough = () => { audioRef.current = mp3 }
+
+    const pick = new Audio('/sounds/ui_bnet_ready02.ogg')
+    pick.preload = 'auto'
+    pick.oncanplaythrough = () => { audioPickRef.current = pick }
+
+    const steal = new Audio('/sounds/ui_ping_careful01.mp3')
+    steal.preload = 'auto'
+    steal.oncanplaythrough = () => { audioStealRef.current = steal }
+
+    const unlock = () => {
+      try {
+        if (!audioCtxRef.current) audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)()
+        audioCtxRef.current.resume().catch(() => {})
+      } catch (e) {}
+      if (audioRef.current) audioRef.current.play().then(() => { audioRef.current.pause(); audioRef.current.currentTime = 0 }).catch(() => {})
+      setAudioUnlocked(true)
+    }
+    document.addEventListener('click', unlock, { once: true })
+    document.addEventListener('keydown', unlock, { once: true })
+    return () => {
+      mp3.src = ''; pick.src = ''; steal.src = ''
+      document.removeEventListener('click', unlock)
+      document.removeEventListener('keydown', unlock)
+    }
+  }, [])
+
+  // Timer de turno
+  useEffect(() => {
+    const dur = draftConfig.timerDuracao ?? 60
+    if (!dur || draftState.status !== 'rodando') { setTempoRestante(null); return }
+    const ts = draftState.turnoIniciadoEm ?? Date.now()
+    const tick = () => {
+      const elapsed  = Math.floor((Date.now() - ts) / 1000)
+      const restante = Math.max(0, dur - elapsed)
+      setTempoRestante(restante)
+      const tsKey = draftState.turnoIniciadoEm ?? draftState.turnoAtual ?? 'now'
+      if (restante <= 11 && restante > 0 && audioTurnRef.current !== tsKey) {
+        audioTurnRef.current = tsKey
+        if (audioRef.current) {
+          audioRef.current.volume = volRef.current
+          audioRef.current.currentTime = 0
+          audioRef.current.play().catch(() => playCountdownBeeps())
+        } else {
+          playCountdownBeeps()
+        }
+      }
+    }
+    tick()
+    const iv = setInterval(tick, 500)
+    return () => {
+      clearInterval(iv)
+      if (audioRef.current) { audioRef.current.pause(); audioRef.current.currentTime = 0 }
+    }
+  }, [draftState.turnoIniciadoEm, draftState.status, draftConfig.timerDuracao]) // eslint-disable-line
+
+  // Trigger announce overlay + som quando uma nova ação chega
+  useEffect(() => {
+    const action = draftState.lastAction
+    const ts     = action?.ts
     if (ts && ts !== prevActionTs.current) {
       prevActionTs.current = ts
       setAnnounceKey(ts)
       setTimeout(() => setAnnounceKey(null), 3500)
+      // Som da ação
+      if (action.type === 'steal' && audioStealRef.current) {
+        audioStealRef.current.volume = volRef.current
+        audioStealRef.current.currentTime = 0
+        audioStealRef.current.play().catch(() => {})
+      } else if (action.type === 'buy' && audioPickRef.current) {
+        audioPickRef.current.volume = volRef.current
+        audioPickRef.current.currentTime = 0
+        audioPickRef.current.play().catch(() => {})
+      }
     }
-  }, [draftState.lastAction?.ts])
+  }, [draftState.lastAction?.ts]) // eslint-disable-line
 
   if (!modulesLoading && !isAdmin && !espectadorAtivo) {
     return <PaginaInativa icone="📺" titulo="Espectador indisponível" descricao="O modo espectador será aberto quando o leilão estiver em andamento." />
@@ -68,7 +174,7 @@ export default function Espectador() {
   const rightTeams     = sortedCaptains.slice(mid)
   const teamCaptainNames = new Set(Object.values(captains).map(c => c.capitaoNome).filter(Boolean))
 
-  const activeTurnId   = draftState.turnoExtra ?? draftState.turnoAtual
+  const activeTurnId   = draftState.turnoAtual
   const currentTurnCap = captains[activeTurnId]
   const lastAction     = draftState.lastAction
 
@@ -177,22 +283,52 @@ export default function Espectador() {
               {fase === 'reservas' ? '🛡 Reservas' : '⚔ Titulares'}
             </span>
           </div>
-          {draftState.turnoExtra && (
-            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: '11px', color: 'var(--red)', border: '1px solid rgba(224,85,85,0.35)', padding: '2px 8px', borderRadius: '4px', background: 'rgba(224,85,85,0.1)', letterSpacing: '0.1em' }}>
-              {t('espectador.extra_turn')}
-            </div>
-          )}
           <div className="espectador-turn-display">
             <div className="live-pip" style={{ background: currentTurnCap?.cor ?? 'var(--gold)', boxShadow: `0 0 10px ${currentTurnCap?.cor ?? 'var(--gold)'}` }} />
             <span style={{ color: currentTurnCap?.cor }}>{currentTurnCap?.emoji}</span>
             {t('espectador.turn')} {currentTurnCap?.capitaoNome || currentTurnCap?.nome || '—'}
           </div>
         </div>
-        <div className="espectador-live">
-          <div className="live-dot" />
-          {t('espectador.live')}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {!audioUnlocked && (draftConfig.timerDuracao ?? 60) > 0 && (
+            <button
+              onClick={() => {}}
+              title="Clique em qualquer lugar para ativar o som"
+              style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 10, padding: '2px 8px', borderRadius: 4, border: '1px solid var(--border2)', background: 'var(--bg3)', color: 'var(--text2)', cursor: 'pointer' }}
+            >
+              🔇 Ativar som
+            </button>
+          )}
+          <div className="espectador-live">
+            <div className="live-dot" />
+            {t('espectador.live')}
+          </div>
         </div>
       </div>
+
+      {/* Timer bar (sob o topbar) */}
+      {tempoRestante !== null && (draftConfig.timerDuracao ?? 60) > 0 && (() => {
+        const dur     = draftConfig.timerDuracao ?? 60
+        const pct     = (tempoRestante / dur) * 100
+        const urgente = tempoRestante <= 10
+        const cor     = tempoRestante > dur * 0.5 ? 'var(--green)' : tempoRestante > dur * 0.2 ? '#f0cc6e' : 'var(--red)'
+        return (
+          <div style={{ position: 'relative', height: 24, background: 'var(--bg3)', flexShrink: 0, overflow: 'hidden', borderBottom: '1px solid var(--border)' }}>
+            <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${pct}%`, background: cor + '30', transition: 'width 0.5s linear, background 0.5s' }} />
+            <div style={{ position: 'absolute', left: 0, bottom: 0, height: 2, width: `${pct}%`, background: cor, transition: 'width 0.5s linear, background 0.5s' }} />
+            <div style={{
+              position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700,
+              fontSize: 12, letterSpacing: '0.08em', color: cor,
+              transition: 'color 0.5s',
+              animation: urgente ? 'hd-pulse 0.6s ease-in-out infinite' : 'none',
+            }}>
+              <span style={{ opacity: 0.6, fontSize: 11 }}>⏱</span>
+              <span style={{ fontSize: urgente ? 15 : 12 }}>{tempoRestante}s</span>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Content grid */}
       <div className="espectador-content">
@@ -222,7 +358,6 @@ export default function Espectador() {
           <TurnStrip
             sortedCaptains={sortedCaptains}
             activeTurnId={activeTurnId}
-            turnoExtra={draftState.turnoExtra}
             fase={fase}
           />
 
@@ -334,7 +469,7 @@ function SpotlightCard({ action, privacidade }) {
 }
 
 // ── Turn strip ────────────────────────────────────────────────
-function TurnStrip({ sortedCaptains, activeTurnId, turnoExtra, fase }) {
+function TurnStrip({ sortedCaptains, activeTurnId, fase }) {
   return (
     <div className="turn-strip">
       {sortedCaptains.map(([id, cap], i) => {
@@ -352,9 +487,6 @@ function TurnStrip({ sortedCaptains, activeTurnId, turnoExtra, fase }) {
             >
               <div className="t-pip-dot" />
               {cap.emoji} {cap.capitaoNome || cap.nome}
-              {turnoExtra === id && (
-                <span style={{ fontSize: '9px', marginLeft: '2px', opacity: 0.75 }}>+1</span>
-              )}
               {pronto && (
                 <span style={{ fontSize: '9px', marginLeft: '3px', color: 'var(--green)', opacity: 1, textDecoration: 'none' }}>✓</span>
               )}

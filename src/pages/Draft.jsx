@@ -1352,6 +1352,15 @@ function TeamCard({
 function AdminDraftBar({ draftState, sortedCaptains, captains, draftConfig, idPublico, compact }) {
   const [open, setOpen] = useState(false)
   const [confirmReset, setConfirmReset] = useState(false)
+  const [copiedSpec, setCopiedSpec] = useState(false)
+
+  function copiarLinkEspectador() {
+    const url = `${window.location.origin}/campeonatos/${idPublico}/espectador`
+    navigator.clipboard.writeText(url).then(() => {
+      setCopiedSpec(true)
+      setTimeout(() => setCopiedSpec(false), 2000)
+    })
+  }
 
   const ses       = draftSessionPath(idPublico)
   const fase      = draftState.fase ?? 'titulares'
@@ -1475,6 +1484,19 @@ function AdminDraftBar({ draftState, sortedCaptains, captains, draftConfig, idPu
                 ↩ Reabrir Draft
               </button>
             )}
+
+            {/* Link para o espectador (compartilhar com quem vai transmitir) */}
+            <button
+              onClick={copiarLinkEspectador}
+              style={{
+                ...btnBase, width: '100%', padding: '8px',
+                color: copiedSpec ? 'var(--green)' : 'var(--blue)',
+                borderColor: copiedSpec ? 'rgba(76,175,125,0.4)' : 'rgba(74,158,218,0.35)',
+                background: copiedSpec ? 'rgba(76,175,125,0.08)' : 'rgba(74,158,218,0.06)',
+              }}
+            >
+              {copiedSpec ? '✓ Link copiado!' : '📺 Copiar link espectador'}
+            </button>
 
             <div style={{ borderTop: '1px solid var(--border)', paddingTop: '8px', marginTop: '2px' }}>
               {!confirmReset ? (
