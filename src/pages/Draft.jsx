@@ -822,6 +822,9 @@ export default function Draft() {
               maxPlayers={draftConfig.maxPlayers}
               fase={fase}
               privacidade={privacidade}
+              myId={myId} myCap={myCap} playerState={playerState} players={players}
+              draftConfig={draftConfig} isMyTurn={isMyTurn}
+              roubar={roubar} roubarReserva={roubarReserva}
             />
           ))}
         </div>
@@ -926,6 +929,9 @@ export default function Draft() {
               maxPlayers={draftConfig.maxPlayers}
               fase={fase}
               privacidade={privacidade}
+              myId={myId} myCap={myCap} playerState={playerState} players={players}
+              draftConfig={draftConfig} isMyTurn={isMyTurn}
+              roubar={roubar} roubarReserva={roubarReserva}
             />
           ))}
 
@@ -1072,6 +1078,10 @@ export default function Draft() {
                         maxPlayers={draftConfig.maxPlayers}
                         fase={fase}
                         privacidade={privacidade}
+                        myId={myId} myCap={myCap} playerState={playerState} players={players}
+                        draftConfig={draftConfig} isMyTurn={isMyTurn}
+                        roubar={(p) => { roubar(p); setMobilePanel(null) }}
+                        roubarReserva={(p) => { roubarReserva(p); setMobilePanel(null) }}
                       />
                     ))}
                   </div>
@@ -1162,12 +1172,45 @@ function SessionBadge({ session, onLogout, small }) {
   )
 }
 
-function TeamCard({ id, team, isActive, isMyTeam, minPlayers = 5, maxPlayers = 7, fase = 'titulares', privacidade = false }) {
+function TeamCard({
+  id, team, isActive, isMyTeam, minPlayers = 5, maxPlayers = 7,
+  fase = 'titulares', privacidade = false,
+  // Props para roubo direto (opcionais — se não passados, botões de roubo não aparecem)
+  myId, myCap, playerState, players, draftConfig, isMyTurn, roubar, roubarReserva,
+}) {
   const roster    = Object.entries(team.roster ?? {})
   const reservas  = Object.entries(team.reservas ?? {})
   const titTotal  = roster.length + (team.capitaoNome ? 1 : 0)
   const titFull   = titTotal >= minPlayers
   const exitou    = team.exitou
+
+  // Regras de roubo aplicadas por jogador
+  function canStealPlayer(pid, tipo /* 'titular' | 'reserva' */) {
+    if (!isMyTurn || !myCap || myCap.exitou) return false
+    if (!draftConfig?.rouboAtivo) return false
+    if (id === myId) return false                                  // não rouba do próprio time
+    if (tipo === 'reserva' && team.exitou) return false             // reservas: dono saiu
+    if (tipo === 'titular' && fase !== 'titulares') return false   // fase reservas não rouba titulares
+    if (tipo === 'reserva' && fase !== 'reservas')  return false   // fase titulares não rouba reservas
+    const ps = playerState?.[pid]
+    if (!ps) return false
+    if ((myCap.moedas ?? 0) < ps.preco) return false
+    // Roster cheio?
+    if (tipo === 'titular') {
+      const rosterSize = Object.keys(myCap.roster ?? {}).length + 1
+      if (rosterSize >= (draftConfig.maxPlayers ?? 7)) return false
+    } else {
+      if (Object.keys(myCap.reservas ?? {}).length >= 2) return false
+    }
+    return true
+  }
+
+  function doSteal(pid, tipo) {
+    const playerObj = players?.find(p => p.id === pid)
+    if (!playerObj) return
+    if (tipo === 'titular') roubar?.(playerObj)
+    else                    roubarReserva?.(playerObj)
+  }
 
   return (
     <div style={{
@@ -1209,12 +1252,35 @@ function TeamCard({ id, team, isActive, isMyTeam, minPlayers = 5, maxPlayers = 7
             <span style={{ fontSize: '10px', opacity: 0.7 }}>CAP</span>
           </div>
         )}
-        {roster.map(([pid, entry], idx) => (
-          <div key={pid} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px', borderRadius: '4px', fontSize: '12px', color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif" }}>
-            <span>{privacidade ? `Jogador #${idx + 1}` : entry.discord}</span>
-            <span style={{ color: 'var(--gold)', fontSize: 11 }}>{entry.preco}🪙</span>
-          </div>
-        ))}
+        {roster.map(([pid, entry], idx) => {
+          const stealable = canStealPlayer(pid, 'titular')
+          const ps        = playerState?.[pid]
+          const stealCost = ps?.preco ?? entry.preco
+          return (
+            <div key={pid} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, padding: '4px 6px', borderRadius: '4px', fontSize: '12px', color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif" }}>
+              <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                {privacidade ? `Jogador #${idx + 1}` : entry.discord}
+              </span>
+              <span style={{ color: 'var(--gold)', fontSize: 11, flexShrink: 0 }}>{entry.preco}🪙</span>
+              {stealable && (
+                <button
+                  onClick={() => doSteal(pid, 'titular')}
+                  title={`Roubar por ${stealCost}🪙`}
+                  style={{
+                    flexShrink: 0,
+                    padding: '2px 7px', borderRadius: 3,
+                    border: '1px solid rgba(224,85,85,0.4)',
+                    background: 'rgba(224,85,85,0.1)', color: 'var(--red)',
+                    fontFamily: "'Barlow Condensed', sans-serif", fontSize: 10,
+                    fontWeight: 700, letterSpacing: '0.05em', cursor: 'pointer',
+                  }}
+                >
+                  ⚔ {stealCost}🪙
+                </button>
+              )}
+            </div>
+          )
+        })}
         {titTotal === 0 && (
           <div style={{ fontSize: '11px', color: 'var(--text3)', fontFamily: "'Barlow Condensed', sans-serif", padding: '4px 6px', fontStyle: 'italic' }}>
             Sem titulares
@@ -1230,12 +1296,35 @@ function TeamCard({ id, team, isActive, isMyTeam, minPlayers = 5, maxPlayers = 7
               Sem reservas
             </div>
           )}
-          {reservas.map(([pid, entry], idx) => (
-            <div key={pid} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px', borderRadius: '4px', fontSize: '12px', color: 'var(--text3)', fontFamily: "'Barlow Condensed', sans-serif" }}>
-              <span>{privacidade ? `Reserva #${idx + 1}` : entry.discord}</span>
-              <span style={{ fontSize: 11 }}>{entry.preco}🪙</span>
-            </div>
-          ))}
+          {reservas.map(([pid, entry], idx) => {
+            const stealable = canStealPlayer(pid, 'reserva')
+            const ps        = playerState?.[pid]
+            const stealCost = ps?.preco ?? entry.preco
+            return (
+              <div key={pid} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, padding: '4px 6px', borderRadius: '4px', fontSize: '12px', color: 'var(--text3)', fontFamily: "'Barlow Condensed', sans-serif" }}>
+                <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                  {privacidade ? `Reserva #${idx + 1}` : entry.discord}
+                </span>
+                <span style={{ fontSize: 11, flexShrink: 0 }}>{entry.preco}🪙</span>
+                {stealable && (
+                  <button
+                    onClick={() => doSteal(pid, 'reserva')}
+                    title={`Roubar por ${stealCost}🪙`}
+                    style={{
+                      flexShrink: 0,
+                      padding: '2px 7px', borderRadius: 3,
+                      border: '1px solid rgba(224,85,85,0.4)',
+                      background: 'rgba(224,85,85,0.1)', color: 'var(--red)',
+                      fontFamily: "'Barlow Condensed', sans-serif", fontSize: 10,
+                      fontWeight: 700, letterSpacing: '0.05em', cursor: 'pointer',
+                    }}
+                  >
+                    ⚔ {stealCost}🪙
+                  </button>
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
     </div>
