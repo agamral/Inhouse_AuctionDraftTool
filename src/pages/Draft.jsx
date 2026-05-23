@@ -49,6 +49,7 @@ export default function Draft() {
   const [turnAlertOpacity, setTurnAlertOpacity] = useState(1)
   const prevTurnAtualRef = useRef(null)
   const lastActionTsRef  = useRef(null)
+  const volRef           = useRef(0.8)
   // Atualizado a cada render (antes de qualquer early return) para que os useEffects leiam o valor atual
   volRef.current = (draftConfig.volumeSons ?? 80) / 100
   const autoPickRef      = useRef(null)
@@ -136,7 +137,6 @@ export default function Draft() {
 
   // Áudio de countdown — tenta MP3 primeiro, fallback para beeps sintéticos
   const audioCtxRef = useRef(null)
-  const volRef      = useRef(0.8) // atualizado a cada render com o valor atual
 
   function playCountdownBeeps() {
     try {
