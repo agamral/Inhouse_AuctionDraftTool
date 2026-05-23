@@ -391,7 +391,7 @@ export default function Draft() {
     updates[`${ses}/playerState/${player.id}/ownedBy`] = myId
     updates[`${ses}/captains/${myId}/moedas`]          = myCap.moedas - preco
     updates[`${ses}/state/lastAction`] = {
-      type: 'buy', playerDiscord: player.discord,
+      type: 'buy', playerId: player.id, playerDiscord: player.discord,
       playerElo: player.elo, playerRole: player.rolePrimaria,
       byTeamId: myId, byTeamNome: myCap.nome, byTeamEmoji: myCap.emoji, byTeamCor: myCap.cor,
       preco, ts: Date.now(),
@@ -444,7 +444,7 @@ export default function Draft() {
     updates[`${ses}/captains/${fromId}/moedas`] = (fromCap?.moedas ?? 0) + paguei
 
     updates[`${ses}/state/lastAction`] = {
-      type: 'steal', playerDiscord: player.discord,
+      type: 'steal', playerId: player.id, playerDiscord: player.discord,
       playerElo: player.elo, playerRole: player.rolePrimaria,
       byTeamId: myId, byTeamNome: myCap.nome, byTeamEmoji: myCap.emoji, byTeamCor: myCap.cor,
       fromTeamId: fromId, fromTeamNome: fromCap?.nome, fromTeamEmoji: fromCap?.emoji, fromTeamCor: fromCap?.cor,
@@ -487,7 +487,7 @@ export default function Draft() {
     updates[`${ses}/playerState/${player.id}/tipoPosse`]     = 'reserva'
     updates[`${ses}/captains/${myId}/moedas`]                = myCap.moedas - preco
     updates[`${ses}/state/lastAction`] = {
-      type: 'buy', playerDiscord: player.discord,
+      type: 'buy', playerId: player.id, playerDiscord: player.discord,
       playerElo: player.elo, playerRole: player.rolePrimaria,
       byTeamId: myId, byTeamNome: myCap.nome, byTeamEmoji: myCap.emoji, byTeamCor: myCap.cor,
       preco, ts: Date.now(),
@@ -529,7 +529,7 @@ export default function Draft() {
     updates[`${ses}/captains/${myId}/moedas`]            = myCap.moedas - preco
     updates[`${ses}/captains/${fromId}/moedas`]          = (fromCap?.moedas ?? 0) + paguei
     updates[`${ses}/state/lastAction`] = {
-      type: 'steal', playerDiscord: player.discord,
+      type: 'steal', playerId: player.id, playerDiscord: player.discord,
       playerElo: player.elo, playerRole: player.rolePrimaria,
       byTeamId: myId, byTeamNome: myCap.nome, byTeamEmoji: myCap.emoji, byTeamCor: myCap.cor,
       fromTeamId: fromId, fromTeamNome: fromCap?.nome, fromTeamEmoji: fromCap?.emoji, fromTeamCor: fromCap?.cor,

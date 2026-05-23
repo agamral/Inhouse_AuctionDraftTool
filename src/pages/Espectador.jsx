@@ -404,6 +404,8 @@ export default function Espectador() {
 }
 
 // ── Celebration overlay (framer-motion) ──────────────────────
+// Usa layoutId compartilhado com o card do pool — framer anima
+// automaticamente da posição original do card até o centro
 function Celebration({ action, privacidade, t }) {
   const isSteal     = action.type === 'steal'
   const cor         = action.byTeamCor || '#f0cc6e'
@@ -415,7 +417,7 @@ function Celebration({ action, privacidade, t }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.25 }}
+      transition={{ duration: 0.3 }}
       style={{
         position: 'fixed', inset: 0, zIndex: 50,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -423,10 +425,8 @@ function Celebration({ action, privacidade, t }) {
       }}
     >
       <motion.div
-        initial={{ scale: 0.4, opacity: 0, y: 40 }}
-        animate={{ scale: 1,   opacity: 1, y: 0  }}
-        exit={{    scale: 0.7, opacity: 0, y: -20 }}
-        transition={{ type: 'spring', stiffness: 220, damping: 18 }}
+        layoutId={action.playerId ? `player-${action.playerId}` : undefined}
+        transition={{ type: 'spring', stiffness: 180, damping: 22, duration: 0.6 }}
         className="celebration-card"
         style={{ '--cel-color': cor }}
       >
@@ -500,52 +500,69 @@ function PlayerPool({ players, overrides, playerState, teamCaptainNames, privaci
         {label}: {available}
       </div>
       <div className="spec-pool-grid" style={{ overflowY: 'auto', flex: 1 }}>
-        <AnimatePresence>
-          {visible.map((p, idx) => {
-            const ps      = playerState[p.id]
-            const sold    = !!ps?.ownedBy
-            // Na fase de reservas, titulares somem da pool
-            if (fase === 'reservas' && sold && ps?.tipoPosse === 'titular') return null
-            const eloColor = ELO_CONFIG[p.elo]?.color ?? 'rgba(255,255,255,0.45)'
-            const linguas  = parseLinguas(p.linguas)
-            return (
-              <motion.div
-                key={p.id}
-                layout
-                initial={{ opacity: 0, scale: 0.92 }}
-                animate={{ opacity: sold ? 0.2 : 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.85 }}
-                transition={{ duration: 0.35, ease: [0.2, 1, 0.4, 1] }}
-                className={`spec-player-card${sold ? ' sold' : ''}`}
-              >
-                <div className="spec-player-card-name">
-                  {privacidade ? `Jogador #${idx + 1}` : p.discord}
+        {visible.map((p, idx) => {
+          const ps      = playerState[p.id]
+          const sold    = !!ps?.ownedBy
+          // Na fase de reservas, titulares somem da pool
+          if (fase === 'reservas' && sold && ps?.tipoPosse === 'titular') return null
+          const eloColor = ELO_CONFIG[p.elo]?.color ?? 'rgba(255,255,255,0.45)'
+          const linguas  = parseLinguas(p.linguas)
+          return (
+            <motion.div
+              key={p.id}
+              layoutId={`player-${p.id}`}
+              className={`spec-player-card${sold ? ' sold' : ''}`}
+            >
+              <div className="spec-player-card-name">
+                {privacidade ? `Jogador #${idx + 1}` : p.discord}
+              </div>
+              <div className="spec-player-card-info">
+                <span style={{ color: eloColor, fontWeight: 700 }}>{p.elo}</span>
+                <span className="dot" />
+                <span>{p.rolePrimaria}</span>
+              </div>
+              {linguas.length > 0 && (
+                <div className="spec-player-card-langs">
+                  {linguas.map(l => {
+                    const src = LINGUA_FLAG_CDN[l]
+                    return src
+                      ? <img key={l} src={src} alt={l} />
+                      : <span key={l} style={{ fontSize: 9, color: 'var(--text3)' }}>{l.toUpperCase()}</span>
+                  })}
                 </div>
-                <div className="spec-player-card-info">
-                  <span style={{ color: eloColor, fontWeight: 700 }}>{p.elo}</span>
-                  <span className="dot" />
-                  <span>{p.rolePrimaria}</span>
-                </div>
-                {linguas.length > 0 && (
-                  <div className="spec-player-card-langs">
-                    {linguas.map(l => {
-                      const src = LINGUA_FLAG_CDN[l]
-                      return src
-                        ? <img key={l} src={src} alt={l} />
-                        : <span key={l} style={{ fontSize: 9, color: 'var(--text3)' }}>{l.toUpperCase()}</span>
-                    })}
-                  </div>
-                )}
-              </motion.div>
-            )
-          })}
-        </AnimatePresence>
+              )}
+            </motion.div>
+          )
+        })}
       </div>
     </div>
   )
 }
 
 // ── Team card ─────────────────────────────────────────────────
+// Definido fora para não remontar a cada render do SpectatorTeam (causava flicker)
+function RosterEntry({ entry, idx, dimmed, playerByDiscord, privacidade }) {
+  const info        = playerByDiscord[entry.discord]
+  const eloColor    = ELO_CONFIG[info?.elo]?.color ?? 'rgba(255,255,255,0.4)'
+  const nomeExibido = privacidade ? `Jogador #${idx + 1}` : entry.discord
+  return (
+    <div className="spec-roster-entry" style={dimmed ? { opacity: 0.5 } : {}}>
+      <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {nomeExibido}
+      </span>
+      <div className="spec-roster-right">
+        {info?.elo && (
+          <span className="spec-elo-badge" style={{ color: eloColor, background: eloColor + '18', border: `1px solid ${eloColor}33` }}>
+            {info.elo}
+          </span>
+        )}
+        {info?.rolePrimaria && <span className="spec-role-badge">{info.rolePrimaria}</span>}
+        <span className="spec-roster-price">🪙{entry.preco}</span>
+      </div>
+    </div>
+  )
+}
+
 function SpectatorTeam({ team, isActive, players, privacidade, fase = 'titulares' }) {
   const { t } = useTranslation()
   const roster   = Object.entries(team.roster ?? {})
@@ -554,28 +571,6 @@ function SpectatorTeam({ team, isActive, players, privacidade, fase = 'titulares
   const exitou   = team.exitou
 
   const playerByDiscord = Object.fromEntries(players.map(p => [p.discord, p]))
-
-  function RosterEntry({ entry, idx, dimmed }) {
-    const info        = playerByDiscord[entry.discord]
-    const eloColor    = ELO_CONFIG[info?.elo]?.color ?? 'rgba(255,255,255,0.4)'
-    const nomeExibido = privacidade ? `Jogador #${idx + 1}` : entry.discord
-    return (
-      <div className="spec-roster-entry" style={dimmed ? { opacity: 0.5 } : {}}>
-        <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {nomeExibido}
-        </span>
-        <div className="spec-roster-right">
-          {info?.elo && (
-            <span className="spec-elo-badge" style={{ color: eloColor, background: eloColor + '18', border: `1px solid ${eloColor}33` }}>
-              {info.elo}
-            </span>
-          )}
-          {info?.rolePrimaria && <span className="spec-role-badge">{info.rolePrimaria}</span>}
-          <span className="spec-roster-price">🪙{entry.preco}</span>
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div
@@ -617,7 +612,7 @@ function SpectatorTeam({ team, isActive, players, privacidade, fase = 'titulares
             <span className="spec-cap-tag">CAP</span>
           </div>
         )}
-        {roster.map(([pid, entry], idx) => <RosterEntry key={pid} entry={entry} idx={idx} />)}
+        {roster.map(([pid, entry], idx) => <RosterEntry key={pid} entry={entry} idx={idx} playerByDiscord={playerByDiscord} privacidade={privacidade} />)}
         {titTotal === 0 && <div className="spec-roster-empty">{t('espectador.no_players')}</div>}
       </div>
 
@@ -626,7 +621,7 @@ function SpectatorTeam({ team, isActive, players, privacidade, fase = 'titulares
         <div className="spec-roster" style={{ background: 'rgba(138,134,128,0.05)' }}>
           {reservas.length === 0
             ? <div className="spec-roster-empty" style={{ opacity: 0.4 }}>{exitou ? '—' : 'Aguardando...'}</div>
-            : reservas.map(([pid, entry], idx) => <RosterEntry key={pid} entry={entry} idx={idx} />)
+            : reservas.map(([pid, entry], idx) => <RosterEntry key={pid} entry={entry} idx={idx} playerByDiscord={playerByDiscord} privacidade={privacidade} />)
           }
         </div>
       )}

@@ -633,9 +633,9 @@
 /* ── Player cards (novo grid central) ───────────────────────────────────────── */
 .spec-pool-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 10px;
-  padding: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+  gap: 6px;
+  padding: 10px;
   align-content: start;
   position: relative;
   z-index: 3;
@@ -644,13 +644,12 @@
 .spec-player-card {
   background: rgba(28, 32, 42, 0.85);
   border: 1px solid rgba(255,255,255,0.10);
-  border-radius: 8px;
-  padding: 12px 14px;
+  border-radius: 6px;
+  padding: 8px 10px;
   display: block;
-  transition: border-color 0.25s, background 0.25s, opacity 0.4s;
+  transition: opacity 0.4s;
   position: relative;
   overflow: hidden;
-  min-height: 92px;
 }
 
 .spec-player-card.sold {
@@ -661,7 +660,7 @@
 .spec-player-card-name {
   font-family: 'Rajdhani', 'Barlow Condensed', sans-serif;
   font-weight: 700;
-  font-size: 16px;
+  font-size: 14px;
   line-height: 1.15;
   letter-spacing: 0.02em;
   color: #ffffff;
@@ -669,21 +668,21 @@
   overflow: hidden;
   text-overflow: ellipsis;
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .spec-player-card-info {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 5px;
   font-family: 'Barlow Condensed', sans-serif;
-  font-size: 12px;
+  font-size: 11px;
   color: rgba(255,255,255,0.65);
 }
 
 .spec-player-card-info > .dot {
-  width: 3px; height: 3px;
+  width: 2px; height: 2px;
   border-radius: 50%;
   background: rgba(255,255,255,0.25);
   flex-shrink: 0;
@@ -691,34 +690,34 @@
 
 .spec-player-card-langs {
   display: flex;
-  gap: 3px;
-  margin-top: 6px;
+  gap: 2px;
+  margin-top: 4px;
 }
 
 .spec-player-card-langs img {
-  width: 16px;
-  height: 11px;
+  width: 13px;
+  height: 9px;
   object-fit: cover;
   border-radius: 1px;
 }
 
-/* ── Active team pulse ──────────────────────────────────────────────────────── */
-.spec-team.active-turn {
-  animation: spec-team-pulse 1.4s ease-in-out infinite;
-  border-width: 2px;
+/* ── Active team pulse — GPU-friendly (opacity em pseudo-element) ───────────── */
+.spec-team.active-turn { position: relative; }
+.spec-team.active-turn::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 12px;
+  border: 2px solid var(--active-color, var(--gold));
+  box-shadow: 0 0 24px var(--active-color, var(--gold));
+  animation: spec-pulse-opacity 1.8s ease-in-out infinite;
+  pointer-events: none;
+  will-change: opacity;
 }
 
-@keyframes spec-team-pulse {
-  0%, 100% {
-    box-shadow:
-      0 0 0 1px var(--active-color, var(--gold)),
-      0 0 28px -4px var(--active-color, var(--gold));
-  }
-  50% {
-    box-shadow:
-      0 0 0 2px var(--active-color, var(--gold)),
-      0 0 48px 0 var(--active-color, var(--gold));
-  }
+@keyframes spec-pulse-opacity {
+  0%, 100% { opacity: 0.45; }
+  50%      { opacity: 1; }
 }
 
 /* ── Celebration overlay (pick announcement) ───────────────────────────────── */
