@@ -49,6 +49,8 @@ export default function Draft() {
   const [turnAlertOpacity, setTurnAlertOpacity] = useState(1)
   const prevTurnAtualRef = useRef(null)
   const lastActionTsRef  = useRef(null)
+  // Atualizado a cada render (antes de qualquer early return) para que os useEffects leiam o valor atual
+  volRef.current = (draftConfig.volumeSons ?? 80) / 100
   const autoPickRef      = useRef(null)
   const liveRef          = useRef({})
   const audioRef         = useRef(null)
@@ -94,11 +96,8 @@ export default function Draft() {
     if (!action?.ts || action.ts === lastActionTsRef.current) return
     lastActionTsRef.current = action.ts
     setLogAcoes(prev => [action, ...prev].slice(0, 20))
-    if (action.type === 'steal') {
-      if (audioStealRef.current) { audioStealRef.current.currentTime = 0; audioStealRef.current.play().catch(() => {}) }
-    } else if (action.type === 'buy') {
-      if (audioPickRef.current)  { audioPickRef.current.currentTime  = 0; audioPickRef.current.play().catch(() => {})  }
-    }
+    if (action.type === 'steal') playStealSound()
+    else if (action.type === 'buy') playPickSound()
   }, [draftState.lastAction?.ts]) // eslint-disable-line
 
   function handleLogin(session)  { setCaptainSession(session) }
@@ -317,8 +316,6 @@ export default function Draft() {
     }
     return true
   })
-
-  volRef.current = (draftConfig.volumeSons ?? 80) / 100
 
   function playPickSound() {
     if (audioPickRef.current) {
