@@ -453,7 +453,12 @@ export default function Draft() {
 
     const rosterSize = Object.keys(myCap.roster ?? {}).length + 1
     const myNewSize  = rosterSize + 1
-    const next = proximoCom(sortedCaptains, captains, myId, myNewSize, draftConfig, 'titulares')
+    // Vítima perde 1 do roster — pode voltar a ficar abaixo do mínimo
+    const fromNewSize = Object.keys(fromCap?.roster ?? {}).length + 1 - 1
+    const next = proximoCom(
+      sortedCaptains, captains, myId, myNewSize, draftConfig, 'titulares',
+      { [fromId]: fromNewSize }
+    )
     if (next) {
       updates[`${ses}/state/turnoAtual`] = next.id
       if (next.novaRodada) updates[`${ses}/state/rodada`] = (draftState.rodada ?? 1) + 1
@@ -532,7 +537,12 @@ export default function Draft() {
     }
 
     const myNewReservas = reservasAtual + 1
-    const next = proximoCom(sortedCaptains, captains, myId, myNewReservas, draftConfig, 'reservas')
+    // Vítima perde 1 reserva — pode voltar a ficar com < 2 e precisar de mais um turno
+    const fromNewReservas = Object.keys(fromCap?.reservas ?? {}).length - 1
+    const next = proximoCom(
+      sortedCaptains, captains, myId, myNewReservas, draftConfig, 'reservas',
+      { [fromId]: fromNewReservas }
+    )
     if (next) {
       updates[`${ses}/state/turnoAtual`] = next.id
       if (next.novaRodada) updates[`${ses}/state/rodada`] = (draftState.rodada ?? 1) + 1
@@ -1119,7 +1129,11 @@ export default function Draft() {
 // fase 'titulares': pula capitão com >= minPlayers no roster (inclui capitão)
 // fase 'reservas':  pula capitão que saiu ou já tem 2 reservas
 // myNewSize: contagem do capitão atual APÓS a ação (evita usar state desatualizado)
-function proximoCom(sortedCaptains, captains, currentId, myNewSize, config, fase) {
+// sizeOverrides: map opcional { [captainId]: newSize } para casos como roubo,
+//   onde a vítima fica com -1 (no titulares: roster-1; no reservas: reservas-1).
+//   Sem isso, proximoCom usaria a contagem antiga do state e pularia uma vítima
+//   que voltou a ter vaga após o roubo, podendo encerrar a fase incorretamente.
+function proximoCom(sortedCaptains, captains, currentId, myNewSize, config, fase, sizeOverrides = null) {
   const { minPlayers = 5 } = config ?? {}
   const idx = sortedCaptains.findIndex(([id]) => id === currentId)
   for (let i = 1; i <= sortedCaptains.length; i++) {
@@ -1128,15 +1142,17 @@ function proximoCom(sortedCaptains, captains, currentId, myNewSize, config, fase
 
     if (fase === 'reservas') {
       if (nCap.exitou) continue
-      const count = nId === currentId
-        ? myNewSize
-        : Object.keys(nCap.reservas ?? {}).length
+      let count
+      if (nId === currentId)                       count = myNewSize
+      else if (sizeOverrides && nId in sizeOverrides) count = sizeOverrides[nId]
+      else                                          count = Object.keys(nCap.reservas ?? {}).length
       if (count >= 2) continue
       return { id: nId, novaRodada: nextIdx <= idx }
     } else {
-      const size = nId === currentId
-        ? myNewSize
-        : Object.keys(nCap.roster ?? {}).length + 1
+      let size
+      if (nId === currentId)                       size = myNewSize
+      else if (sizeOverrides && nId in sizeOverrides) size = sizeOverrides[nId]
+      else                                          size = Object.keys(nCap.roster ?? {}).length + 1
       if (size < minPlayers) {
         return { id: nId, novaRodada: nextIdx <= idx }
       }
