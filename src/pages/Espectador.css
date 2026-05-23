@@ -146,51 +146,71 @@
 }
 
 .spec-team-header {
-  padding: 14px 16px 10px;
+  padding: 7px 11px 5px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  column-gap: 10px;
 }
 
-.spec-team-emoji { font-size: 22px; margin-bottom: 4px; }
+.spec-team-emoji {
+  font-size: 22px;
+  line-height: 1;
+  grid-row: 1 / span 2;
+  align-self: center;
+}
 
 .spec-team-name {
   font-family: 'Bebas Neue', 'Rajdhani', sans-serif;
-  font-size: 20px;
-  letter-spacing: 0.06em;
-  line-height: 1;
+  font-size: 16px;
+  letter-spacing: 0.05em;
+  line-height: 1.05;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .spec-team-captain {
   font-family: 'Barlow Condensed', sans-serif;
-  font-size: 11px;
-  letter-spacing: 0.08em;
+  font-size: 10px;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: rgba(255,255,255,0.3);
-  margin-top: 2px;
+  line-height: 1.1;
+  margin-top: 1px;
+  grid-column: 2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .spec-team-coins-row {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-top: 8px;
+  align-items: center;
+  gap: 6px;
+  grid-column: 3;
+  grid-row: 1 / span 2;
+  justify-self: end;
 }
 
 .spec-team-coins {
   font-family: 'Bebas Neue', 'Rajdhani', sans-serif;
-  font-size: 28px;
+  font-size: 20px;
   line-height: 1;
   color: var(--gold2);
 }
 
 .spec-team-slots {
   font-family: 'Barlow Condensed', sans-serif;
-  font-size: 11px;
-  color: rgba(255,255,255,0.25);
-  letter-spacing: 0.06em;
+  font-size: 10px;
+  color: rgba(255,255,255,0.3);
+  letter-spacing: 0.04em;
 }
 
 .spec-team-progress {
-  height: 3px;
-  margin: 8px 16px 0;
+  height: 2px;
+  margin: 0 11px 4px;
   background: rgba(255,255,255,0.07);
   border-radius: 2px;
   overflow: hidden;
@@ -204,24 +224,35 @@
 
 /* Roster */
 .spec-roster {
-  padding: 6px 12px 10px;
+  padding: 4px 10px 7px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .spec-roster-entry {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 5px 8px;
+  padding: 3px 7px;
   border-radius: 3px;
   background: rgba(255,255,255,0.03);
   border: 1px solid rgba(255,255,255,0.05);
   font-family: 'Barlow Condensed', sans-serif;
-  font-size: 13px;
+  font-size: 14px;
   color: rgba(255,255,255,0.65);
   animation: entryIn 0.35s cubic-bezier(.2,1,.4,1);
+}
+
+.spec-roster-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: 0.01em;
 }
 
 @keyframes entryIn {
@@ -244,8 +275,9 @@
 
 .spec-roster-price {
   font-family: 'Barlow Condensed', sans-serif;
-  font-size: 11px;
-  color: rgba(255,255,255,0.3);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--gold);
 }
 
 .spec-cap-tag {

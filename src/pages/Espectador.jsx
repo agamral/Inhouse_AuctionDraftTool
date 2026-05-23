@@ -377,18 +377,6 @@ export default function Espectador() {
             fase={fase}
           />
 
-          {/* Histórico (canto inferior direito) */}
-          {logCorner.length > 0 && (
-            <div className="spec-history-corner">
-              <div className="spec-history-corner-label">Últimas ações</div>
-              {logCorner.map((a, i) => (
-                <div key={i} className="spec-history-corner-item" style={{ color: a.byTeamCor }}>
-                  {a.type === 'steal' ? '⚔' : '✓'} <span style={{ color: 'var(--text)' }}>{a.playerDiscord}</span>
-                  <span style={{ marginLeft: 'auto', color: 'var(--gold)' }}>🪙{a.preco}</span>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
 
         {/* Right teams */}
@@ -573,19 +561,15 @@ function PlayerPool({ players, overrides, playerState, teamCaptainNames, privaci
 // Definido fora para não remontar a cada render do SpectatorTeam (causava flicker)
 function RosterEntry({ entry, idx, dimmed, playerByDiscord, privacidade }) {
   const info        = playerByDiscord[entry.discord]
-  const eloColor    = ELO_CONFIG[info?.elo]?.color ?? 'rgba(255,255,255,0.4)'
+  const eloColor    = ELO_CONFIG[info?.elo]?.color ?? 'rgba(255,255,255,0.65)'
   const nomeExibido = privacidade ? `Jogador #${idx + 1}` : entry.discord
   return (
     <div className="spec-roster-entry" style={dimmed ? { opacity: 0.5 } : {}}>
-      <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+      {/* Cor do elo aplicada como destaque sutil no nome (perdemos o badge separado) */}
+      <span className="spec-roster-name" title={`${info?.elo ?? ''} ${info?.rolePrimaria ?? ''}`.trim()} style={{ color: eloColor }}>
         {nomeExibido}
       </span>
       <div className="spec-roster-right">
-        {info?.elo && (
-          <span className="spec-elo-badge" style={{ color: eloColor, background: eloColor + '18', border: `1px solid ${eloColor}33` }}>
-            {info.elo}
-          </span>
-        )}
         {info?.rolePrimaria && <span className="spec-role-badge">{info.rolePrimaria}</span>}
         <span className="spec-roster-price">🪙{entry.preco}</span>
       </div>
