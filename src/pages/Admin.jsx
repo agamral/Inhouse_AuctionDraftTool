@@ -77,6 +77,15 @@ export default function Admin() {
   const [saving,  setSaving]  = useState(false)
   const [saved,   setSaved]   = useState(false)
   const [showMigracao, setShowMigracao] = useState(false)
+  const [copiedSpec, setCopiedSpec] = useState(false)
+
+  function copiarLinkEspectador() {
+    const url = `${window.location.origin}/campeonatos/${campeonatoId}/espectador`
+    navigator.clipboard.writeText(url).then(() => {
+      setCopiedSpec(true)
+      setTimeout(() => setCopiedSpec(false), 2000)
+    })
+  }
 
   const tabs = ALL_TABS.filter(t => !t.superAdminOnly || isSuperAdmin)
 
@@ -417,6 +426,37 @@ export default function Admin() {
       {aba === 'leilao' && (
         <div className="admin-tab-content">
           <AdminDraftControl draftConfig={draft} />
+
+          {/* Link do espectador — para compartilhar com quem vai transmitir */}
+          <section className="admin-section">
+            <div className="admin-section-title">Transmissão</div>
+            <div style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <div style={{ fontFamily: "'Barlow', sans-serif", fontSize: 14, color: 'var(--text)', marginBottom: 3 }}>
+                  Página do espectador
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text3)' }}>
+                  Compartilhe esse link com quem for transmitir o leilão na Twitch.
+                </div>
+                <code style={{ display: 'block', marginTop: 6, fontSize: 11, color: 'var(--text2)', wordBreak: 'break-all' }}>
+                  {window.location.origin}/campeonatos/{campeonatoId}/espectador
+                </code>
+              </div>
+              <button
+                className="btn"
+                onClick={copiarLinkEspectador}
+                style={{
+                  fontSize: 13, padding: '8px 16px', whiteSpace: 'nowrap',
+                  color: copiedSpec ? 'var(--green)' : 'var(--blue)',
+                  borderColor: copiedSpec ? 'rgba(76,175,125,0.4)' : 'rgba(74,158,218,0.4)',
+                  background: copiedSpec ? 'rgba(76,175,125,0.08)' : 'rgba(74,158,218,0.06)',
+                }}
+              >
+                {copiedSpec ? '✓ Copiado!' : '📺 Copiar link'}
+              </button>
+            </div>
+          </section>
+
 
           {/* Regras */}
           <section className="admin-section">
