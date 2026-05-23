@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { ref, onValue } from 'firebase/database'
 import { db } from '../firebase/database'
 import { useTranslation } from 'react-i18next'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useModules } from '../hooks/useConfig'
 import { useAuth } from '../hooks/useAuth'
 import { useCampeonato } from '../contexts/CampeonatoContext'
@@ -13,6 +14,17 @@ import PaginaInativa from '../components/PaginaInativa'
 import './Espectador.css'
 
 const DEFAULT_STATE = { status: 'aguardando', turnoAtual: null, turnoExtra: null, rodada: 1, lastAction: null }
+
+const LINGUA_FLAG_CDN = {
+  pt: 'https://flagcdn.com/br.svg',
+  es: 'https://flagcdn.com/es.svg',
+  en: 'https://flagcdn.com/us.svg',
+}
+function parseLinguas(raw) {
+  if (!raw) return []
+  if (Array.isArray(raw)) return raw.map(l => l.trim().toLowerCase()).filter(Boolean)
+  return String(raw).split(',').map(l => l.trim().toLowerCase()).filter(Boolean)
+}
 
 export default function Espectador() {
   const { t } = useTranslation()
@@ -30,6 +42,7 @@ export default function Espectador() {
   const [draftConfig, setDraftConfig] = useState({ timerDuracao: 60, volumeSons: 80 })
   const [tempoRestante, setTempoRestante] = useState(null)
   const [audioUnlocked, setAudioUnlocked] = useState(false)
+  const [logActions, setLogActions] = useState([])
 
   const cupName = conteudo.cupName || 'Copa Inhouse'
 
@@ -142,13 +155,14 @@ export default function Espectador() {
     }
   }, [draftState.turnoIniciadoEm, draftState.status, draftConfig.timerDuracao]) // eslint-disable-line
 
-  // Trigger announce overlay + som quando uma nova ação chega
+  // Trigger announce overlay + som + log quando uma nova ação chega
   useEffect(() => {
     const action = draftState.lastAction
     const ts     = action?.ts
     if (ts && ts !== prevActionTs.current) {
       prevActionTs.current = ts
       setAnnounceKey(ts)
+      setLogActions(prev => [action, ...prev].slice(0, 20))
       setTimeout(() => setAnnounceKey(null), 3500)
       // Som da ação
       if (action.type === 'steal' && audioStealRef.current) {
@@ -177,6 +191,7 @@ export default function Espectador() {
   const activeTurnId   = draftState.turnoAtual
   const currentTurnCap = captains[activeTurnId]
   const lastAction     = draftState.lastAction
+  const logCorner      = logActions.slice(0, 3)
 
   // ── Entre fases ───────────────────────────────────────────
   if (draftState.status === 'entre_fases') {
@@ -262,10 +277,12 @@ export default function Espectador() {
   return (
     <div className="espectador">
 
-      {/* Announcement overlay — key forces remount to replay animation */}
-      {announceKey && lastAction && (
-        <AnnounceOverlay key={announceKey} action={lastAction} />
-      )}
+      {/* Celebration overlay — anima player no centro com cor do time */}
+      <AnimatePresence>
+        {announceKey && lastAction && (
+          <Celebration key={announceKey} action={lastAction} privacidade={privacidadeAtiva} t={t} />
+        )}
+      </AnimatePresence>
 
       {/* Top bar */}
       <div className="espectador-topbar">
@@ -340,20 +357,10 @@ export default function Espectador() {
           ))}
         </div>
 
-        {/* Center stage */}
+        {/* Center stage — pool em destaque */}
         <div className="espectador-center">
           <div className="center-bg" />
           <div className="center-diag" />
-
-          <div className="auction-spotlight">
-            {lastAction ? (
-              <SpotlightCard action={lastAction} key={lastAction.ts} privacidade={privacidadeAtiva} />
-            ) : (
-              <div className="spotlight-label" style={{ marginTop: '40px' }}>
-                {t('espectador.waiting_pick')}
-              </div>
-            )}
-          </div>
 
           <TurnStrip
             sortedCaptains={sortedCaptains}
@@ -369,6 +376,19 @@ export default function Espectador() {
             privacidade={privacidadeAtiva}
             fase={fase}
           />
+
+          {/* Histórico (canto inferior direito) */}
+          {logCorner.length > 0 && (
+            <div className="spec-history-corner">
+              <div className="spec-history-corner-label">Últimas ações</div>
+              {logCorner.map((a, i) => (
+                <div key={i} className="spec-history-corner-item" style={{ color: a.byTeamCor }}>
+                  {a.type === 'steal' ? '⚔' : '✓'} <span style={{ color: 'var(--text)' }}>{a.playerDiscord}</span>
+                  <span style={{ marginLeft: 'auto', color: 'var(--gold)' }}>🪙{a.preco}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Right teams */}
@@ -383,90 +403,58 @@ export default function Espectador() {
   )
 }
 
-// ── Announcement overlay ──────────────────────────────────────
-function AnnounceOverlay({ action }) {
-  const { t } = useTranslation()
-  const isSteal   = action.type === 'steal'
-  const color     = isSteal ? action.byTeamCor : 'var(--gold2)'
-  const typeLabel = isSteal ? `⚔ ${t('espectador.steal_label').toUpperCase()}` : `✓ ${t('espectador.buy_label').toUpperCase()}`
+// ── Celebration overlay (framer-motion) ──────────────────────
+function Celebration({ action, privacidade, t }) {
+  const isSteal     = action.type === 'steal'
+  const cor         = action.byTeamCor || '#f0cc6e'
+  const nomeExibido = privacidade ? 'Jogador' : action.playerDiscord
+  const actionLabel = isSteal ? `⚔ ${t('espectador.steal_label')}` : `✓ ${t('espectador.buy_label')}`
 
   return (
-    <div className="announce-overlay show">
-      <div className="announce-bg" />
-      <div className="flash-lines">
-        <div className="flash-line" style={{ top: '36%' }} />
-        <div className="flash-line" style={{ top: '64%', animationDelay: '0.1s' }} />
-      </div>
-      <div className="announce-content">
-        <div className="announce-type" style={{ color }}>{typeLabel}</div>
-        <div
-          className="announce-headline"
-          data-text={action.playerDiscord}
-          style={{ color }}
-        >
-          {action.playerDiscord}
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.25 }}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 50,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(3px)', pointerEvents: 'none',
+      }}
+    >
+      <motion.div
+        initial={{ scale: 0.4, opacity: 0, y: 40 }}
+        animate={{ scale: 1,   opacity: 1, y: 0  }}
+        exit={{    scale: 0.7, opacity: 0, y: -20 }}
+        transition={{ type: 'spring', stiffness: 220, damping: 18 }}
+        className="celebration-card"
+        style={{ '--cel-color': cor }}
+      >
+        <div className="celebration-action">{actionLabel}</div>
+        <div className="celebration-name">{nomeExibido}</div>
+        <div className="celebration-meta">
+          <span style={{ color: ELO_CONFIG[action.playerElo]?.color }}>{action.playerElo}</span>
+          <span style={{ opacity: 0.3 }}>·</span>
+          <span>{action.playerRole}</span>
+          <span style={{ opacity: 0.3 }}>·</span>
+          <span style={{ color: 'var(--gold)' }}>🪙 {action.preco}</span>
         </div>
-        <div className="announce-slash" style={{ color }}>
-          <div className="slash-line" />
-          <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: '13px', letterSpacing: '0.15em', textTransform: 'uppercase', opacity: 0.55 }}>
-            {action.playerRole}
-          </span>
-          <div className="slash-line right" />
-        </div>
-        <div className="announce-sub" style={{ color }}>
+        <div className="celebration-team">
           {action.byTeamEmoji} {action.byTeamNome}
         </div>
-        <div className="announce-detail">
-          {isSteal && action.fromTeamNome
-            ? `${t('espectador.stolen_from')} ${action.fromTeamEmoji} ${action.fromTeamNome}  ·  `
-            : ''
-          }
-          🪙 {action.preco} {t('espectador.coins')}
-        </div>
-      </div>
-    </div>
+        {isSteal && action.fromTeamNome && (
+          <div className="celebration-from">
+            {t('espectador.stolen_from')}{' '}
+            <span style={{ color: action.fromTeamCor }}>
+              {action.fromTeamEmoji} {action.fromTeamNome}
+            </span>
+          </div>
+        )}
+      </motion.div>
+    </motion.div>
   )
 }
 
-// ── Spotlight card (center stage) ─────────────────────────────
-function SpotlightCard({ action, privacidade }) {
-  const { t }    = useTranslation()
-  const isSteal  = action.type === 'steal'
-  const eloColor = ELO_CONFIG[action.playerElo]?.color ?? 'rgba(255,255,255,0.45)'
-  const nomeExibido = privacidade ? 'Jogador' : action.playerDiscord
-
-  return (
-    <div style={{ textAlign: 'center', animation: 'spotlightIn 0.4s cubic-bezier(.2,1,.4,1)' }}>
-      <div className="spotlight-action-type" style={{ color: isSteal ? 'var(--red)' : 'var(--gold)' }}>
-        {isSteal ? `⚔ ${t('espectador.steal_label')}` : `✓ ${t('espectador.buy_label')}`}
-      </div>
-      <div className="spotlight-name">{nomeExibido}</div>
-      <div className="spotlight-meta">
-        <span style={{ color: eloColor }}>{action.playerElo}</span>
-        <span style={{ opacity: 0.25 }}>·</span>
-        <span>{action.playerRole}</span>
-      </div>
-      <div className="spotlight-price-row">
-        <span className="spotlight-price-value">{action.preco}</span>
-        <span className="spotlight-price-unit">{t('espectador.coins')}</span>
-      </div>
-      <div
-        className="spotlight-owner-tag"
-        style={{ color: action.byTeamCor, borderColor: action.byTeamCor + '44', background: action.byTeamCor + '0e' }}
-      >
-        {action.byTeamEmoji} {action.byTeamNome}
-      </div>
-      {isSteal && action.fromTeamNome && (
-        <div className="spotlight-steal-from">
-          {t('espectador.stolen_from')}{' '}
-          <span style={{ color: action.fromTeamCor }}>
-            {action.fromTeamEmoji} {action.fromTeamNome}
-          </span>
-        </div>
-      )}
-    </div>
-  )
-}
 
 // ── Turn strip ────────────────────────────────────────────────
 function TurnStrip({ sortedCaptains, activeTurnId, fase }) {
@@ -498,36 +486,61 @@ function TurnStrip({ sortedCaptains, activeTurnId, fase }) {
   )
 }
 
-// ── Player pool ───────────────────────────────────────────────
+// ── Player pool (cards centrais) ──────────────────────────────
 function PlayerPool({ players, overrides, playerState, teamCaptainNames, privacidade, fase }) {
   const { t }   = useTranslation()
   const visible = players.filter(p => !overrides[p.id]?.descartado && !teamCaptainNames.has(p.discord))
 
-  // Na fase de reservas, titulares são "sold" e não voltam para a pool visível
   const available = visible.filter(p => !playerState[p.id]?.ownedBy).length
   const label     = fase === 'reservas' ? 'Pool de Reservas' : t('espectador.available')
 
   return (
-    <div className="player-pool">
-      <div className="pool-label">
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+      <div className="pool-label" style={{ padding: '12px 18px 4px' }}>
         {label}: {available}
       </div>
-      <div className="pool-chips">
-        {visible.map((p, idx) => {
-          const ps      = playerState[p.id]
-          const sold    = !!ps?.ownedBy
-          const premium = !!overrides[p.id]?.premium && !sold
-          // Na fase de reservas, titulares ficam ocultos da pool
-          if (fase === 'reservas' && sold && ps?.tipoPosse === 'titular') return null
-          return (
-            <div
-              key={p.id}
-              className={`pool-chip${sold ? ' sold' : ''}${premium ? ' premium' : ''}`}
-            >
-              {privacidade ? `#${idx + 1}` : p.discord}
-            </div>
-          )
-        })}
+      <div className="spec-pool-grid" style={{ overflowY: 'auto', flex: 1 }}>
+        <AnimatePresence>
+          {visible.map((p, idx) => {
+            const ps      = playerState[p.id]
+            const sold    = !!ps?.ownedBy
+            // Na fase de reservas, titulares somem da pool
+            if (fase === 'reservas' && sold && ps?.tipoPosse === 'titular') return null
+            const eloColor = ELO_CONFIG[p.elo]?.color ?? 'rgba(255,255,255,0.45)'
+            const linguas  = parseLinguas(p.linguas)
+            return (
+              <motion.div
+                key={p.id}
+                layout
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: sold ? 0.18 : 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                transition={{ duration: 0.35, ease: [0.2, 1, 0.4, 1] }}
+                className={`spec-player-card${sold ? ' sold' : ''}`}
+              >
+                <div className="spec-player-card-name">
+                  {privacidade ? `Jogador #${idx + 1}` : p.discord}
+                </div>
+                <div className="spec-player-card-meta" style={{ color: eloColor }}>
+                  <span>{p.elo}</span>
+                </div>
+                <div className="spec-player-card-meta">
+                  <span>{p.rolePrimaria}</span>
+                </div>
+                {linguas.length > 0 && (
+                  <div className="spec-player-card-langs">
+                    {linguas.map(l => {
+                      const src = LINGUA_FLAG_CDN[l]
+                      return src
+                        ? <img key={l} src={src} alt={l} />
+                        : <span key={l} style={{ fontSize: 9, color: 'var(--text3)' }}>{l.toUpperCase()}</span>
+                    })}
+                  </div>
+                )}
+              </motion.div>
+            )
+          })}
+        </AnimatePresence>
       </div>
     </div>
   )
@@ -567,8 +580,12 @@ function SpectatorTeam({ team, isActive, players, privacidade, fase = 'titulares
 
   return (
     <div
-      className={`spec-team ${isActive ? 'active' : ''}`}
-      style={{ borderColor: isActive ? team.cor + '55' : undefined, opacity: exitou && !isActive ? 0.6 : 1 }}
+      className={`spec-team ${isActive ? 'active active-turn' : ''}`}
+      style={{
+        borderColor: isActive ? team.cor + '55' : undefined,
+        opacity: exitou && !isActive ? 0.6 : 1,
+        '--active-color': team.cor,
+      }}
     >
       <div className="spec-team-color-bar" style={{ background: exitou ? 'var(--text3)' : team.cor }} />
       <div className="spec-team-header">
