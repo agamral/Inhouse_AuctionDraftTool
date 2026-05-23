@@ -1,6 +1,6 @@
-import { NavLink, useNavigate, useMatch, Link } from 'react-router-dom'
+import { NavLink, useNavigate, useMatch, Link, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { useModules, useConteudo } from '../hooks/useConfig'
 import { logout } from '../firebase/auth'
@@ -20,6 +20,11 @@ export default function Navbar() {
   const navigate = useNavigate()
   const inCampeonato = useMatch('/campeonatos/:campeonatoId/*')
   const base = inCampeonato ? `/campeonatos/${inCampeonato.params.campeonatoId}` : ''
+  const location = useLocation()
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  // Fecha o menu sempre que a rota muda
+  useEffect(() => { setMenuOpen(false) }, [location.pathname])
 
   useEffect(() => {
     if (conteudo.cupName) document.title = conteudo.cupName
@@ -32,6 +37,16 @@ export default function Navbar() {
 
   return (
     <header className="navbar">
+      <button
+        className="navbar-hamburger"
+        onClick={() => setMenuOpen(o => !o)}
+        aria-label={menuOpen ? 'Fechar menu' : 'Abrir menu'}
+        aria-expanded={menuOpen}
+      >
+        <span className={`navbar-hamburger-icon${menuOpen ? ' open' : ''}`}>
+          <span /><span /><span />
+        </span>
+      </button>
       <div className="navbar-logo">
         <div className="navbar-logo-icon">⚔️</div>
         <div>
@@ -45,7 +60,7 @@ export default function Navbar() {
         </div>
       </div>
 
-      <nav className="navbar-nav">
+      <nav className={`navbar-nav${menuOpen ? ' navbar-nav--open' : ''}`}>
         {inCampeonato ? (
           <>
             <Link to="/" className="nav-link" style={{ fontSize: 11, opacity: 0.6 }}>← Todos</Link>

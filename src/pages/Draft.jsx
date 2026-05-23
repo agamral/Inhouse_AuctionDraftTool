@@ -61,6 +61,7 @@ export default function Draft() {
   const [audioUnlocked,  setAudioUnlocked]  = useState(false)
   const [turnAlert,      setTurnAlert]      = useState(false)
   const [turnAlertOpacity, setTurnAlertOpacity] = useState(1)
+  const [mobilePanel,    setMobilePanel]    = useState(null) // null | 'meuTime' | 'outros' | 'historico'
   const prevTurnAtualRef = useRef(null)
   const lastActionTsRef  = useRef(null)
   const volRef           = useRef(0.8)
@@ -302,6 +303,10 @@ export default function Draft() {
   const mid            = Math.ceil(sortedCaptains.length / 2)
   const leftTeams      = sortedCaptains.slice(0, mid)
   const rightTeams     = sortedCaptains.slice(mid)
+  // No mobile separamos o time do capitão dos demais (UX mais clara)
+  const captainSessionId = captainSession?.captainId ?? null
+  const myTeamEntry      = captainSessionId ? sortedCaptains.find(([id]) => id === captainSessionId) : null
+  const outrosTimes      = captainSessionId ? sortedCaptains.filter(([id]) => id !== captainSessionId) : sortedCaptains
 
   const teamCaptainNames = new Set(Object.values(captains).map(c => c.capitaoNome).filter(Boolean))
 
@@ -790,22 +795,21 @@ export default function Draft() {
         )
       })()}
 
-      {/* Layout 3 colunas (1 coluna no mobile) */}
+      {/* Layout 3 colunas (no mobile só o centro fica; laterais aparecem via botões flutuantes) */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: isMobile ? '1fr' : '260px 1fr 260px',
         flex: 1,
-        overflow: isMobile ? 'visible' : 'hidden',
+        overflow: 'hidden',
       }}>
 
-        {/* Coluna esquerda (outros times) */}
+        {/* Coluna esquerda (outros times) — escondida no mobile, conteúdo vai pro drawer */}
         <div style={{
-          borderRight: isMobile ? 'none' : '1px solid var(--border)',
-          borderTop:   isMobile ? '1px solid var(--border)' : 'none',
+          display: isMobile ? 'none' : 'block',
+          borderRight: '1px solid var(--border)',
           background: 'var(--bg2)',
-          overflowY: isMobile ? 'visible' : 'auto',
+          overflowY: 'auto',
           padding: '12px',
-          order: isMobile ? 3 : 0,
         }}>
           <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: '10px', letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text2)', padding: '4px 6px 12px' }}>
             {t('draft.teams')}
@@ -822,11 +826,10 @@ export default function Draft() {
           ))}
         </div>
 
-        {/* Centro — jogadores (primeiro no mobile) */}
+        {/* Centro — jogadores (única coluna visível no mobile) */}
         <div style={{
-          overflowY: isMobile ? 'visible' : 'auto',
-          padding: isMobile ? '14px 14px 20px' : '20px 24px',
-          order: isMobile ? 1 : 0,
+          overflowY: 'auto',
+          padding: isMobile ? '14px 14px 90px' : '20px 24px', // padding extra no fim para os botões flutuantes não cobrirem
         }}>
           {/* Badge de fase */}
           <div style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -905,15 +908,14 @@ export default function Draft() {
           </div>
         </div>
 
-        {/* Coluna direita (meu time + log) */}
+        {/* Coluna direita (meu time + log) — escondida no mobile, conteúdo vai pros drawers */}
         <div style={{
-          borderLeft: isMobile ? 'none' : '1px solid var(--border)',
-          borderTop:  isMobile ? '1px solid var(--border)' : 'none',
+          display: isMobile ? 'none' : 'flex',
+          borderLeft: '1px solid var(--border)',
           background: 'var(--bg2)',
-          overflowY: isMobile ? 'visible' : 'auto',
+          overflowY: 'auto',
           padding: '12px',
-          display: 'flex', flexDirection: 'column', gap: 0,
-          order: isMobile ? 2 : 0,
+          flexDirection: 'column', gap: 0,
         }}>
           <div style={{ padding: '4px 6px 12px' }}>&nbsp;</div>
           {rightTeams.map(([id, team]) => (
@@ -952,6 +954,153 @@ export default function Draft() {
         </div>
 
       </div>
+
+      {/* ── Mobile: botões flutuantes + drawer ──────────────────────────────── */}
+      {isMobile && (
+        <>
+          {/* Botões flutuantes (fica em cima do conteúdo) */}
+          <div style={{
+            position: 'fixed', bottom: 12, left: 12, right: 12, zIndex: 50,
+            display: 'flex', gap: 8, justifyContent: 'center', pointerEvents: 'none',
+          }}>
+            {myTeamEntry && (
+              <button
+                onClick={() => setMobilePanel('meuTime')}
+                style={{
+                  pointerEvents: 'auto',
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '9px 14px', borderRadius: 22,
+                  border: `1px solid ${myTeamEntry[1].cor}66`,
+                  background: `${myTeamEntry[1].cor}22`,
+                  backdropFilter: 'blur(12px)',
+                  color: myTeamEntry[1].cor,
+                  fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 12,
+                  letterSpacing: '0.06em', textTransform: 'uppercase',
+                  boxShadow: '0 4px 14px rgba(0,0,0,0.4)',
+                }}
+              >
+                <span style={{ fontSize: 14 }}>{myTeamEntry[1].emoji}</span>
+                Meu Time
+              </button>
+            )}
+            <button
+              onClick={() => setMobilePanel('outros')}
+              style={{
+                pointerEvents: 'auto',
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '9px 14px', borderRadius: 22,
+                border: '1px solid var(--border2)', background: 'var(--bg3)',
+                backdropFilter: 'blur(12px)', color: 'var(--text)',
+                fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 12,
+                letterSpacing: '0.06em', textTransform: 'uppercase',
+                boxShadow: '0 4px 14px rgba(0,0,0,0.4)',
+              }}
+            >
+              👥 Times
+            </button>
+            <button
+              onClick={() => setMobilePanel('historico')}
+              style={{
+                pointerEvents: 'auto',
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '9px 14px', borderRadius: 22,
+                border: '1px solid var(--border2)', background: 'var(--bg3)',
+                backdropFilter: 'blur(12px)', color: 'var(--text)',
+                fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 12,
+                letterSpacing: '0.06em', textTransform: 'uppercase',
+                boxShadow: '0 4px 14px rgba(0,0,0,0.4)',
+              }}
+            >
+              📜 Log
+            </button>
+          </div>
+
+          {/* Drawer / modal */}
+          {mobilePanel && (
+            <div
+              onClick={() => setMobilePanel(null)}
+              style={{
+                position: 'fixed', inset: 0, zIndex: 100,
+                background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)',
+                display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+              }}
+            >
+              <div
+                onClick={e => e.stopPropagation()}
+                style={{
+                  background: 'var(--bg2)', borderTop: '1px solid var(--border2)',
+                  borderTopLeftRadius: 14, borderTopRightRadius: 14,
+                  maxHeight: '80vh', overflowY: 'auto', padding: '14px 14px 24px',
+                }}
+              >
+                {/* Header do drawer */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 18, color: 'var(--text)' }}>
+                    {mobilePanel === 'meuTime'   && 'Meu Time'}
+                    {mobilePanel === 'outros'    && `Outros Times (${outrosTimes.length})`}
+                    {mobilePanel === 'historico' && `Histórico (${logAcoes.length})`}
+                  </span>
+                  <button
+                    onClick={() => setMobilePanel(null)}
+                    style={{ background: 'none', border: '1px solid var(--border2)', borderRadius: 4, padding: '4px 10px', color: 'var(--text2)', cursor: 'pointer', fontSize: 13 }}
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* Conteúdo */}
+                {mobilePanel === 'meuTime' && myTeamEntry && (
+                  <TeamCard
+                    id={myTeamEntry[0]}
+                    team={myTeamEntry[1]}
+                    isActive={activeTurnId === myTeamEntry[0]}
+                    isMyTeam
+                    minPlayers={draftConfig.minPlayers}
+                    maxPlayers={draftConfig.maxPlayers}
+                    fase={fase}
+                    privacidade={privacidade}
+                  />
+                )}
+                {mobilePanel === 'outros' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {outrosTimes.map(([id, team]) => (
+                      <TeamCard
+                        key={id} id={id} team={team}
+                        isActive={activeTurnId === id}
+                        isMyTeam={false}
+                        minPlayers={draftConfig.minPlayers}
+                        maxPlayers={draftConfig.maxPlayers}
+                        fase={fase}
+                        privacidade={privacidade}
+                      />
+                    ))}
+                  </div>
+                )}
+                {mobilePanel === 'historico' && (
+                  logAcoes.length === 0
+                    ? <p style={{ color: 'var(--text2)', fontSize: 13 }}>Nenhuma ação registrada ainda.</p>
+                    : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {logAcoes.map((a, i) => (
+                          <div key={i} style={{ padding: '8px 10px', borderRadius: 6, background: 'var(--bg3)', fontSize: 12 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, color: a.type === 'steal' ? 'var(--red)' : 'var(--green)' }}>
+                              {a.type === 'steal' ? '✕' : '✓'} <span style={{ color: a.byTeamCor }}>{a.byTeamEmoji} {a.byTeamNome}</span>
+                            </div>
+                            <div style={{ marginTop: 2, color: 'var(--text2)' }}>
+                              {a.playerDiscord}
+                              {a.type === 'steal' && a.fromTeamNome && <span style={{ opacity: 0.6 }}> ← {a.fromTeamEmoji} {a.fromTeamNome}</span>}
+                              <span style={{ float: 'right', color: 'var(--gold)' }}>🪙{a.preco}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )
+                )}
+              </div>
+            </div>
+          )}
+        </>
+      )}
     </div>
   )
 }
