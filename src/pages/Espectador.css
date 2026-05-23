@@ -653,8 +653,9 @@
 }
 
 .spec-player-card.sold {
-  opacity: 0.2;
-  filter: grayscale(0.6);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .spec-player-card-name {

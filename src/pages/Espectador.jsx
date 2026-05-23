@@ -353,7 +353,7 @@ export default function Espectador() {
         {/* Left teams */}
         <div className="espectador-panel">
           {leftTeams.map(([id, team]) => (
-            <SpectatorTeam key={id} team={team} isActive={activeTurnId === id} players={players} privacidade={privacidadeAtiva} fase={fase} />
+            <SpectatorTeam key={id} id={id} team={team} isActive={activeTurnId === id} players={players} privacidade={privacidadeAtiva} fase={fase} />
           ))}
         </div>
 
@@ -394,7 +394,7 @@ export default function Espectador() {
         {/* Right teams */}
         <div className="espectador-panel right">
           {rightTeams.map(([id, team]) => (
-            <SpectatorTeam key={id} team={team} isActive={activeTurnId === id} players={players} privacidade={privacidadeAtiva} fase={fase} />
+            <SpectatorTeam key={id} id={id} team={team} isActive={activeTurnId === id} players={players} privacidade={privacidadeAtiva} fase={fase} />
           ))}
         </div>
 
@@ -404,13 +404,35 @@ export default function Espectador() {
 }
 
 // ── Celebration overlay (framer-motion) ──────────────────────
-// Usa layoutId compartilhado com o card do pool — framer anima
-// automaticamente da posição original do card até o centro
+// Etapas:
+//   1. Mounta com layoutId — framer-motion anima do card pool até o centro
+//   2. Permanece no centro com a info da ação
+//   3. No exit: anima até a posição do card do time (data-team-id)
 function Celebration({ action, privacidade, t }) {
+  const cardRef     = useRef(null)
+  const [exitDelta, setExitDelta] = useState(null)
   const isSteal     = action.type === 'steal'
   const cor         = action.byTeamCor || '#f0cc6e'
   const nomeExibido = privacidade ? 'Jogador' : action.playerDiscord
   const actionLabel = isSteal ? `⚔ ${t('espectador.steal_label')}` : `✓ ${t('espectador.buy_label')}`
+
+  // Pouco antes do exit, mede a posição do time pra animação ir até lá
+  useEffect(() => {
+    const measure = () => {
+      const teamEl = document.querySelector(`[data-team-id="${action.byTeamId}"]`)
+      const cardEl = cardRef.current
+      if (!teamEl || !cardEl) return
+      const tr = teamEl.getBoundingClientRect()
+      const cr = cardEl.getBoundingClientRect()
+      setExitDelta({
+        x: (tr.left + tr.width / 2) - (cr.left + cr.width / 2),
+        y: (tr.top  + tr.height / 2) - (cr.top  + cr.height / 2),
+      })
+    }
+    // Medir após a animação de entrada estabilizar (~700ms)
+    const t1 = setTimeout(measure, 700)
+    return () => clearTimeout(t1)
+  }, [action.byTeamId])
 
   return (
     <motion.div
@@ -425,7 +447,9 @@ function Celebration({ action, privacidade, t }) {
       }}
     >
       <motion.div
+        ref={cardRef}
         layoutId={action.playerId ? `player-${action.playerId}` : undefined}
+        exit={exitDelta ? { x: exitDelta.x, y: exitDelta.y, scale: 0.1, opacity: 0 } : { scale: 0.5, opacity: 0 }}
         transition={{ type: 'spring', stiffness: 180, damping: 22, duration: 0.6 }}
         className="celebration-card"
         style={{ '--cel-color': cor }}
@@ -563,7 +587,7 @@ function RosterEntry({ entry, idx, dimmed, playerByDiscord, privacidade }) {
   )
 }
 
-function SpectatorTeam({ team, isActive, players, privacidade, fase = 'titulares' }) {
+function SpectatorTeam({ id, team, isActive, players, privacidade, fase = 'titulares' }) {
   const { t } = useTranslation()
   const roster   = Object.entries(team.roster ?? {})
   const reservas = Object.entries(team.reservas ?? {})
@@ -574,6 +598,7 @@ function SpectatorTeam({ team, isActive, players, privacidade, fase = 'titulares
 
   return (
     <div
+      data-team-id={id}
       className={`spec-team ${isActive ? 'active active-turn' : ''}`}
       style={{
         borderColor: isActive ? team.cor + '55' : undefined,
