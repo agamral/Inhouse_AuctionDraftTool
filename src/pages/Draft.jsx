@@ -966,14 +966,13 @@ export default function Draft() {
           </div>
         </div>
 
-        {/* Coluna direita (meu time + log) — escondida no mobile, conteúdo vai pros drawers */}
+        {/* Coluna direita (outros times) — escondida no mobile, conteúdo vai pros drawers */}
         <div style={{
-          display: isMobile ? 'none' : 'flex',
+          display: isMobile ? 'none' : 'block',
           borderLeft: '1px solid var(--border)',
           background: 'var(--bg2)',
           overflowY: 'auto',
           padding: '12px',
-          flexDirection: 'column', gap: 0,
         }}>
           <div style={{ padding: '4px 6px 12px' }}>&nbsp;</div>
           {rightTeams.map(([id, team]) => (
