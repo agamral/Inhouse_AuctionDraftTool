@@ -163,12 +163,16 @@ export default function Agendamento() {
   const [saving,       setSaving]   = useState(null)
   const [feedback,     setFeedback] = useState({})
 
-  // Para PIN capitão: encontra o time na tabela pelo nome (draftSession usa ID diferente do /teams)
+  // Para PIN capitão: encontra o time na tabela por múltiplas chaves
+  // (draftSession e /teams têm IDs diferentes — match por nome do time ou capitão)
   const teamIdFromPin = pinSession && !capitao
-    ? Object.entries(teams).find(([, t]) =>
-        t.nome === pinSession.nome ||
-        t.capitaoNome === pinSession.capitaoNome
-      )?.[0] ?? ''
+    ? Object.entries(teams).find(([, t]) => {
+        if (t.nome === pinSession.nome) return true
+        if (t.capitaoNome && t.capitaoNome === pinSession.capitaoNome) return true
+        // Fallback: capitão pode estar nos jogadores com isCaptain=true
+        if (pinSession.capitaoNome && (t.jogadores ?? []).some(j => j.isCaptain && j.nome === pinSession.capitaoNome)) return true
+        return false
+      })?.[0] ?? ''
     : ''
 
   const teamSel = isAdmin ? teamSelAdmin : (capitao?.teamId ?? teamIdFromPin ?? '')
@@ -310,6 +314,15 @@ export default function Agendamento() {
           <div className="ag-section-title" style={{ marginTop: '2.5rem' }}>
             {isAdmin ? 'Gerenciar Disponibilidade' : 'Minha Disponibilidade'}
           </div>
+
+          {capitaoEfetivo && !isAdmin && !meuTime && Object.keys(teams).length > 0 && (
+            <div className="ag-aviso" style={{ background: 'rgba(224,85,85,0.08)', borderColor: 'rgba(224,85,85,0.3)', color: 'var(--red)', marginBottom: 16 }}>
+              <strong>Seu time ainda não foi vinculado à sua conta.</strong><br />
+              <span style={{ color: 'var(--text2)', fontSize: 13 }}>
+                Peça ao admin para gerar seu acesso na aba <em>Capitães → Acesso dos Capitães</em>, ou verifique se está logado com o email correto.
+              </span>
+            </div>
+          )}
 
           {capitaoEfetivo && !isAdmin && (
             <div className="ag-team-sel">

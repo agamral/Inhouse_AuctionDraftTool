@@ -82,10 +82,16 @@ export function useAuth() {
 
           // ── Verificação de capitão ───────────────────────────────────────
           if (!isAdm) {
+            const email = firebaseUser.email ?? ''
+            // Match por UID OU email (mais robusto — email persiste mesmo se Auth
+            // reset/migrar; UID pode ficar dessincronizado entre criação e login)
+            const matchTeam = (t) =>
+              (t.capitaoUid && t.capitaoUid === firebaseUser.uid) ||
+              (t.capitaoEmail && email && t.capitaoEmail === email)
+
             const teamsLeg = await safeGet('/teams')
             const teamsOld = teamsLeg?.val() ?? {}
-            const legEntry = Object.entries(teamsOld)
-              .find(([, t]) => t.capitaoUid === firebaseUser.uid)
+            const legEntry = Object.entries(teamsOld).find(([, t]) => matchTeam(t))
 
             if (legEntry) {
               setCapitao({ teamId: legEntry[0], ...legEntry[1] })
@@ -93,11 +99,11 @@ export function useAuth() {
               const campSnap = await safeGet('/campeonatos')
               const campeonatos = campSnap?.val() ?? {}
               let found = null
+              // Procura em TODOS os campeonatos (não só no principal) — capitão
+              // pode estar em qualquer um, especialmente em multi-campeonato
               for (const [cid, camp] of Object.entries(campeonatos)) {
-                if (!camp.info?.principal) continue
                 const teams = camp.teams ?? {}
-                const entry = Object.entries(teams)
-                  .find(([, t]) => t.capitaoUid === firebaseUser.uid)
+                const entry = Object.entries(teams).find(([, t]) => matchTeam(t))
                 if (entry) {
                   found = { teamId: entry[0], campeonatoId: cid, ...entry[1] }
                   break

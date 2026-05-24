@@ -106,11 +106,12 @@ export default function AdminTeamsSection() {
     try {
       const id = push(ref(db, teamPath(campeonatoId))).key
       await set(ref(db, `${teamPath(campeonatoId)}/${id}`), {
-        nome:      cap.nome,
-        cor:       cap.cor ?? '#4a9eda',
-        fonte:     'leilao',
+        nome:        cap.nome,
+        capitaoNome: cap.capitaoNome ?? null,   // necessário p/ matching no agendamento via PIN session
+        cor:         cap.cor ?? '#4a9eda',
+        fonte:       'leilao',
         jogadores,
-        criadoEm: Date.now(),
+        criadoEm:    Date.now(),
       })
       flash('ok', `Time "${cap.nome}" importado do leilão!`)
     } catch (e) {
