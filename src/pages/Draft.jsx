@@ -855,16 +855,61 @@ export default function Draft() {
             </span>
           </div>
 
-          {isMyTurn && !myCap?.exitou && (
-            <div style={{ marginBottom: '16px', padding: '10px 16px', borderRadius: '8px', background: 'rgba(76,175,125,0.08)', border: '1px solid rgba(76,175,125,0.25)', fontFamily: "'Barlow Condensed', sans-serif", fontSize: '13px', color: 'var(--green)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-              <span>✓ É a sua vez! Escolha um jogador.</span>
-              {fase === 'reservas' && (
-                <button onClick={sairDraft} style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 11, padding: '3px 10px', borderRadius: 4, border: '1px solid rgba(138,134,128,0.4)', background: 'rgba(138,134,128,0.08)', color: 'var(--text2)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                  Encerrar participação
-                </button>
-              )}
-            </div>
-          )}
+          {isMyTurn && !myCap?.exitou && (() => {
+            const timeCompleto = fase === 'reservas' && (Object.keys(myCap?.reservas ?? {}).length >= 2)
+
+            // Banner GRANDE de fechar quando o time está completo na fase de reservas
+            if (timeCompleto) {
+              return (
+                <div style={{
+                  marginBottom: '20px', padding: '20px 24px',
+                  borderRadius: '12px',
+                  background: 'linear-gradient(135deg, rgba(201,168,76,0.15) 0%, rgba(240,204,110,0.08) 100%)',
+                  border: '2px solid rgba(240,204,110,0.5)',
+                  boxShadow: '0 0 32px rgba(240,204,110,0.18)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  gap: '20px', flexWrap: 'wrap',
+                }}>
+                  <div style={{ flex: 1, minWidth: 200 }}>
+                    <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 20, color: 'var(--gold2)', marginBottom: 4 }}>
+                      🏆 Time completo!
+                    </div>
+                    <div style={{ fontFamily: "'Barlow', sans-serif", fontSize: 13, color: 'var(--text2)', lineHeight: 1.4 }}>
+                      Você pode trancar seu time agora — assim você sai do leilão e ninguém mais pode roubar seus jogadores. Ou pode esperar mais turnos (timer pula sua vez automaticamente).
+                    </div>
+                  </div>
+                  <button
+                    onClick={sairDraft}
+                    style={{
+                      fontFamily: "'Barlow Condensed', sans-serif",
+                      fontWeight: 700, fontSize: 14, letterSpacing: '0.08em',
+                      padding: '10px 22px', borderRadius: 6,
+                      border: '1px solid var(--gold)',
+                      background: 'linear-gradient(180deg, rgba(240,204,110,0.25) 0%, rgba(201,168,76,0.18) 100%)',
+                      color: 'var(--gold2)',
+                      textTransform: 'uppercase',
+                      cursor: 'pointer', whiteSpace: 'nowrap',
+                      boxShadow: '0 0 16px rgba(240,204,110,0.3)',
+                    }}
+                  >
+                    🔒 Fechar e sair
+                  </button>
+                </div>
+              )
+            }
+
+            // Banner normal "É a sua vez!" (compra/roubo possíveis)
+            return (
+              <div style={{ marginBottom: '16px', padding: '10px 16px', borderRadius: '8px', background: 'rgba(76,175,125,0.08)', border: '1px solid rgba(76,175,125,0.25)', fontFamily: "'Barlow Condensed', sans-serif", fontSize: '13px', color: 'var(--green)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                <span>✓ É a sua vez! Escolha um jogador.</span>
+                {fase === 'reservas' && (
+                  <button onClick={sairDraft} style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 11, padding: '3px 10px', borderRadius: 4, border: '1px solid rgba(138,134,128,0.4)', background: 'rgba(138,134,128,0.08)', color: 'var(--text2)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                    Encerrar participação
+                  </button>
+                )}
+              </div>
+            )
+          })()}
 
           {/* ── Roubáveis — no topo, com destaque vermelho ── */}
           {draftConfig.rouboAtivo && stealablePlayers.length > 0 && (
@@ -1122,11 +1167,10 @@ function proximoCom(sortedCaptains, captains, currentId, myNewSize, config, fase
 
     if (fase === 'reservas') {
       if (nCap.exitou) continue
-      let count
-      if (nId === currentId)                       count = myNewSize
-      else if (sizeOverrides && nId in sizeOverrides) count = sizeOverrides[nId]
-      else                                          count = Object.keys(nCap.reservas ?? {}).length
-      if (count >= 2) continue
+      // currentId que acabou de encher (myNewSize >= 2) avança a vez —
+      // mas captains cheios de OUTRAS rodadas continuam na fila pra receber
+      // a vez de 'fechar e sair' (ou serem roubados).
+      if (nId === currentId && myNewSize >= 2) continue
       return { id: nId, novaRodada: nextIdx <= idx }
     } else {
       let size

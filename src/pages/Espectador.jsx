@@ -507,7 +507,12 @@ function TurnStrip({ sortedCaptains, activeTurnId, fase }) {
 // ── Player pool (cards centrais) ──────────────────────────────
 function PlayerPool({ players, overrides, playerState, teamCaptainNames, privacidade, fase }) {
   const { t }   = useTranslation()
-  const visible = players.filter(p => !overrides[p.id]?.descartado && !teamCaptainNames.has(p.discord))
+  // Durante a fase de titulares, inscritos como "Reserva" não devem aparecer no pool público
+  const visible = players.filter(p =>
+    !overrides[p.id]?.descartado &&
+    !teamCaptainNames.has(p.discord) &&
+    (fase === 'reservas' || p.titularReserva !== 'Reserva')
+  )
 
   const available = visible.filter(p => !playerState[p.id]?.ownedBy).length
   const label     = fase === 'reservas' ? 'Pool de Reservas' : t('espectador.available')
