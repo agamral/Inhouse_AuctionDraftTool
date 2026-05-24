@@ -88,11 +88,13 @@ export default function AdminDraftControl({ draftConfig }) {
   }
 
   async function resetarDraft() {
-    // Limpa rosters e playerState mas mantém os times cadastrados
+    // Limpa rosters, reservas, exitou e playerState — mantém os times cadastrados
     const updates = {}
     sortedCaptains.forEach(([id]) => {
-      updates[`${draftSessionPath(campeonatoId)}/captains/${id}/roster`]  = null
-      updates[`${draftSessionPath(campeonatoId)}/captains/${id}/moedas`]  = draftConfig?.moedas ?? 15
+      updates[`${draftSessionPath(campeonatoId)}/captains/${id}/roster`]   = null
+      updates[`${draftSessionPath(campeonatoId)}/captains/${id}/reservas`] = null
+      updates[`${draftSessionPath(campeonatoId)}/captains/${id}/exitou`]   = null
+      updates[`${draftSessionPath(campeonatoId)}/captains/${id}/moedas`]   = draftConfig?.moedas ?? 15
     })
     updates[`${draftSessionPath(campeonatoId)}/playerState`] = null
     updates[`${draftSessionPath(campeonatoId)}/state`]       = DEFAULT_STATE
