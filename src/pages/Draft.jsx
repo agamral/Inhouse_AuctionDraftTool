@@ -945,28 +945,8 @@ export default function Draft() {
             />
           ))}
 
-          {/* Log de ações */}
-          {logAcoes.length > 0 && (
-            <div style={{ marginTop: 16, borderTop: '1px solid var(--border)', flexShrink: 0 }}>
-              <div style={{ padding: '8px 6px 6px', fontFamily: "'Barlow Condensed', sans-serif", fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)' }}>
-                Histórico
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 220, overflowY: 'auto' }}>
-                {logAcoes.map((a, i) => (
-                  <div key={a.ts} style={{ padding: '5px 6px', borderRadius: 5, background: i === 0 ? (a.type === 'steal' ? 'rgba(224,85,85,0.06)' : 'rgba(76,175,125,0.06)') : 'transparent', opacity: i === 0 ? 1 : 0.55 + (0.45 * (1 - i / logAcoes.length)) }}>
-                    <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 11, color: a.type === 'steal' ? 'var(--red)' : 'var(--green)', fontWeight: 700 }}>
-                      {a.type === 'steal' ? '⚔' : '✓'} {a.byTeamEmoji} {a.byTeamNome}
-                    </div>
-                    <div style={{ fontFamily: "'Barlow', sans-serif", fontSize: 11, color: 'var(--text2)', marginTop: 1 }}>
-                      {a.playerDiscord}
-                      {a.type === 'steal' && a.fromTeamNome && <span style={{ opacity: 0.6 }}> ← {a.fromTeamEmoji} {a.fromTeamNome}</span>}
-                      <span style={{ float: 'right', color: 'var(--gold)', fontSize: 10 }}>🪙{a.preco}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          {/* Histórico removido — agora acessível só pelo drawer 'Log' no mobile.
+              No desktop, os times ocupam todo o painel direito. */}
         </div>
 
       </div>
@@ -1238,24 +1218,23 @@ function TeamCard({
       opacity: exitou && !isMyTeam ? 0.55 : 1,
     }}>
       {/* Header */}
-      <div style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border)' }}>
-        <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: team.cor, flexShrink: 0 }} />
-          <span>{team.emoji}</span>
-          <span style={{ color: team.cor }}>{team.nome}</span>
-          {isMyTeam && !exitou && <span style={{ fontSize: '10px', fontFamily: "'Barlow Condensed', sans-serif", color: team.cor, opacity: 0.7 }}>MEU</span>}
+      <div style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${team.cor}22`, background: `linear-gradient(90deg, ${team.cor}14 0%, transparent 100%)` }}>
+        <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: '16px', display: 'flex', alignItems: 'center', gap: '7px', minWidth: 0, flex: 1 }}>
+          <span style={{ fontSize: 18, lineHeight: 1, flexShrink: 0 }}>{team.emoji}</span>
+          <span style={{ color: team.cor, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 1, minWidth: 0 }}>{team.nome}</span>
+          {isMyTeam && !exitou && <span style={{ fontSize: '10px', fontFamily: "'Barlow Condensed', sans-serif", color: team.cor, opacity: 0.7, letterSpacing: '0.06em', flexShrink: 0 }}>MEU</span>}
           {exitou && (
-            <span style={{ fontSize: '10px', fontFamily: "'Barlow Condensed', sans-serif", color: 'var(--green)', background: 'rgba(76,175,125,0.12)', border: '1px solid rgba(76,175,125,0.3)', padding: '1px 6px', borderRadius: '3px' }}>
+            <span style={{ fontSize: '10px', fontFamily: "'Barlow Condensed', sans-serif", color: 'var(--green)', background: 'rgba(76,175,125,0.12)', border: '1px solid rgba(76,175,125,0.3)', padding: '1px 6px', borderRadius: '3px', flexShrink: 0 }}>
               PRONTO
             </span>
           )}
           {!exitou && titFull && fase === 'titulares' && (
-            <span style={{ fontSize: '10px', fontFamily: "'Barlow Condensed', sans-serif", color: 'var(--green)', background: 'rgba(76,175,125,0.12)', border: '1px solid rgba(76,175,125,0.3)', padding: '1px 6px', borderRadius: '3px' }}>
+            <span style={{ fontSize: '10px', fontFamily: "'Barlow Condensed', sans-serif", color: 'var(--green)', background: 'rgba(76,175,125,0.12)', border: '1px solid rgba(76,175,125,0.3)', padding: '1px 6px', borderRadius: '3px', flexShrink: 0 }}>
               COMPLETO
             </span>
           )}
         </div>
-        <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: '13px', color: 'var(--gold)', fontWeight: 600, flexShrink: 0 }}>
+        <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: '15px', color: 'var(--gold2)', fontWeight: 700, flexShrink: 0 }}>
           🪙 {team.moedas}
         </div>
       </div>
@@ -1263,9 +1242,9 @@ function TeamCard({
       {/* Titulares */}
       <div style={{ padding: '8px 14px', background: 'rgba(201,168,76,0.04)', borderBottom: fase === 'reservas' ? '1px solid var(--border)' : 'none' }}>
         {team.capitaoNome && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px', borderRadius: '4px', background: 'rgba(201,168,76,0.08)', fontSize: '12px', color: 'var(--gold)', fontFamily: "'Barlow Condensed', sans-serif", marginBottom: '2px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 7px', borderRadius: '4px', background: 'rgba(201,168,76,0.10)', fontSize: '14px', color: 'var(--gold2)', fontFamily: "'Barlow Condensed', sans-serif", marginBottom: '3px', fontWeight: 700 }}>
             <span>⚑ {team.capitaoNome}</span>
-            <span style={{ fontSize: '10px', opacity: 0.7 }}>CAP</span>
+            <span style={{ fontSize: '10px', opacity: 0.75, letterSpacing: '0.08em' }}>CAP</span>
           </div>
         )}
         {roster.map(([pid, entry], idx) => {
@@ -1273,11 +1252,11 @@ function TeamCard({
           const ps        = playerState?.[pid]
           const stealCost = ps?.preco ?? entry.preco
           return (
-            <div key={pid} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, padding: '4px 6px', borderRadius: '4px', fontSize: '12px', color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif" }}>
+            <div key={pid} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, padding: '5px 7px', borderRadius: '4px', fontSize: '14px', color: 'var(--text)', fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600 }}>
               <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
                 {privacidade ? `Jogador #${idx + 1}` : entry.discord}
               </span>
-              <span style={{ color: 'var(--gold)', fontSize: 11, flexShrink: 0 }}>{entry.preco}🪙</span>
+              <span style={{ color: 'var(--gold)', fontSize: 13, fontWeight: 700, flexShrink: 0 }}>{entry.preco}🪙</span>
               {stealable && (
                 <button
                   onClick={() => doSteal(pid, 'titular')}
@@ -1317,11 +1296,11 @@ function TeamCard({
             const ps        = playerState?.[pid]
             const stealCost = ps?.preco ?? entry.preco
             return (
-              <div key={pid} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, padding: '4px 6px', borderRadius: '4px', fontSize: '12px', color: 'var(--text3)', fontFamily: "'Barlow Condensed', sans-serif" }}>
+              <div key={pid} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, padding: '5px 7px', borderRadius: '4px', fontSize: '14px', color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600 }}>
                 <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
                   {privacidade ? `Reserva #${idx + 1}` : entry.discord}
                 </span>
-                <span style={{ fontSize: 11, flexShrink: 0 }}>{entry.preco}🪙</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--gold)', opacity: 0.85, flexShrink: 0 }}>{entry.preco}🪙</span>
                 {stealable && (
                   <button
                     onClick={() => doSteal(pid, 'reserva')}
