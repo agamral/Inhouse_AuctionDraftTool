@@ -113,11 +113,25 @@ export default function Elenco() {
       <div className="elenco-grid">
         {timesVisiveis.map(([id, team]) => {
           const { v, d } = calcWL(id)
-          const jogadores = team.jogadores ?? []
+          const jogadoresAll = team.jogadores ?? []
 
-          // Reservas: cruza com draftSession/captains pelo nome do time
+          // Reservas: combina /teams (isReserva=true) com /draftSession/captains/.../reservas
+          // deduplicando por nome. Sem isso, foxdarkness aparece 2x quando ainda está
+          // no roster como titular E também no bucket de reservas do leilão.
           const capEntry = Object.values(captains).find(c => c.nome === team.nome)
-          const reservas = capEntry ? Object.values(capEntry.reservas ?? {}) : []
+          const reservasFromDraft = capEntry ? Object.values(capEntry.reservas ?? {}) : []
+
+          const reservas = []
+          const reservaNomes = new Set()
+          jogadoresAll.filter(j => j.isReserva).forEach(j => {
+            if (!reservaNomes.has(j.nome)) { reservas.push({ discord: j.nome }); reservaNomes.add(j.nome) }
+          })
+          reservasFromDraft.forEach(r => {
+            if (!reservaNomes.has(r.discord)) { reservas.push(r); reservaNomes.add(r.discord) }
+          })
+
+          // Titulares: jogadores que não estão na lista de reservas
+          const jogadores = jogadoresAll.filter(j => !reservaNomes.has(j.nome))
 
           return (
             <div key={id} className="elenco-card" style={{ '--cor': team.cor ?? 'var(--blue)' }}>
