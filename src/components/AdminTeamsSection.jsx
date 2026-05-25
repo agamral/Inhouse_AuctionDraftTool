@@ -22,7 +22,9 @@ export default function AdminTeamsSection() {
   const [times, setTimes]             = useState({})
   const [inscritos, setInscritos]     = useState([])      // do Google Sheets
   const [capitaes, setCapitaes]       = useState({})      // do leilão (/draftSession/captains)
+  const [playerState, setPlayerState] = useState({})      // do leilão — tipoPosse de cada jogador
   const [loadingInscritos, setLoadingInscritos] = useState(false)
+  const [syncReservasConfirm, setSyncReservasConfirm] = useState(false)
 
   const [mostraCriar, setMostraCriar] = useState(false)
   const [form, setForm]               = useState(FORM_VAZIO)
@@ -38,6 +40,9 @@ export default function AdminTeamsSection() {
 
   // Times do leilão (draftSession)
   useEffect(() => onValue(ref(db, `${draftSessionPath(campeonatoId)}/captains`), snap => setCapitaes(snap.val() ?? {})), [campeonatoId])
+
+  // PlayerState do leilão — tipoPosse ('titular'|'reserva') por playerId
+  useEffect(() => onValue(ref(db, `${draftSessionPath(campeonatoId)}/playerState`), snap => setPlayerState(snap.val() ?? {})), [campeonatoId])
 
   // Inscritos do Google Sheets
   useEffect(() => {
@@ -100,16 +105,21 @@ export default function AdminTeamsSection() {
       return out
     }
 
-    // Capitão
+    // Capitão (sempre titular)
     if (cap.capitaoNome) {
-      jogadores.push(montar(cap.capitaoNome, { isCaptain: true }))
+      jogadores.push(montar(cap.capitaoNome, { isCaptain: true, preco: 0, isReserva: false }))
     }
 
-    // Roster
+    // Roster (titulares do leilão)
     Object.entries(cap.roster ?? {}).forEach(([, entry]) => {
       if (!entry.isCaptain) {
-        jogadores.push(montar(entry.discord))
+        jogadores.push(montar(entry.discord, { preco: entry.preco ?? 0, isReserva: false }))
       }
+    })
+
+    // Reservas do leilão (pegos na fase de substitutos)
+    Object.entries(cap.reservas ?? {}).forEach(([, entry]) => {
+      jogadores.push(montar(entry.discord, { preco: entry.preco ?? 0, isReserva: true }))
     })
 
     try {
@@ -118,6 +128,9 @@ export default function AdminTeamsSection() {
         nome:        cap.nome,
         capitaoNome: cap.capitaoNome ?? null,   // necessário p/ matching no agendamento via PIN session
         cor:         cap.cor ?? '#4a9eda',
+        emoji:       cap.emoji ?? null,
+        moedas:      cap.moedas ?? null,        // saldo final do leilão (pra Espectador encerrado)
+        seed:        cap.seed ?? null,          // ordem original do leilão
         fonte:       'leilao',
         jogadores,
         criadoEm:    Date.now(),
@@ -204,6 +217,8 @@ export default function AdminTeamsSection() {
           role: j.role,
           ...(j.playerId   ? { playerId:   j.playerId   } : {}),
           ...(j.isCaptain  ? { isCaptain:  true          } : {}),
+          ...(typeof j.preco === 'number' ? { preco: j.preco } : {}),
+          ...(j.isReserva  ? { isReserva: true           } : {}),
         })),
       })
       setEditando(null)
@@ -213,6 +228,92 @@ export default function AdminTeamsSection() {
       flash('erro', `Erro: ${e.message}`)
     } finally {
       setSalvando(false)
+    }
+  }
+
+  // ── Sincronizar isReserva com /draftSession/playerState ──────────────────────
+  // Usa tipoPosse do leilão (set por comprar/comprarReserva, preservado por
+  // roubo) como fonte de verdade. Útil pra times importados antes do fix de
+  // isReserva, ou pra corrigir times onde admin teve que adicionar players
+  // manualmente durante o leilão bugado.
+  function calcularChangesDeReservas() {
+    const changes = []  // { teamId, teamNome, jogador, antes, depois }
+    Object.entries(times).forEach(([teamId, time]) => {
+      if (time.fonte !== 'leilao') return
+      ;(time.jogadores ?? []).forEach((j, idx) => {
+        if (j.isCaptain) return
+        if (!j.playerId) return                          // jogadores manuais sem playerId
+        const ps = playerState[j.playerId]
+        if (!ps?.tipoPosse) return                       // sem registro no leilão
+        const shouldBeReserva = ps.tipoPosse === 'reserva'
+        const isReservaAtual  = !!j.isReserva
+        if (shouldBeReserva !== isReservaAtual) {
+          changes.push({ teamId, teamNome: time.nome, jogadorIdx: idx, jogadorNome: j.nome, antes: isReservaAtual, depois: shouldBeReserva })
+        }
+      })
+    })
+    return changes
+  }
+
+  async function aplicarSyncReservas() {
+    const changes = calcularChangesDeReservas()
+    if (changes.length === 0) {
+      setSyncReservasConfirm(false)
+      return flash('ok', 'Nada a sincronizar — times já refletem o leilão.')
+    }
+    // Agrupa por teamId pra escrever o array de jogadores inteiro
+    const porTime = new Map()
+    changes.forEach(c => {
+      if (!porTime.has(c.teamId)) porTime.set(c.teamId, { ...times[c.teamId], jogadores: [...(times[c.teamId].jogadores ?? [])] })
+      const t = porTime.get(c.teamId)
+      const j = { ...t.jogadores[c.jogadorIdx] }
+      if (c.depois) j.isReserva = true
+      else          delete j.isReserva
+      t.jogadores[c.jogadorIdx] = j
+    })
+    const updates = {}
+    porTime.forEach((t, teamId) => {
+      updates[`${teamPath(campeonatoId)}/${teamId}/jogadores`] = t.jogadores
+    })
+    try {
+      await update(ref(db), updates)
+      setSyncReservasConfirm(false)
+      flash('ok', `${changes.length} jogador(es) remarcados conforme o leilão.`)
+    } catch (e) {
+      flash('erro', `Erro: ${e.message}`)
+    }
+  }
+
+  // ── Mover jogador entre times (janela de trocas) ─────────────────────────────
+  // Preserva preço, role, playerId e isReserva. Capitão não pode ser movido.
+  async function moverJogador(sourceTeamId, jogadorIdx, destTeamId) {
+    if (sourceTeamId === destTeamId) return
+    const source = times[sourceTeamId]
+    const dest   = times[destTeamId]
+    if (!source || !dest) return flash('erro', 'Time não encontrado')
+
+    const jogador = (source.jogadores ?? [])[jogadorIdx]
+    if (!jogador) return flash('erro', 'Jogador não encontrado')
+    if (jogador.isCaptain) return flash('erro', 'Capitão não pode trocar de time')
+
+    // Evita duplicar caso já esteja no destino (defensivo)
+    const jaNoDestino = (dest.jogadores ?? []).some(j =>
+      (jogador.playerId && j.playerId === jogador.playerId) ||
+      (!jogador.playerId && j.nome === jogador.nome)
+    )
+    if (jaNoDestino) return flash('erro', `${jogador.nome} já está em ${dest.nome}`)
+
+    const novoSource = (source.jogadores ?? []).filter((_, i) => i !== jogadorIdx)
+    const novoDest   = [...(dest.jogadores ?? []), { ...jogador }]
+
+    try {
+      await update(ref(db), {
+        [`${teamPath(campeonatoId)}/${sourceTeamId}/jogadores`]: novoSource,
+        [`${teamPath(campeonatoId)}/${destTeamId}/jogadores`]:   novoDest,
+      })
+      flash('ok', `${jogador.nome} movido de "${source.nome}" para "${dest.nome}"`)
+    } catch (e) {
+      flash('erro', `Erro ao mover: ${e.message}`)
     }
   }
 
@@ -259,6 +360,64 @@ export default function AdminTeamsSection() {
             {feedback.msg}
           </div>
         )}
+
+        {/* ── Sincronizar reservas com /draftSession ─────────────────────────── */}
+        {(() => {
+          const temLeilao = Object.keys(playerState).length > 0
+          const temTimesImportados = timesArr.some(([, t]) => t.fonte === 'leilao')
+          if (!temLeilao || !temTimesImportados) return null
+          const changes = calcularChangesDeReservas()
+          return (
+            <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 8, padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+                  <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 13, color: 'var(--gold2)' }}>
+                    Sincronizar reservas com o leilão
+                  </span>
+                  <span style={{ fontSize: 11, color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif" }}>
+                    {changes.length === 0
+                      ? '✓ todos os times já refletem em qual fase cada jogador foi pego'
+                      : `${changes.length} jogador(es) precisam ser remarcados conforme o registro do leilão`}
+                  </span>
+                </div>
+                {changes.length > 0 && !syncReservasConfirm && (
+                  <button className="btn"
+                    onClick={() => setSyncReservasConfirm(true)}
+                    style={{ fontSize: 12, padding: '6px 14px', borderColor: 'var(--purple)', color: 'var(--purple)', flexShrink: 0 }}>
+                    Revisar mudanças
+                  </button>
+                )}
+              </div>
+              {syncReservasConfirm && changes.length > 0 && (
+                <div style={{ borderTop: '1px solid var(--border)', paddingTop: 8 }}>
+                  <div style={{ maxHeight: 180, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 8 }}>
+                    {changes.map((c, i) => (
+                      <div key={i} style={{ fontSize: 11, color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif", display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <span style={{ color: 'var(--text3)', minWidth: 90, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.teamNome}</span>
+                        <span style={{ flex: 1, color: 'var(--text)' }}>{c.jogadorNome}</span>
+                        <span style={{ color: c.antes ? 'var(--purple)' : 'var(--text3)' }}>{c.antes ? 'RESERVA' : 'titular'}</span>
+                        <span style={{ color: 'var(--text3)' }}>→</span>
+                        <span style={{ color: c.depois ? 'var(--purple)' : 'var(--green)', fontWeight: 700 }}>{c.depois ? 'RESERVA' : 'TITULAR'}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button className="btn primary"
+                      onClick={aplicarSyncReservas}
+                      style={{ fontSize: 12, padding: '6px 14px', background: 'var(--purple)', borderColor: 'var(--purple)', color: '#fff' }}>
+                      Aplicar {changes.length} mudança(s)
+                    </button>
+                    <button className="btn"
+                      onClick={() => setSyncReservasConfirm(false)}
+                      style={{ fontSize: 12, padding: '6px 12px' }}>
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        })()}
 
         {/* ── Importar do leilão ───────────────────────────────────────────── */}
         {capitaesArr.length > 0 && (
@@ -334,6 +493,21 @@ export default function AdminTeamsSection() {
                 {/* Jogadores */}
                 <div>
                   <FieldLabel label="Jogadores" />
+                  {(() => {
+                    const titulares = editForm.jogadores.filter(j => !j.isReserva).length
+                    const reservas  = editForm.jogadores.filter(j => j.isReserva).length
+                    const minTit    = 5  // mínimo titulares por time (inclui capitão)
+                    return (
+                      <div style={{ display: 'flex', gap: 10, fontSize: 11, color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif", marginBottom: 6 }}>
+                        <span>{titulares} titular{titulares === 1 ? '' : 'es'}</span>
+                        <span>·</span>
+                        <span>{reservas} reserva{reservas === 1 ? '' : 's'}</span>
+                        {titulares < minTit && (
+                          <span style={{ color: 'var(--red)', fontWeight: 700 }}>⚠ abaixo do mínimo ({minTit})</span>
+                        )}
+                      </div>
+                    )
+                  })()}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {editForm.jogadores.map((j, i) => (
                       <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -346,6 +520,22 @@ export default function AdminTeamsSection() {
                           style={{ ...inputStyle, width: 'auto', flex: 'none' }}>
                           {ROLES_LISTA.map(r => <option key={r} value={r}>{r}</option>)}
                         </select>
+                        {!j.isCaptain && (
+                          <button
+                            onClick={() => editUpdateJogador(i, 'isReserva', !j.isReserva)}
+                            title={j.isReserva ? 'Marcado como reserva (clique para titular)' : 'Marcar como reserva'}
+                            style={{
+                              fontSize: 10, padding: '3px 8px', borderRadius: 3, flexShrink: 0,
+                              fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700,
+                              letterSpacing: '0.06em', cursor: 'pointer',
+                              border: j.isReserva ? '1px solid rgba(155,110,232,0.55)' : '1px solid var(--border2)',
+                              background: j.isReserva ? 'rgba(155,110,232,0.18)' : 'var(--bg)',
+                              color: j.isReserva ? 'var(--purple)' : 'var(--text3)',
+                            }}
+                          >
+                            {j.isReserva ? '✓ RESERVA' : 'RESERVA'}
+                          </button>
+                        )}
                         <button className="btn" onClick={() => editRemoveJogador(i)}
                           style={{ fontSize: 12, padding: '4px 8px', borderColor: 'rgba(224,85,85,0.4)', color: 'var(--text2)', flexShrink: 0 }}>
                           ✕
@@ -382,6 +572,8 @@ export default function AdminTeamsSection() {
                 onDeletar={() => setConfirmDelete(id)}
                 onConfirmar={() => handleDeletar(id)}
                 onCancelar={() => setConfirmDelete(null)}
+                allTeams={timesArr}
+                onMoverJogador={(idx, destId) => moverJogador(id, idx, destId)}
               />
             ))}
           </div>
@@ -569,8 +761,11 @@ export default function AdminTeamsSection() {
 
 // ── Subcomponentes ─────────────────────────────────────────────────────────────
 
-function TeamCard({ time, confirmando, onEditar, onDeletar, onConfirmar, onCancelar }) {
+function TeamCard({ id, time, confirmando, onEditar, onDeletar, onConfirmar, onCancelar, allTeams, onMoverJogador }) {
   const fonteLabel = { manual: 'Manual', planilha: 'Planilha', leilao: 'Leilão' }
+  const [movendoIdx, setMovendoIdx] = useState(null)
+
+  const outrosTimes = (allTeams ?? []).filter(([tid]) => tid !== id)
 
   return (
     <div style={{
@@ -598,18 +793,73 @@ function TeamCard({ time, confirmando, onEditar, onDeletar, onConfirmar, onCance
         </div>
 
         {time.jogadores?.length > 0 && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 8 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: 8 }}>
             {time.jogadores.map((j, i) => (
-              <span key={i} style={{
+              <div key={i} style={{
                 background: 'var(--bg2)', border: '1px solid var(--border)',
-                borderRadius: 3, padding: '2px 7px',
-                fontSize: 11, color: 'var(--text2)',
+                borderRadius: 4, padding: '3px 8px',
+                fontSize: 12, color: 'var(--text2)',
                 fontFamily: "'Barlow Condensed', sans-serif",
+                display: 'flex', alignItems: 'center', gap: 6,
               }}>
-                {j.isCaptain && <span style={{ color: 'var(--gold)', marginRight: 3 }}>★</span>}
-                {j.nome}
-                <span style={{ color: 'var(--text3)', marginLeft: 4 }}>{j.role}</span>
-              </span>
+                {j.isCaptain && <span style={{ color: 'var(--gold)' }} title="Capitão">★</span>}
+                <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {j.nome}
+                </span>
+                {j.isReserva && (
+                  <span style={{
+                    fontSize: 9, padding: '0 5px', borderRadius: 2,
+                    background: 'rgba(155,110,232,0.15)', border: '1px solid rgba(155,110,232,0.35)',
+                    color: 'var(--purple)', letterSpacing: '0.06em', fontWeight: 700,
+                  }} title="Pego na fase de substitutos no leilão">RESERVA</span>
+                )}
+                <span style={{ color: 'var(--text3)', fontSize: 11 }}>{j.role}</span>
+                {typeof j.preco === 'number' && (
+                  <span style={{ color: 'var(--gold)', fontSize: 11, fontWeight: 700 }}>{j.preco}🪙</span>
+                )}
+                {!j.isCaptain && outrosTimes.length > 0 && (
+                  movendoIdx === i ? (
+                    <span style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                      <select
+                        autoFocus
+                        defaultValue=""
+                        onChange={e => {
+                          const destId = e.target.value
+                          if (destId) {
+                            onMoverJogador?.(i, destId)
+                            setMovendoIdx(null)
+                          }
+                        }}
+                        style={{
+                          fontSize: 11, padding: '1px 4px', background: 'var(--bg)',
+                          color: 'var(--text)', border: '1px solid var(--border2)', borderRadius: 3,
+                        }}
+                      >
+                        <option value="">→ time...</option>
+                        {outrosTimes.map(([tid, t]) => (
+                          <option key={tid} value={tid}>{t.nome}</option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={() => setMovendoIdx(null)}
+                        style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 12, padding: 0 }}
+                        title="Cancelar"
+                      >✕</button>
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => setMovendoIdx(i)}
+                      title="Mover para outro time"
+                      style={{
+                        background: 'rgba(74,158,218,0.1)', border: '1px solid rgba(74,158,218,0.3)',
+                        color: 'var(--blue)', cursor: 'pointer', fontSize: 10,
+                        padding: '1px 6px', borderRadius: 3,
+                        fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700,
+                      }}
+                    >↔</button>
+                  )
+                )}
+              </div>
             ))}
           </div>
         )}

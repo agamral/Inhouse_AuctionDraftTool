@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { ref, onValue, set, remove } from 'firebase/database'
 import { db } from '../firebase/database'
 import { useCampeonato } from '../contexts/CampeonatoContext'
-import { playerOverridesPath } from '../utils/campeonatoPaths'
+import { playerOverridesPath, teamPath } from '../utils/campeonatoPaths'
 import RoleIcon from './RoleIcon'
 import EloIcon, { ELO_CONFIG } from './EloIcon'
 
@@ -22,6 +22,7 @@ export default function AdminPlayersSection() {
   const { campeonatoId } = useCampeonato()
   const [players, setPlayers]     = useState([])
   const [overrides, setOverrides] = useState({})
+  const [teams, setTeams]         = useState({})
   const [loading, setLoading]     = useState(true)
   const [filter, setFilter]       = useState('todos')
   const [search, setSearch]       = useState('')
@@ -41,6 +42,24 @@ export default function AdminPlayersSection() {
     })
     return unsub
   }, [campeonatoId])
+
+  // Escuta times pra mostrar onde cada jogador está alocado
+  useEffect(() => {
+    const unsub = onValue(ref(db, teamPath(campeonatoId)), (snap) => setTeams(snap.val() ?? {}))
+    return unsub
+  }, [campeonatoId])
+
+  const playerAssignment = useMemo(() => {
+    const map = new Map()
+    Object.values(teams).forEach(t => {
+      (t.jogadores ?? []).forEach(j => {
+        const entry = { teamNome: t.nome, teamCor: t.cor, isReserva: !!j.isReserva, isCaptain: !!j.isCaptain }
+        if (j.playerId) map.set(`id:${j.playerId}`, entry)
+        if (j.nome)     map.set(`nome:${j.nome}`,    entry)
+      })
+    })
+    return (p) => map.get(`id:${p.id}`) ?? map.get(`nome:${p.discord}`) ?? null
+  }, [teams])
 
   async function setOverride(playerId, field, value) {
     const current = overrides[playerId] ?? {}
@@ -134,6 +153,7 @@ export default function AdminPlayersSection() {
             const ov     = overrides[p.id] ?? {}
             const eloCfg = ELO_CONFIG[p.elo] ?? {}
             const capInfo = CAPITAO_LABEL[p.querCapitao]
+            const assignment = playerAssignment(p)
 
             return (
               <div key={p.id} className={`ap-row ${ov.confirmado ? 'ap-confirmed' : ov.descartado ? 'ap-discarded' : ''}`}>
@@ -151,6 +171,22 @@ export default function AdminPlayersSection() {
                     {capInfo?.text && (
                       <span style={{ fontSize: '11px', color: capInfo.color, border: `1px solid ${capInfo.border}`, borderRadius: '4px', padding: '1px 6px', fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.05em' }}>
                         {capInfo.text}
+                      </span>
+                    )}
+                    {assignment && (
+                      <span style={{
+                        fontSize: '11px', padding: '1px 7px', borderRadius: '4px',
+                        color: assignment.teamCor ?? 'var(--text)',
+                        background: (assignment.teamCor ?? 'var(--bg2)') + '14',
+                        border: `1px solid ${(assignment.teamCor ?? 'var(--border)') + '55'}`,
+                        fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.05em',
+                        display: 'flex', alignItems: 'center', gap: 4,
+                      }}>
+                        {assignment.isCaptain && <span style={{ color: 'var(--gold)' }}>★</span>}
+                        {assignment.teamNome}
+                        {assignment.isReserva && (
+                          <span style={{ fontSize: 9, padding: '0 4px', borderRadius: 2, color: 'var(--purple)', background: 'rgba(155,110,232,0.18)', border: '1px solid rgba(155,110,232,0.4)', fontWeight: 700 }}>RES</span>
+                        )}
                       </span>
                     )}
                   </div>

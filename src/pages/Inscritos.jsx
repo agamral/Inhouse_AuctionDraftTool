@@ -5,7 +5,7 @@ import { db } from '../firebase/database'
 import { useModules } from '../hooks/useConfig'
 import { useAuth } from '../hooks/useAuth'
 import { useCampeonato } from '../contexts/CampeonatoContext'
-import { configConteudoPath, playerOverridesPath } from '../utils/campeonatoPaths'
+import { configConteudoPath, playerOverridesPath, teamPath } from '../utils/campeonatoPaths'
 import RoleIcon from '../components/RoleIcon'
 import EloIcon, { ELO_CONFIG } from '../components/EloIcon'
 import PaginaInativa from '../components/PaginaInativa'
@@ -118,6 +118,7 @@ export default function Inscritos() {
   const { idPublico } = useCampeonato()
   const [players,     setPlayers]     = useState([])
   const [overrides,   setOverrides]   = useState({})
+  const [teams,       setTeams]       = useState({})
   const [bannerTexto, setBannerTexto] = useState('')
   const [loading,     setLoading]     = useState(true)
   const [error,       setError]       = useState(null)
@@ -150,6 +151,25 @@ export default function Inscritos() {
     })
     return unsub
   }, [idPublico])
+
+  useEffect(() => {
+    if (!idPublico) return
+    const unsub = onValue(ref(db, teamPath(idPublico)), (snap) => setTeams(snap.val() ?? {}))
+    return unsub
+  }, [idPublico])
+
+  // Lookup: playerId/discord → { teamNome, teamCor, isReserva, isCaptain }
+  const playerAssignment = (() => {
+    const map = new Map()
+    Object.values(teams).forEach(t => {
+      (t.jogadores ?? []).forEach(j => {
+        const entry = { teamNome: t.nome, teamCor: t.cor, isReserva: !!j.isReserva, isCaptain: !!j.isCaptain }
+        if (j.playerId) map.set(`id:${j.playerId}`, entry)
+        if (j.nome)     map.set(`nome:${j.nome}`,    entry)
+      })
+    })
+    return (p) => map.get(`id:${p.id}`) ?? map.get(`nome:${p.discord}`) ?? null
+  })()
 
   function handleSort(col) {
     if (sortCol === col) {
@@ -297,8 +317,32 @@ export default function Inscritos() {
                       <td style={{ padding: '12px' }}><PaisFlag pais={p.pais} /></td>
                       <td style={{ padding: '12px' }}><LinguasBadge linguas={p.linguas} /></td>
                       <td style={{ padding: '12px' }}>
-                        {p.titularReserva === 'Titular' && <span className="badge" style={{ color: 'var(--green)', borderColor: 'rgba(76,175,125,0.35)', background: 'rgba(76,175,125,0.08)' }}>TITULAR</span>}
-                        {p.titularReserva === 'Reserva' && <span className="badge" style={{ color: 'var(--text2)' }}>RESERVA</span>}
+                        {(() => {
+                          const a = playerAssignment(p)
+                          return (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+                              {a ? (
+                                <span className="badge" style={{
+                                  color: a.teamCor ?? 'var(--text)',
+                                  borderColor: (a.teamCor ?? 'var(--border2)') + '55',
+                                  background: (a.teamCor ?? 'var(--bg2)') + '14',
+                                  display: 'flex', alignItems: 'center', gap: 5,
+                                }}>
+                                  {a.isCaptain && <span style={{ color: 'var(--gold)' }}>★</span>}
+                                  {a.teamNome}
+                                  {a.isReserva && (
+                                    <span style={{ fontSize: 9, padding: '0 4px', borderRadius: 2, color: 'var(--purple)', background: 'rgba(155,110,232,0.18)', border: '1px solid rgba(155,110,232,0.4)', letterSpacing: '0.06em', fontWeight: 700 }}>RESERVA</span>
+                                  )}
+                                </span>
+                              ) : (
+                                <>
+                                  {p.titularReserva === 'Titular' && <span className="badge" style={{ color: 'var(--green)', borderColor: 'rgba(76,175,125,0.35)', background: 'rgba(76,175,125,0.08)' }}>TITULAR</span>}
+                                  {p.titularReserva === 'Reserva' && <span className="badge" style={{ color: 'var(--text2)' }}>RESERVA</span>}
+                                </>
+                              )}
+                            </div>
+                          )
+                        })()}
                       </td>
                     </tr>
                   )

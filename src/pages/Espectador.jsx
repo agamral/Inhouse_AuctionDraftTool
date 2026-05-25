@@ -7,7 +7,7 @@ import { useModules } from '../hooks/useConfig'
 import { useAuth } from '../hooks/useAuth'
 import { useServerTimeOffset } from '../hooks/useServerTimeOffset'
 import { useCampeonato } from '../contexts/CampeonatoContext'
-import { draftSessionPath, playerOverridesPath, configDraftPath } from '../utils/campeonatoPaths'
+import { draftSessionPath, playerOverridesPath, configDraftPath, teamPath } from '../utils/campeonatoPaths'
 import { useConteudo } from '../hooks/useConfig'
 import EloIcon, { ELO_CONFIG } from '../components/EloIcon'
 import RoleIcon from '../components/RoleIcon'
@@ -36,6 +36,7 @@ export default function Espectador() {
   const timeOffset = useServerTimeOffset()
 
   const [captains,    setCaptains]    = useState({})
+  const [teamsPos,    setTeamsPos]    = useState({})  // /teams — fonte de verdade pós-leilão (trocas)
   const [draftState,  setDraftState]  = useState(DEFAULT_STATE)
   const [playerState, setPlayerState] = useState({})
   const [overrides,   setOverrides]   = useState({})
@@ -65,7 +66,8 @@ export default function Espectador() {
     const u3 = onValue(ref(db, `${draftSessionPath(idPublico)}/playerState`), s => setPlayerState(s.val() ?? {}))
     const u4 = onValue(ref(db, playerOverridesPath(idPublico)),               s => setOverrides(s.val() ?? {}))
     const u5 = onValue(ref(db, configDraftPath(idPublico)),                   s => { if (s.exists()) setDraftConfig(c => ({ ...c, ...s.val() })) })
-    return () => { u1(); u2(); u3(); u4(); u5() }
+    const u6 = onValue(ref(db, teamPath(idPublico)),                          s => setTeamsPos(s.val() ?? {}))
+    return () => { u1(); u2(); u3(); u4(); u5(); u6() }
   }, [idPublico])
 
   useEffect(() => {
@@ -252,6 +254,17 @@ export default function Espectador() {
   // ── Draft encerrado ───────────────────────────────────────
   if (draftState.status === 'encerrado') {
     const playerByDiscord = Object.fromEntries(players.map(p => [p.discord, p]))
+
+    // Pós-leilão: lê de /teams se existir (reflete trocas). Senão, fallback
+    // para /draftSession/captains (compatibilidade com sessões antigas).
+    const teamsPosArr = Object.entries(teamsPos).filter(([, t]) => t?.fonte === 'leilao')
+    const usandoPos   = teamsPosArr.length > 0
+    const timesFinais = usandoPos
+      ? teamsPosArr
+          .map(([id, t]) => [id, teamFromPosLeilao(t)])
+          .sort(([, a], [, b]) => (a.seed ?? 99) - (b.seed ?? 99))
+      : sortedCaptains
+
     return (
       <div className="espectador" style={{ overflowY: 'auto' }}>
         <div style={{ padding: '40px 32px', maxWidth: 1280, margin: '0 auto' }}>
@@ -267,7 +280,7 @@ export default function Espectador() {
           </div>
           {/* Grid de times */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 20 }}>
-            {sortedCaptains.map(([id, team]) => (
+            {timesFinais.map(([id, team]) => (
               <SpectatorTeamFinal key={id} team={team} playerByDiscord={playerByDiscord} privacidade={privacidadeAtiva} />
             ))}
           </div>
@@ -647,6 +660,24 @@ function SpectatorTeam({ id, team, isActive, players, privacidade, fase = 'titul
 }
 
 // ── Card de time para tela de encerramento (espectador) ───────
+// Converte um time de /teams (formato post-leilão, com jogadores[]) pro shape
+// esperado por SpectatorTeamFinal (roster/reservas como objeto). Mantém a UI
+// existente sem rewrite, mas reflete trocas feitas no dashboard.
+function teamFromPosLeilao(t) {
+  const titulares = (t.jogadores ?? []).filter(j => !j.isReserva && !j.isCaptain)
+  const reservas  = (t.jogadores ?? []).filter(j => j.isReserva)
+  return {
+    nome:        t.nome,
+    cor:         t.cor,
+    emoji:       t.emoji ?? '🛡',
+    capitaoNome: t.capitaoNome ?? null,
+    moedas:      t.moedas ?? 0,
+    seed:        t.seed,
+    roster:   Object.fromEntries(titulares.map((j, i) => [j.playerId ?? `t${i}`, { discord: j.nome, preco: j.preco ?? 0 }])),
+    reservas: Object.fromEntries(reservas .map((j, i) => [j.playerId ?? `r${i}`, { discord: j.nome, preco: j.preco ?? 0 }])),
+  }
+}
+
 function SpectatorTeamFinal({ team, playerByDiscord, privacidade }) {
   const roster   = Object.entries(team.roster   ?? {})
   const reservas = Object.entries(team.reservas ?? {})
