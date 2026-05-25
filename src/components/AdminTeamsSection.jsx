@@ -5,7 +5,8 @@ import { FUSOS, FUSO_PADRAO } from '../utils/scheduling'
 import { useCampeonato } from '../contexts/CampeonatoContext'
 import { teamPath, draftSessionPath } from '../utils/campeonatoPaths'
 
-const ROLES_LISTA = ['Tank', 'Bruiser', 'Melee Assassin', 'Ranged Assassin', 'Healer', 'Support', 'Flex']
+// Alinhado com src/pages/Inscricao.jsx — set canônico de roles do app
+const ROLES_LISTA = ['Tank', 'Offlane', 'DPS', 'Healer', 'Flex']
 
 const inputStyle = {
   background: 'var(--bg)', border: '1px solid var(--border2)', borderRadius: 6,
