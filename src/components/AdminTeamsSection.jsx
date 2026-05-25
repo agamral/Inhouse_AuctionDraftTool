@@ -96,7 +96,7 @@ export default function AdminTeamsSection() {
   async function importarDoLeilao(capId, cap) {
     const jogadores = []
 
-    // Lookup discord → inscrito (pra recuperar role e playerId do leilão)
+    // Lookup discord → inscrito (pra recuperar role e playerId)
     const porDiscord = new Map(inscritos.map(p => [p.discord, p]))
     const montar = (discord, extra = {}) => {
       const insc = porDiscord.get(discord)
@@ -107,20 +107,30 @@ export default function AdminTeamsSection() {
 
     // Capitão (sempre titular)
     if (cap.capitaoNome) {
-      jogadores.push(montar(cap.capitaoNome, { isCaptain: true, preco: 0, isReserva: false }))
+      jogadores.push(montar(cap.capitaoNome, { isCaptain: true, preco: 0 }))
     }
 
-    // Roster (titulares do leilão)
-    Object.entries(cap.roster ?? {}).forEach(([, entry]) => {
-      if (!entry.isCaptain) {
-        jogadores.push(montar(entry.discord, { preco: entry.preco ?? 0, isReserva: false }))
-      }
-    })
-
-    // Reservas do leilão (pegos na fase de substitutos)
-    Object.entries(cap.reservas ?? {}).forEach(([, entry]) => {
-      jogadores.push(montar(entry.discord, { preco: entry.preco ?? 0, isReserva: true }))
-    })
+    // Dedup: percorre roster + reservas em uma lista única, ignorando
+    // ocorrências repetidas (leilão bugado pode ter o mesmo jogador em
+    // ambos os buckets). playerState.tipoPosse é a fonte de verdade pro
+    // isReserva — fallback pro bucket de origem se não houver registro.
+    const seen = new Set()
+    const buckets = [
+      ...Object.entries(cap.roster   ?? {}).map(([pid, e]) => ({ pid, entry: e, fromReservas: false })),
+      ...Object.entries(cap.reservas ?? {}).map(([pid, e]) => ({ pid, entry: e, fromReservas: true  })),
+    ]
+    for (const { pid, entry, fromReservas } of buckets) {
+      if (entry.isCaptain) continue
+      const insc      = porDiscord.get(entry.discord)
+      const dedupKey  = insc?.id ?? `nome:${entry.discord}`
+      if (seen.has(dedupKey)) continue
+      seen.add(dedupKey)
+      const tipoPosse = playerState[pid]?.tipoPosse
+      const isReserva = tipoPosse ? (tipoPosse === 'reserva') : fromReservas
+      const extra = { preco: entry.preco ?? 0 }
+      if (isReserva) extra.isReserva = true
+      jogadores.push(montar(entry.discord, extra))
+    }
 
     try {
       const id = push(ref(db, teamPath(campeonatoId))).key
@@ -236,49 +246,73 @@ export default function AdminTeamsSection() {
   // roubo) como fonte de verdade. Útil pra times importados antes do fix de
   // isReserva, ou pra corrigir times onde admin teve que adicionar players
   // manualmente durante o leilão bugado.
+  // Calcula a lista canônica de jogadores pra um time, deduplicando e
+  // aplicando tipoPosse do leilão. Retorna { canonical, changes } onde
+  // changes é uma lista descritiva pra exibir no preview.
+  function canonicalParaTime(teamId, time) {
+    const canonical = []
+    const seen = new Set()
+    const changes = []
+    ;(time.jogadores ?? []).forEach((j, idx) => {
+      const dedupKey = j.playerId ?? `nome:${j.nome}`
+      if (seen.has(dedupKey)) {
+        changes.push({ teamId, teamNome: time.nome, jogadorNome: j.nome, tipo: 'remove', motivo: 'duplicata' })
+        return
+      }
+      seen.add(dedupKey)
+
+      let isReserva = !!j.isReserva
+      if (!j.isCaptain && j.playerId) {
+        const ps = playerState[j.playerId]
+        if (ps?.tipoPosse) {
+          const shouldBeReserva = ps.tipoPosse === 'reserva'
+          if (shouldBeReserva !== isReserva) {
+            changes.push({
+              teamId, teamNome: time.nome, jogadorNome: j.nome,
+              tipo: 'flip', antes: isReserva, depois: shouldBeReserva,
+            })
+            isReserva = shouldBeReserva
+          }
+        }
+      }
+
+      const novo = { ...j }
+      if (isReserva) novo.isReserva = true
+      else delete novo.isReserva
+      canonical.push(novo)
+    })
+    return { canonical, changes }
+  }
+
   function calcularChangesDeReservas() {
-    const changes = []  // { teamId, teamNome, jogador, antes, depois }
+    const all = []
     Object.entries(times).forEach(([teamId, time]) => {
       if (time.fonte !== 'leilao') return
-      ;(time.jogadores ?? []).forEach((j, idx) => {
-        if (j.isCaptain) return
-        if (!j.playerId) return                          // jogadores manuais sem playerId
-        const ps = playerState[j.playerId]
-        if (!ps?.tipoPosse) return                       // sem registro no leilão
-        const shouldBeReserva = ps.tipoPosse === 'reserva'
-        const isReservaAtual  = !!j.isReserva
-        if (shouldBeReserva !== isReservaAtual) {
-          changes.push({ teamId, teamNome: time.nome, jogadorIdx: idx, jogadorNome: j.nome, antes: isReservaAtual, depois: shouldBeReserva })
-        }
-      })
+      const { changes } = canonicalParaTime(teamId, time)
+      all.push(...changes)
     })
-    return changes
+    return all
   }
 
   async function aplicarSyncReservas() {
-    const changes = calcularChangesDeReservas()
-    if (changes.length === 0) {
+    const updates = {}
+    let totalChanges = 0
+    Object.entries(times).forEach(([teamId, time]) => {
+      if (time.fonte !== 'leilao') return
+      const { canonical, changes } = canonicalParaTime(teamId, time)
+      if (changes.length > 0) {
+        updates[`${teamPath(campeonatoId)}/${teamId}/jogadores`] = canonical
+        totalChanges += changes.length
+      }
+    })
+    if (totalChanges === 0) {
       setSyncReservasConfirm(false)
       return flash('ok', 'Nada a sincronizar — times já refletem o leilão.')
     }
-    // Agrupa por teamId pra escrever o array de jogadores inteiro
-    const porTime = new Map()
-    changes.forEach(c => {
-      if (!porTime.has(c.teamId)) porTime.set(c.teamId, { ...times[c.teamId], jogadores: [...(times[c.teamId].jogadores ?? [])] })
-      const t = porTime.get(c.teamId)
-      const j = { ...t.jogadores[c.jogadorIdx] }
-      if (c.depois) j.isReserva = true
-      else          delete j.isReserva
-      t.jogadores[c.jogadorIdx] = j
-    })
-    const updates = {}
-    porTime.forEach((t, teamId) => {
-      updates[`${teamPath(campeonatoId)}/${teamId}/jogadores`] = t.jogadores
-    })
     try {
       await update(ref(db), updates)
       setSyncReservasConfirm(false)
-      flash('ok', `${changes.length} jogador(es) remarcados conforme o leilão.`)
+      flash('ok', `${totalChanges} correção(ões) aplicada(s) conforme o leilão.`)
     } catch (e) {
       flash('erro', `Erro: ${e.message}`)
     }
@@ -395,9 +429,18 @@ export default function AdminTeamsSection() {
                       <div key={i} style={{ fontSize: 11, color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif", display: 'flex', gap: 6, alignItems: 'center' }}>
                         <span style={{ color: 'var(--text3)', minWidth: 90, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.teamNome}</span>
                         <span style={{ flex: 1, color: 'var(--text)' }}>{c.jogadorNome}</span>
-                        <span style={{ color: c.antes ? 'var(--purple)' : 'var(--text3)' }}>{c.antes ? 'RESERVA' : 'titular'}</span>
-                        <span style={{ color: 'var(--text3)' }}>→</span>
-                        <span style={{ color: c.depois ? 'var(--purple)' : 'var(--green)', fontWeight: 700 }}>{c.depois ? 'RESERVA' : 'TITULAR'}</span>
+                        {c.tipo === 'remove' ? (
+                          <>
+                            <span style={{ color: 'var(--red)', fontWeight: 700, letterSpacing: '0.05em' }}>REMOVER</span>
+                            <span style={{ color: 'var(--text3)', fontSize: 10 }}>({c.motivo})</span>
+                          </>
+                        ) : (
+                          <>
+                            <span style={{ color: c.antes ? 'var(--purple)' : 'var(--text3)' }}>{c.antes ? 'RESERVA' : 'titular'}</span>
+                            <span style={{ color: 'var(--text3)' }}>→</span>
+                            <span style={{ color: c.depois ? 'var(--purple)' : 'var(--green)', fontWeight: 700 }}>{c.depois ? 'RESERVA' : 'TITULAR'}</span>
+                          </>
+                        )}
                       </div>
                     ))}
                   </div>
