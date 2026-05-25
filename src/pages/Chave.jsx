@@ -128,7 +128,7 @@ export default function Chave() {
   return (
     <div className="chave-root">
       <h1 className="page-title">Chave do Campeonato</h1>
-      <p className="page-subtitle">Copa Inhouse · Temporada 2025</p>
+      <p className="page-subtitle">Copa Inhouse · Temporada 2026</p>
 
       {/* Filtro de time */}
       {Object.keys(times).length > 0 && (

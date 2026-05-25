@@ -76,7 +76,7 @@ export default function Elenco() {
   return (
     <div className="elenco-root page">
       <h1 className="page-title">Elenco dos Times</h1>
-      <p className="page-subtitle">Copa Inhouse · Temporada 2025</p>
+      <p className="page-subtitle">Copa Inhouse · Temporada 2026</p>
 
       {timesArr.length > 0 && !privacidadeAtiva && (
         <div style={{ marginBottom: '1.5rem', maxWidth: 320 }}>
