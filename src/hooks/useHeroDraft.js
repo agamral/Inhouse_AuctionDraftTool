@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { ref, onValue, set, update } from 'firebase/database'
+import { ref, onValue, set, update, serverTimestamp } from 'firebase/database'
 import { db } from '../firebase/database'
 import {
   criarEstadoInicial,
@@ -115,9 +115,14 @@ export function useHeroDraft(sessionId, timeLocal = null, pathOverride = null) {
   // ── Iniciar com contagem regressiva (admin) ───────────────────────────────
   const iniciarComContagem = useCallback(async (secs = 5) => {
     try {
+      // countdownStartedAt usa serverTimestamp() pra evitar clock drift;
+      // o cliente computa "fim" como startedAt + countdownSecs*1000 e mede
+      // remaining contra Date.now() + serverTimeOffset.
       await update(ref(db, path), {
-        status:          STATUS_DRAFT.COUNTDOWN,
-        countdownEndsAt: Date.now() + secs * 1000,
+        status:             STATUS_DRAFT.COUNTDOWN,
+        countdownStartedAt: serverTimestamp(),
+        countdownSecs:      secs,
+        countdownEndsAt:    null,
       })
       return { ok: true }
     } catch (e) {

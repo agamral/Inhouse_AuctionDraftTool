@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useModules } from '../hooks/useConfig'
 import { useAuth } from '../hooks/useAuth'
+import { useServerTimeOffset } from '../hooks/useServerTimeOffset'
 import { useCampeonato } from '../contexts/CampeonatoContext'
 import { draftSessionPath, playerOverridesPath, configDraftPath } from '../utils/campeonatoPaths'
 import { useConteudo } from '../hooks/useConfig'
@@ -32,6 +33,7 @@ export default function Espectador() {
   const { isAdmin } = useAuth()
   const { idPublico } = useCampeonato()
   const conteudo = useConteudo()
+  const timeOffset = useServerTimeOffset()
 
   const [captains,    setCaptains]    = useState({})
   const [draftState,  setDraftState]  = useState(DEFAULT_STATE)
@@ -130,9 +132,10 @@ export default function Espectador() {
   useEffect(() => {
     const dur = draftConfig.timerDuracao ?? 60
     if (!dur || draftState.status !== 'rodando') { setTempoRestante(null); return }
-    const ts = draftState.turnoIniciadoEm ?? Date.now()
+    const ts = draftState.turnoIniciadoEm ?? (Date.now() + timeOffset)
     const tick = () => {
-      const elapsed  = Math.floor((Date.now() - ts) / 1000)
+      // serverNow corrige clock drift entre clientes (vide useServerTimeOffset)
+      const elapsed  = Math.floor((Date.now() + timeOffset - ts) / 1000)
       const restante = Math.max(0, dur - elapsed)
       setTempoRestante(restante)
       const tsKey = draftState.turnoIniciadoEm ?? draftState.turnoAtual ?? 'now'
@@ -153,7 +156,7 @@ export default function Espectador() {
       clearInterval(iv)
       if (audioRef.current) { audioRef.current.pause(); audioRef.current.currentTime = 0 }
     }
-  }, [draftState.turnoIniciadoEm, draftState.status, draftConfig.timerDuracao]) // eslint-disable-line
+  }, [draftState.turnoIniciadoEm, draftState.status, draftConfig.timerDuracao, timeOffset]) // eslint-disable-line
 
   // Trigger announce overlay + som + log quando uma nova ação chega
   useEffect(() => {

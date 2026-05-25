@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { ref, onValue } from 'firebase/database'
 import { db } from '../firebase/database'
 import { useHeroDraft } from '../hooks/useHeroDraft'
+import { useServerTimeOffset } from '../hooks/useServerTimeOffset'
 import { useCampeonato } from '../contexts/CampeonatoContext'
 import { heroDraftPath } from '../utils/campeonatoPaths'
 import { HEROES } from '../utils/heroPool'
@@ -24,6 +25,7 @@ export default function HeroDraftEspectador() {
   const { idPublico } = useCampeonato()
   const location      = useLocation()
   const isShowmatch   = location.pathname.startsWith('/showmatch')
+  const timeOffset    = useServerTimeOffset()
 
   const pathOverride = isShowmatch
     ? (sessaoId !== 'default' && sessaoId !== 'showmatch'
@@ -165,36 +167,38 @@ export default function HeroDraftEspectador() {
   useEffect(() => {
     if (!estado || estado.status !== STATUS_DRAFT.RODANDO) return
     const duracao = getDuracao(estado)
-    const ts = estado.turnoIniciadoEm ?? Date.now()
+    const ts = estado.turnoIniciadoEm ?? (Date.now() + timeOffset)
     if (estado.passoAtual !== prevPassoRef.current || !turnoIniciadoEm) {
       prevPassoRef.current = estado.passoAtual
-      const decorrido = Math.floor((Date.now() - ts) / 1000)
+      const decorrido = Math.floor((Date.now() + timeOffset - ts) / 1000)
       setTurnoIniciadoEm(ts)
       setTempoRestante(Math.max(0, duracao - decorrido))
     }
-  }, [estado?.passoAtual, estado?.status, estado?.turnoIniciadoEm]) // eslint-disable-line
+  }, [estado?.passoAtual, estado?.status, estado?.turnoIniciadoEm, timeOffset]) // eslint-disable-line
 
   useEffect(() => {
     if (!turnoIniciadoEm || estado?.status !== STATUS_DRAFT.RODANDO) return
     const duracao = getDuracao(estado)
     const tick = setInterval(() => {
-      const decorrido = Math.floor((Date.now() - turnoIniciadoEm) / 1000)
+      const decorrido = Math.floor((Date.now() + timeOffset - turnoIniciadoEm) / 1000)
       setTempoRestante(Math.max(0, duracao - decorrido))
     }, 1000)
     return () => clearInterval(tick)
-  }, [turnoIniciadoEm, estado?.status]) // eslint-disable-line
+  }, [turnoIniciadoEm, estado?.status, timeOffset]) // eslint-disable-line
 
   // ── Countdown ─────────────────────────────────────────────────────────────
   const [countdown, setCountdown] = useState(null)
   useEffect(() => {
-    if (estado?.status !== STATUS_DRAFT.COUNTDOWN || !estado?.countdownEndsAt) {
-      setCountdown(null); return
-    }
-    const tick = () => setCountdown(Math.max(0, Math.ceil((estado.countdownEndsAt - Date.now()) / 1000)))
+    if (estado?.status !== STATUS_DRAFT.COUNTDOWN) { setCountdown(null); return }
+    const endsAt = estado.countdownStartedAt && estado.countdownSecs
+      ? estado.countdownStartedAt + estado.countdownSecs * 1000
+      : estado.countdownEndsAt
+    if (!endsAt) { setCountdown(null); return }
+    const tick = () => setCountdown(Math.max(0, Math.ceil((endsAt - (Date.now() + timeOffset)) / 1000)))
     tick()
     const id = setInterval(tick, 200)
     return () => clearInterval(id)
-  }, [estado?.status, estado?.countdownEndsAt])
+  }, [estado?.status, estado?.countdownEndsAt, estado?.countdownStartedAt, estado?.countdownSecs, timeOffset])
 
   // ── Guards ────────────────────────────────────────────────────────────────
   if (loading) return <div className="hde-loading">{t('hero_espectador.connecting')}</div>

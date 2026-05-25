@@ -143,6 +143,12 @@ export default function AdminCaptainsSection({ draftConfig }) {
     })
   }
 
+  // Abre o draft visualizando como o capitão (apenas leitura; sem PIN, requer ser admin)
+  function verComoCapitao(id) {
+    const url = `${window.location.origin}/campeonatos/${campeonatoId}/draft?viewAs=${id}`
+    window.open(url, '_blank', 'noopener,noreferrer')
+  }
+
   return (
     <div className="admin-section admin-players-section" style={{ marginBottom: '28px' }}>
       <div className="admin-section-title">Capitães do Leilão</div>
@@ -246,6 +252,9 @@ export default function AdminCaptainsSection({ draftConfig }) {
                     <button className="ap-btn" onClick={() => regenerarPin(id)} title="Novo PIN">🔄 PIN</button>
                     <button className="ap-btn" onClick={() => copiarLink(id, cap)} title="Copiar link personalizado" style={{ color: copied === id ? 'var(--green)' : 'var(--text2)' }}>
                       {copied === id ? '✓' : '🔗'}
+                    </button>
+                    <button className="ap-btn" onClick={() => verComoCapitao(id)} title="Abrir draft visualizando como este capitão (somente leitura)">
+                      👁
                     </button>
                     <button className="ap-btn ap-btn-discard" onClick={() => removerCapitao(id)}>✕</button>
                   </div>

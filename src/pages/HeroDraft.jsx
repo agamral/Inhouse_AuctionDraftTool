@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { ref, set, remove, onValue, update } from 'firebase/database'
 import { db } from '../firebase/database'
 import { useHeroDraft } from '../hooks/useHeroDraft'
+import { useServerTimeOffset } from '../hooks/useServerTimeOffset'
 import { useCampeonato } from '../contexts/CampeonatoContext'
 import { heroDraftPath } from '../utils/campeonatoPaths'
 import { HEROES, getHeroesByRole, ROLES } from '../utils/heroPool'
@@ -24,6 +25,7 @@ export default function HeroDraft() {
   const { idPublico } = useCampeonato()
   const location      = useLocation()
   const isShowmatch   = location.pathname.startsWith('/showmatch')
+  const timeOffset    = useServerTimeOffset()
 
   const pathOverride = isShowmatch
     ? (sessaoId !== 'default' && sessaoId !== 'showmatch'
@@ -74,18 +76,20 @@ export default function HeroDraft() {
   // ── Countdown ────────────────────────────────────────────────────────────
   const [countdown, setCountdown] = useState(null)
   useEffect(() => {
-    if (estado?.status !== STATUS_DRAFT.COUNTDOWN || !estado?.countdownEndsAt) {
-      setCountdown(null)
-      return
-    }
+    if (estado?.status !== STATUS_DRAFT.COUNTDOWN) { setCountdown(null); return }
+    // Suporte modelo novo (countdownStartedAt + countdownSecs) e legado (countdownEndsAt)
+    const endsAt = estado.countdownStartedAt && estado.countdownSecs
+      ? estado.countdownStartedAt + estado.countdownSecs * 1000
+      : estado.countdownEndsAt
+    if (!endsAt) { setCountdown(null); return }
     const tick = () => {
-      const secs = Math.max(0, Math.ceil((estado.countdownEndsAt - Date.now()) / 1000))
+      const secs = Math.max(0, Math.ceil((endsAt - (Date.now() + timeOffset)) / 1000))
       setCountdown(secs)
     }
     tick()
     const id = setInterval(tick, 200)
     return () => clearInterval(id)
-  }, [estado?.status, estado?.countdownEndsAt])
+  }, [estado?.status, estado?.countdownEndsAt, estado?.countdownStartedAt, estado?.countdownSecs, timeOffset])
 
   const [filtroRole, setFiltroRole]     = useState('todos')
   const [busca, setBusca]               = useState('')
@@ -104,30 +108,31 @@ export default function HeroDraft() {
 
   // Ref com snapshot sempre fresco — usada pelo visibilitychange
   const liveRef = useRef({})
-  liveRef.current = { estado, ehMinhaTez, agir }
+  liveRef.current = { estado, ehMinhaTez, agir, timeOffset }
 
   // Display: setInterval atualiza o contador visual
+  // serverNow = Date.now() + timeOffset corrige clock drift entre clientes
   useEffect(() => {
     if (!estado || estado.status !== STATUS_DRAFT.RODANDO) return
     const duracao = getDuracao(estado)
-    const ts = estado.turnoIniciadoEm ?? Date.now()
+    const ts = estado.turnoIniciadoEm ?? (Date.now() + timeOffset)
     if (estado.passoAtual !== prevPassoRef.current || !turnoIniciadoEm) {
       prevPassoRef.current = estado.passoAtual
-      const decorrido = Math.floor((Date.now() - ts) / 1000)
+      const decorrido = Math.floor((Date.now() + timeOffset - ts) / 1000)
       setTurnoIniciadoEm(ts)
       setTempoRestante(Math.max(0, duracao - decorrido))
     }
-  }, [estado?.passoAtual, estado?.status, estado?.turnoIniciadoEm]) // eslint-disable-line
+  }, [estado?.passoAtual, estado?.status, estado?.turnoIniciadoEm, timeOffset]) // eslint-disable-line
 
   useEffect(() => {
     if (!turnoIniciadoEm || estado?.status !== STATUS_DRAFT.RODANDO) return
     const duracao = getDuracao(estado)
     const tick = setInterval(() => {
-      const decorrido = Math.floor((Date.now() - turnoIniciadoEm) / 1000)
+      const decorrido = Math.floor((Date.now() + timeOffset - turnoIniciadoEm) / 1000)
       setTempoRestante(Math.max(0, duracao - decorrido))
     }, 1000)
     return () => clearInterval(tick)
-  }, [turnoIniciadoEm, estado?.status]) // eslint-disable-line
+  }, [turnoIniciadoEm, estado?.status, timeOffset]) // eslint-disable-line
 
   // Auto-pick: setTimeout preciso disparado quando o turno começa
   useEffect(() => {
@@ -136,8 +141,8 @@ export default function HeroDraft() {
 
     autoPickedRef.current = false
     const duracao     = getDuracao(estado)
-    const ts          = estado.turnoIniciadoEm ?? Date.now()
-    const remainingMs = Math.max(0, duracao * 1000 - (Date.now() - ts))
+    const ts          = estado.turnoIniciadoEm ?? (Date.now() + timeOffset)
+    const remainingMs = Math.max(0, duracao * 1000 - (Date.now() + timeOffset - ts))
     const snap        = estado // captura o estado do turno atual
 
     autoPickTimer.current = setTimeout(() => {
@@ -151,16 +156,17 @@ export default function HeroDraft() {
     }, remainingMs)
 
     return () => clearTimeout(autoPickTimer.current)
-  }, [estado?.passoAtual, estado?.turnoIniciadoEm]) // eslint-disable-line
+  }, [estado?.passoAtual, estado?.turnoIniciadoEm, timeOffset]) // eslint-disable-line
 
   // Backup: ao voltar para a aba, verifica se o timer já expirou
   useEffect(() => {
     const check = () => {
       if (document.visibilityState !== 'visible') return
-      const { estado: e, ehMinhaTez: emt, agir: ag } = liveRef.current
+      const { estado: e, ehMinhaTez: emt, agir: ag, timeOffset: off } = liveRef.current
       if (!e || e.status !== STATUS_DRAFT.RODANDO || !emt()) return
-      const ts = e.turnoIniciadoEm ?? Date.now()
-      if (Date.now() - ts < getDuracao(e) * 1000 || autoPickedRef.current) return
+      const ts  = e.turnoIniciadoEm ?? (Date.now() + (off ?? 0))
+      const now = Date.now() + (off ?? 0)
+      if (now - ts < getDuracao(e) * 1000 || autoPickedRef.current) return
       autoPickedRef.current = true
       const heroiId = confirmandoRef.current
         ?? HEROES.filter(h => !heroiBloqueado(e, h.id)).sort(() => Math.random() - 0.5)[0]?.id

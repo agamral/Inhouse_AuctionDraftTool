@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
-import { ref, onValue, update, set } from 'firebase/database'
+import { ref, onValue, update, set, serverTimestamp } from 'firebase/database'
 import { db } from '../firebase/database'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../hooks/useAuth'
 import { useConteudo, useModules } from '../hooks/useConfig'
+import { useServerTimeOffset } from '../hooks/useServerTimeOffset'
 import { useCampeonato } from '../contexts/CampeonatoContext'
 import { draftSessionPath, playerOverridesPath, configDraftPath } from '../utils/campeonatoPaths'
 import RoleIcon from '../components/RoleIcon'
@@ -35,6 +36,7 @@ export default function Draft() {
   const modules = useModules()
   const { idPublico } = useCampeonato()
   const isMobile = useIsMobile()
+  const timeOffset = useServerTimeOffset()
 
   const [captainSession, setCaptainSession] = useState(() => {
     try { return JSON.parse(sessionStorage.getItem('captainSession')) } catch { return null }
@@ -43,7 +45,7 @@ export default function Draft() {
   // Lê params do link personalizado UMA vez (antes de URL ser limpa)
   const [captainLink] = useState(() => {
     const p = new URLSearchParams(window.location.search)
-    return { cap: p.get('cap'), pin: p.get('pin') }
+    return { cap: p.get('cap'), pin: p.get('pin'), viewAs: p.get('viewAs') }
   })
   const hasCaptainLink = !!(captainLink.cap && captainLink.pin)
   const [autoAuthFailed, setAutoAuthFailed] = useState(false)
@@ -245,9 +247,10 @@ export default function Draft() {
       return
     }
     // Se turnoIniciadoEm não existe (draft iniciado antes do timer), começa do zero agora
-    const ts = draftState.turnoIniciadoEm ?? Date.now()
+    const ts = draftState.turnoIniciadoEm ?? (Date.now() + timeOffset)
     const tick = () => {
-      const elapsed  = Math.floor((Date.now() - ts) / 1000)
+      // serverNow corrige clock drift entre clientes (vide useServerTimeOffset)
+      const elapsed  = Math.floor((Date.now() + timeOffset - ts) / 1000)
       const restante = Math.max(0, dur - elapsed)
       setTempoRestante(restante)
 
@@ -275,7 +278,7 @@ export default function Draft() {
       clearInterval(iv)
       if (audioRef.current) { audioRef.current.pause(); audioRef.current.currentTime = 0 }
     }
-  }, [draftState.turnoIniciadoEm, draftState.status, draftConfig.timerDuracao]) // eslint-disable-line
+  }, [draftState.turnoIniciadoEm, draftState.status, draftConfig.timerDuracao, timeOffset]) // eslint-disable-line
 
   // Bloqueio público — bypass se vier de link personalizado (com ou sem draftAtivo)
   if (!modules.loading && !isAdmin && !capitao && !captainSession && !hasCaptainLink && !modules.draftAtivo) {
@@ -310,9 +313,13 @@ export default function Draft() {
 
   const teamCaptainNames = new Set(Object.values(captains).map(c => c.capitaoNome).filter(Boolean))
 
-  const myId        = captainSession?.captainId ?? null
+  // viewAs: admin pode visualizar como um capitão sem fazer login —
+  // útil para monitorar o que cada jogador está vendo durante o evento.
+  // Ações ficam desabilitadas (admin usa AdminDraftBar pra override).
+  const viewAsId    = (isAdmin && captainLink.viewAs && captains[captainLink.viewAs]) ? captainLink.viewAs : null
+  const myId        = captainSession?.captainId ?? viewAsId
   const myCap       = myId ? captains[myId] : null
-  const isMyTurn    = myId ? draftState.turnoAtual === myId : false
+  const isMyTurn    = (myId && !viewAsId) ? draftState.turnoAtual === myId : false
   const activeTurnId   = draftState.turnoAtual
   const currentTurnCap = captains[activeTurnId]
 
@@ -368,7 +375,7 @@ export default function Draft() {
     await update(ref(db), {
       [`${ses}/state/turnoAtual`]:      next.id,
       [`${ses}/state/turnoExtra`]:      null,
-      [`${ses}/state/turnoIniciadoEm`]: Date.now(),
+      [`${ses}/state/turnoIniciadoEm`]: serverTimestamp(),
       ...(next.novaRodada ? { [`${ses}/state/rodada`]: (draftState.rodada ?? 1) + 1 } : {}),
     })
   }
@@ -408,7 +415,7 @@ export default function Draft() {
       if (next.novaRodada) updates[`${ses}/state/rodada`] = (draftState.rodada ?? 1) + 1
     }
 
-    updates[`${ses}/state/turnoIniciadoEm`] = Date.now()
+    updates[`${ses}/state/turnoIniciadoEm`] = serverTimestamp()
     await update(ref(db), updates)
   }
 
@@ -467,7 +474,7 @@ export default function Draft() {
       updates[`${ses}/state/turnoAtual`] = null
     }
 
-    updates[`${ses}/state/turnoIniciadoEm`] = Date.now()
+    updates[`${ses}/state/turnoIniciadoEm`] = serverTimestamp()
     await update(ref(db), updates)
   }
 
@@ -501,7 +508,7 @@ export default function Draft() {
       updates[`${ses}/state/turnoAtual`] = next.id
       if (next.novaRodada) updates[`${ses}/state/rodada`] = (draftState.rodada ?? 1) + 1
     }
-    updates[`${ses}/state/turnoIniciadoEm`] = Date.now()
+    updates[`${ses}/state/turnoIniciadoEm`] = serverTimestamp()
     await update(ref(db), updates)
   }
 
@@ -549,7 +556,7 @@ export default function Draft() {
     } else {
       updates[`${ses}/state/status`] = 'encerrado'
     }
-    updates[`${ses}/state/turnoIniciadoEm`] = Date.now()
+    updates[`${ses}/state/turnoIniciadoEm`] = serverTimestamp()
     await update(ref(db), updates)
   }
 
@@ -566,7 +573,7 @@ export default function Draft() {
       updates[`${ses}/state/turnoAtual`] = next.id
       if (next.novaRodada) updates[`${ses}/state/rodada`] = (draftState.rodada ?? 1) + 1
     }
-    updates[`${ses}/state/turnoIniciadoEm`] = Date.now()
+    updates[`${ses}/state/turnoIniciadoEm`] = serverTimestamp()
     await update(ref(db), updates)
   }
 
@@ -744,6 +751,11 @@ export default function Draft() {
           {isAdmin && !captainSession && (
             <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: '11px', padding: '3px 8px', borderRadius: '4px', color: 'var(--gold)', background: 'rgba(201,168,76,0.1)', border: '1px solid rgba(201,168,76,0.25)' }}>
               ADMIN
+            </span>
+          )}
+          {viewAsId && myCap && (
+            <span title="Visualizando como capitão (ações desabilitadas — use o painel admin)" style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: '11px', padding: '3px 8px', borderRadius: '4px', color: myCap.cor, background: myCap.cor + '14', border: `1px solid ${myCap.cor}55`, display: 'flex', alignItems: 'center', gap: 4 }}>
+              👁 {myCap.emoji} {myCap.nome}
             </span>
           )}
         </div>
@@ -1393,7 +1405,7 @@ function AdminDraftBar({ draftState, sortedCaptains, captains, draftConfig, idPu
     if (!podeIniciar) return
     const primeiro = sortedCaptains[0]?.[0]
     if (!primeiro) return
-    await set(ref(db, `${ses}/state`), { status: 'rodando', fase: 'titulares', turnoAtual: primeiro, turnoExtra: null, rodada: 1, turnoIniciadoEm: Date.now() })
+    await set(ref(db, `${ses}/state`), { status: 'rodando', fase: 'titulares', turnoAtual: primeiro, turnoExtra: null, rodada: 1, turnoIniciadoEm: serverTimestamp() })
   }
 
   async function iniciarReservas() {
@@ -1407,7 +1419,7 @@ function AdminDraftBar({ draftState, sortedCaptains, captains, draftConfig, idPu
     updates[`${ses}/state/rodada`]          = 1
     updates[`${ses}/state/turnoAtual`]      = primeiro ?? null
     updates[`${ses}/state/turnoExtra`]      = null
-    updates[`${ses}/state/turnoIniciadoEm`] = Date.now()
+    updates[`${ses}/state/turnoIniciadoEm`] = serverTimestamp()
     await update(ref(db), updates)
     setOpen(false)
   }
@@ -1435,7 +1447,7 @@ function AdminDraftBar({ draftState, sortedCaptains, captains, draftConfig, idPu
     const updates = {
       [`${ses}/state/turnoAtual`]:      next.id,
       [`${ses}/state/turnoExtra`]:      null,
-      [`${ses}/state/turnoIniciadoEm`]: Date.now(),
+      [`${ses}/state/turnoIniciadoEm`]: serverTimestamp(),
     }
     if (next.novaRodada) updates[`${ses}/state/rodada`] = (draftState.rodada ?? 1) + 1
     await update(ref(db), updates)

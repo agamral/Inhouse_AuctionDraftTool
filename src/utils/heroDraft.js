@@ -4,7 +4,12 @@
  * O ponto central deste módulo é que a SEQUÊNCIA de picks e bans é um array
  * de passos configurável externamente (vem do Firebase via config do admin).
  * Nada aqui assume uma ordem fixa — o sistema executa o que a config mandar.
+ *
+ * Timestamps que precisam ser comparáveis entre clientes (turnoIniciadoEm)
+ * usam serverTimestamp() do Firebase para evitar drift de relógio local —
+ * o servidor resolve o marcador na hora da escrita.
  */
+import { serverTimestamp } from 'firebase/database'
 
 // ── Tipos de ação ────────────────────────────────────────────────────────────
 
@@ -188,7 +193,7 @@ export function executarAcao(estado, heroiId) {
   const nextPasso = novoEstado.sequencia[novoEstado.passoAtual]
   const grupoContínua = nextPasso && nextPasso.time === passo.time && nextPasso.acao === passo.acao
   if (!grupoContínua) {
-    novoEstado.turnoIniciadoEm = Date.now()
+    novoEstado.turnoIniciadoEm = serverTimestamp()
   }
 
   if (novoEstado.passoAtual >= novoEstado.sequencia.length) {
@@ -217,7 +222,7 @@ export function desfazerUltimaAcao(estado) {
 
   novoEstado.passoAtual      = ultimaAcao.passo
   novoEstado.status          = STATUS_DRAFT.RODANDO
-  novoEstado.turnoIniciadoEm = Date.now()
+  novoEstado.turnoIniciadoEm = serverTimestamp()
 
   return { ok: true, estado: novoEstado }
 }
@@ -236,7 +241,9 @@ export function iniciarDraft(estado) {
   }
   const clone = deepClone(estado)
   delete clone.countdownEndsAt
-  return { ok: true, estado: { ...clone, status: STATUS_DRAFT.RODANDO, turnoIniciadoEm: Date.now() } }
+  delete clone.countdownStartedAt
+  delete clone.countdownSecs
+  return { ok: true, estado: { ...clone, status: STATUS_DRAFT.RODANDO, turnoIniciadoEm: serverTimestamp() } }
 }
 
 // ── Validação de configuração (usada pelo admin antes de salvar no Firebase) ─

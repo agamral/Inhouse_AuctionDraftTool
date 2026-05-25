@@ -4,6 +4,7 @@ import { db } from '../firebase/database'
 import { useCampeonato } from '../contexts/CampeonatoContext'
 import { teamPath, heroDraftPath } from '../utils/campeonatoPaths'
 import { useHeroDraft } from '../hooks/useHeroDraft'
+import { useServerTimeOffset } from '../hooks/useServerTimeOffset'
 import { HEROES } from '../utils/heroPool'
 import { criarEstadoInicial, expandirSequencia, SEQUENCIA_PADRAO } from '../utils/heroDraft'
 import { MAPAS } from '../utils/mapPool'
@@ -68,14 +69,19 @@ export default function AdminHeroDraftSection() {
   const draftPathOverride = sessaoId ? `${heroDraftPath(campeonatoId)}/${sessaoId}` : null
   const { estado, loading, iniciar, iniciarComContagem, encerrar, desfazer } =
     useHeroDraft(sessaoId || null, 'admin', draftPathOverride)
+  const timeOffset = useServerTimeOffset()
 
-  // ── Auto-transição: countdown → rodando ─────────────────────────────────
+  // ── Auto-transição: countdown → rodando (com serverTimeOffset) ──────────
   useEffect(() => {
-    if (estado?.status !== 'countdown' || !estado?.countdownEndsAt) return
-    const remaining = Math.max(0, estado.countdownEndsAt - Date.now())
+    if (estado?.status !== 'countdown') return
+    const endsAt = estado.countdownStartedAt && estado.countdownSecs
+      ? estado.countdownStartedAt + estado.countdownSecs * 1000
+      : estado.countdownEndsAt
+    if (!endsAt) return
+    const remaining = Math.max(0, endsAt - (Date.now() + timeOffset))
     const t = setTimeout(() => iniciar(), remaining + 100) // +100ms margem
     return () => clearTimeout(t)
-  }, [estado?.status, estado?.countdownEndsAt]) // eslint-disable-line
+  }, [estado?.status, estado?.countdownEndsAt, estado?.countdownStartedAt, estado?.countdownSecs, timeOffset]) // eslint-disable-line
 
   useEffect(() => onValue(ref(db, heroDraftPath(campeonatoId)), snap => setSessoes(snap.val() ?? {})), [campeonatoId])
 
@@ -579,7 +585,7 @@ export default function AdminHeroDraftSection() {
                 )}
 
                 {/* Countdown em andamento */}
-                {estado.status === 'countdown' && estado.countdownEndsAt && (
+                {estado.status === 'countdown' && (estado.countdownEndsAt || estado.countdownStartedAt) && (
                   <div style={{ marginBottom: 12, padding: '8px 14px', background: 'rgba(201,168,76,0.08)', border: '1px solid rgba(201,168,76,0.3)', borderRadius: 6, fontSize: 13, color: 'var(--gold2)', fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.05em' }}>
                     ⏳ Contagem regressiva em andamento...
                   </div>

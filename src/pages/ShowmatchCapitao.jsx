@@ -1,5 +1,6 @@
 import { useSearchParams } from 'react-router-dom'
 import { useHeroDraft } from '../hooks/useHeroDraft'
+import { useServerTimeOffset } from '../hooks/useServerTimeOffset'
 import { HEROES } from '../utils/heroPool'
 import { passoAtual, heroiBloqueado, STATUS_DRAFT } from '../utils/heroDraft'
 import { useState, useEffect, useRef } from 'react'
@@ -12,6 +13,7 @@ export default function ShowmatchCapitao() {
   const timeLocal = params.get('time') ?? 'A'
 
   const { estado, loading, erro, ehMinhaTez, agir } = useHeroDraft(null, timeLocal, HERO_DRAFT_PATH)
+  const timeOffset = useServerTimeOffset()
 
   const [filtroRole, setFiltroRole] = useState('todos')
   const [busca, setBusca]           = useState('')
@@ -27,23 +29,23 @@ export default function ShowmatchCapitao() {
 
   useEffect(() => {
     if (!estado || estado.status !== STATUS_DRAFT.RODANDO) return
-    const ts = estado.turnoIniciadoEm ?? Date.now()
+    const ts = estado.turnoIniciadoEm ?? (Date.now() + timeOffset)
     if (estado.passoAtual !== prevPassoRef.current || !turnoIniciadoEm) {
       prevPassoRef.current = estado.passoAtual
-      const decorrido = Math.floor((Date.now() - ts) / 1000)
+      const decorrido = Math.floor((Date.now() + timeOffset - ts) / 1000)
       setTurnoIniciadoEm(ts)
       setTempoRestante(Math.max(0, TEMPO_TURNO - decorrido))
     }
-  }, [estado?.passoAtual, estado?.status, estado?.turnoIniciadoEm]) // eslint-disable-line
+  }, [estado?.passoAtual, estado?.status, estado?.turnoIniciadoEm, timeOffset]) // eslint-disable-line
 
   useEffect(() => {
     if (!turnoIniciadoEm || estado?.status !== STATUS_DRAFT.RODANDO) return
     const tick = setInterval(() => {
-      const decorrido = Math.floor((Date.now() - turnoIniciadoEm) / 1000)
+      const decorrido = Math.floor((Date.now() + timeOffset - turnoIniciadoEm) / 1000)
       setTempoRestante(Math.max(0, TEMPO_TURNO - decorrido))
     }, 1000)
     return () => clearInterval(tick)
-  }, [turnoIniciadoEm, estado?.status])
+  }, [turnoIniciadoEm, estado?.status, timeOffset])
 
   const liveRef = useRef({})
   liveRef.current = { estado, ehMinhaTez, agir }
@@ -51,8 +53,8 @@ export default function ShowmatchCapitao() {
   useEffect(() => {
     if (autoPickTimer.current) clearTimeout(autoPickTimer.current)
     if (!estado || estado.status !== STATUS_DRAFT.RODANDO || !ehMinhaTez()) return
-    const ts = estado.turnoIniciadoEm ?? Date.now()
-    const decorrido = Math.floor((Date.now() - ts) / 1000)
+    const ts = estado.turnoIniciadoEm ?? (Date.now() + timeOffset)
+    const decorrido = Math.floor((Date.now() + timeOffset - ts) / 1000)
     const restante = Math.max(0, TEMPO_TURNO - decorrido)
     autoPickTimer.current = setTimeout(async () => {
       if (!liveRef.current.ehMinhaTez()) return
@@ -63,7 +65,7 @@ export default function ShowmatchCapitao() {
       await liveRef.current.agir(h.id)
     }, restante * 1000)
     return () => clearTimeout(autoPickTimer.current)
-  }, [estado?.passoAtual, estado?.status]) // eslint-disable-line
+  }, [estado?.passoAtual, estado?.status, timeOffset]) // eslint-disable-line
 
   if (loading) return <main className="page"><p style={{ color: 'var(--text2)' }}>Carregando draft...</p></main>
   if (erro)    return <main className="page"><p style={{ color: 'var(--red)' }}>Erro: {erro}</p></main>

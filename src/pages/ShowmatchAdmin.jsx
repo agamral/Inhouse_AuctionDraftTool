@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import { ref, onValue, get, set, update, remove } from 'firebase/database'
 import { db } from '../firebase/database'
 import { useHeroDraft } from '../hooks/useHeroDraft'
+import { useServerTimeOffset } from '../hooks/useServerTimeOffset'
 import { criarEstadoInicial, SEQUENCIA_PADRAO, DEFAULT_TIMER_CONFIG } from '../utils/heroDraft'
 import { MAPAS } from '../utils/mapPool'
 import { HEROES } from '../utils/heroPool'
@@ -97,14 +98,19 @@ export default function ShowmatchAdmin() {
   const { estado: draftEstado, iniciar: _iniciarDraft, iniciarComContagem, encerrar: encerrarDraft, desfazer: desfazerDraft } = useHeroDraft(
     null, 'admin', heroDraftPath
   )
+  const timeOffset = useServerTimeOffset()
 
-  // Auto-transição countdown → rodando
+  // Auto-transição countdown → rodando (corrige clock drift com serverTimeOffset)
   useEffect(() => {
-    if (draftEstado?.status !== 'countdown' || !draftEstado?.countdownEndsAt) return
-    const remaining = Math.max(0, draftEstado.countdownEndsAt - Date.now())
+    if (draftEstado?.status !== 'countdown') return
+    const endsAt = draftEstado.countdownStartedAt && draftEstado.countdownSecs
+      ? draftEstado.countdownStartedAt + draftEstado.countdownSecs * 1000
+      : draftEstado.countdownEndsAt
+    if (!endsAt) return
+    const remaining = Math.max(0, endsAt - (Date.now() + timeOffset))
     const t = setTimeout(() => _iniciarDraft(), remaining + 100)
     return () => clearTimeout(t)
-  }, [draftEstado?.status, draftEstado?.countdownEndsAt]) // eslint-disable-line
+  }, [draftEstado?.status, draftEstado?.countdownEndsAt, draftEstado?.countdownStartedAt, draftEstado?.countdownSecs, timeOffset]) // eslint-disable-line
 
   // Listener de sessão — só para showmatch (confronto deriva de confrontoCtx)
   useEffect(() => {
