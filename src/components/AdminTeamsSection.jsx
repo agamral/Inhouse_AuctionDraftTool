@@ -91,15 +91,24 @@ export default function AdminTeamsSection() {
   async function importarDoLeilao(capId, cap) {
     const jogadores = []
 
+    // Lookup discord → inscrito (pra recuperar role e playerId do leilão)
+    const porDiscord = new Map(inscritos.map(p => [p.discord, p]))
+    const montar = (discord, extra = {}) => {
+      const insc = porDiscord.get(discord)
+      const out = { nome: discord ?? '', role: insc?.rolePrimaria ?? 'Flex', ...extra }
+      if (insc?.id) out.playerId = insc.id // Firebase não aceita undefined
+      return out
+    }
+
     // Capitão
     if (cap.capitaoNome) {
-      jogadores.push({ nome: cap.capitaoNome, role: 'Flex', isCaptain: true })
+      jogadores.push(montar(cap.capitaoNome, { isCaptain: true }))
     }
 
     // Roster
     Object.entries(cap.roster ?? {}).forEach(([, entry]) => {
       if (!entry.isCaptain) {
-        jogadores.push({ nome: entry.discord ?? '', role: 'Flex' })
+        jogadores.push(montar(entry.discord))
       }
     })
 
