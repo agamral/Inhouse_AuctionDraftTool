@@ -38,14 +38,16 @@ export default function HeroDraft() {
   )
 
   // ── Presença do capitão ────────────────────────────────────────────────────
+  // Usa update() em vez de set() pra não sobrescrever a flag `confirmado`
+  // (escrita por confirmarPresencaConfronto). Unload limpa só `onlineEm`.
   useEffect(() => {
     if (!pathOverride || !timeLocal || timeLocal === 'admin') return
     const presRef = ref(db, `${pathOverride}/presence/${timeLocal}`)
-    set(presRef, { onlineEm: Date.now() })
-    const handleUnload = () => remove(presRef)
+    update(presRef, { onlineEm: Date.now() })
+    const handleUnload = () => update(presRef, { onlineEm: null })
     window.addEventListener('beforeunload', handleUnload)
     return () => {
-      remove(presRef)
+      update(presRef, { onlineEm: null })
       window.removeEventListener('beforeunload', handleUnload)
     }
   }, [pathOverride, timeLocal]) // eslint-disable-line
@@ -70,6 +72,15 @@ export default function HeroDraft() {
   async function confirmarPresenca() {
     await update(ref(db, `showmatch/sessions/${sessaoId}/presenca`), {
       [timeLocal]: { confirmado: true, confirmedEm: Date.now() },
+    })
+  }
+
+  // Confronto oficial: confirmação de presença grava direto no nó do draft,
+  // junto com onlineEm. Lida com refresh sem perder a flag.
+  async function confirmarPresencaConfronto() {
+    if (!pathOverride || !timeLocal) return
+    await update(ref(db, `${pathOverride}/presence/${timeLocal}`), {
+      confirmado: true, confirmedEm: Date.now(),
     })
   }
 
@@ -236,6 +247,36 @@ export default function HeroDraft() {
         confirmado={confirmado}
         outroConfirmou={outroConf}
         onConfirmar={confirmarPresenca}
+      />
+    )
+  }
+
+  // Confronto oficial: mesma sala de espera. Adapta o estado do heroDraft
+  // pro shape esperado pelo ShowmatchPreDraft. draftPronto = sempre true
+  // (se chegou aqui é porque a sessão foi criada pelo admin).
+  if (!isShowmatch && timeLocal && estado && estado.status === STATUS_DRAFT.AGUARDANDO) {
+    const sessaoDataCompat = {
+      timeA: { nome: estado.timeA?.nome },
+      timeB: { nome: estado.timeB?.nome },
+      config: {
+        mapaId:         estado.mapaId,
+        timerBan:       estado.timerConfig?.ban,
+        timerPick:      estado.timerConfig?.pick,
+        timerPickDuplo: estado.timerConfig?.pickDuplo,
+        globalBans:     estado.globalBans ?? [],
+      },
+    }
+    const confirmado  = estado.presence?.[timeLocal]?.confirmado === true
+    const outroTime   = timeLocal === 'A' ? 'B' : 'A'
+    const outroConf   = estado.presence?.[outroTime]?.confirmado === true
+    return (
+      <ShowmatchPreDraft
+        sessaoData={sessaoDataCompat}
+        timeLocal={timeLocal}
+        draftPronto={true}
+        confirmado={confirmado}
+        outroConfirmou={outroConf}
+        onConfirmar={confirmarPresencaConfronto}
       />
     )
   }
