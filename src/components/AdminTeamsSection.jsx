@@ -25,7 +25,9 @@ export default function AdminTeamsSection() {
   const [capitaes, setCapitaes]       = useState({})      // do leilão (/draftSession/captains)
   const [playerState, setPlayerState] = useState({})      // do leilão — tipoPosse de cada jogador
   const [loadingInscritos, setLoadingInscritos] = useState(false)
-  const [syncReservasConfirm, setSyncReservasConfirm] = useState(false)
+  const [reconciliarOpen, setReconciliarOpen] = useState(false)
+  const [reconciliarChoices, setReconciliarChoices] = useState({})  // { teamId: { jogadorIdx: bool } }
+  const [reconciliarApplying, setReconciliarApplying] = useState(false)
 
   const [mostraCriar, setMostraCriar] = useState(false)
   const [form, setForm]               = useState(FORM_VAZIO)
@@ -242,80 +244,111 @@ export default function AdminTeamsSection() {
     }
   }
 
-  // ── Sincronizar isReserva com /draftSession/playerState ──────────────────────
-  // Usa tipoPosse do leilão (set por comprar/comprarReserva, preservado por
-  // roubo) como fonte de verdade. Útil pra times importados antes do fix de
-  // isReserva, ou pra corrigir times onde admin teve que adicionar players
-  // manualmente durante o leilão bugado.
-  // Calcula a lista canônica de jogadores pra um time, deduplicando e
-  // aplicando tipoPosse do leilão. Retorna { canonical, changes } onde
-  // changes é uma lista descritiva pra exibir no preview.
-  function canonicalParaTime(teamId, time) {
-    const canonical = []
-    const seen = new Set()
-    const changes = []
-    ;(time.jogadores ?? []).forEach((j, idx) => {
-      const dedupKey = j.playerId ?? `nome:${j.nome}`
-      if (seen.has(dedupKey)) {
-        changes.push({ teamId, teamNome: time.nome, jogadorNome: j.nome, tipo: 'remove', motivo: 'duplicata' })
-        return
-      }
-      seen.add(dedupKey)
+  // ── Reconciliar reservas com o leilão ─────────────────────────────────────
+  // Analisa cada time importado do leilão e propõe a marcação isReserva
+  // correta de cada jogador combinando os sinais disponíveis:
+  //   1. playerState.tipoPosse  ─ gravado pelo leilão (alta confiança)
+  //   2. cap.reservas bucket   ─ posição no leilão (alta confiança)
+  //   3. inscritos.titularReserva = 'Reserva' ─ pref do jogador (média confiança)
+  //   4. tipoPosse=titular ou sem sinal ─ pré-marcado como titular
+  // Admin pode ajustar cada checkbox antes de aplicar.
 
-      let isReserva = !!j.isReserva
-      if (!j.isCaptain && j.playerId) {
-        const ps = playerState[j.playerId]
-        if (ps?.tipoPosse) {
-          const shouldBeReserva = ps.tipoPosse === 'reserva'
-          if (shouldBeReserva !== isReserva) {
-            changes.push({
-              teamId, teamNome: time.nome, jogadorNome: j.nome,
-              tipo: 'flip', antes: isReserva, depois: shouldBeReserva,
-            })
-            isReserva = shouldBeReserva
-          }
-        }
-      }
+  function analisarJogador(j, time) {
+    // Sem playerId não dá pra cruzar com leilão — marca como titular sem confiança
+    if (j.isCaptain) return { sinal: 'capitao', sugerido: false, currentIsReserva: !!j.isReserva, locked: true }
+    if (!j.playerId) return { sinal: 'manual', sugerido: !!j.isReserva, currentIsReserva: !!j.isReserva, locked: false }
 
-      const novo = { ...j }
-      if (isReserva) novo.isReserva = true
-      else delete novo.isReserva
-      canonical.push(novo)
-    })
-    return { canonical, changes }
+    const ps = playerState[j.playerId]
+    // Sinal 1: tipoPosse do leilão (mais forte)
+    if (ps?.tipoPosse === 'reserva') return { sinal: 'tipoPosse', sugerido: true,  currentIsReserva: !!j.isReserva, locked: false }
+    if (ps?.tipoPosse === 'titular') return { sinal: 'tipoPosse', sugerido: false, currentIsReserva: !!j.isReserva, locked: false }
+
+    // Sinal 2: bucket /reservas do dono no leilão
+    const ownerCap = ps?.ownedBy ? capitaes[ps.ownedBy] : null
+    if (ownerCap?.reservas?.[j.playerId]) {
+      return { sinal: 'bucket', sugerido: true, currentIsReserva: !!j.isReserva, locked: false }
+    }
+
+    // Sinal 3: preferência do Sheets
+    const insc = inscritos.find(p => p.id === j.playerId || p.discord === j.nome)
+    if (insc?.titularReserva === 'Reserva') {
+      return { sinal: 'pref', sugerido: true, currentIsReserva: !!j.isReserva, locked: false }
+    }
+
+    return { sinal: 'nenhum', sugerido: false, currentIsReserva: !!j.isReserva, locked: false }
   }
 
-  function calcularChangesDeReservas() {
-    const all = []
-    Object.entries(times).forEach(([teamId, time]) => {
-      if (time.fonte !== 'leilao') return
-      const { changes } = canonicalParaTime(teamId, time)
-      all.push(...changes)
-    })
-    return all
+  function analisarTime(teamId, time) {
+    const jogadores = (time.jogadores ?? []).map((j, idx) => ({
+      idx,
+      jogador: j,
+      ...analisarJogador(j, time),
+    }))
+    const total = jogadores.length
+    const naoCapitao = jogadores.filter(j => !j.jogador.isCaptain).length
+    const esperadoReservas = Math.max(0, total - 5)
+    const sugeridoReservas = jogadores.filter(j => j.sugerido).length
+    return { teamId, time, jogadores, total, naoCapitao, esperadoReservas, sugeridoReservas }
   }
 
-  async function aplicarSyncReservas() {
+  // Estado efetivo do checkbox: usa override do admin se presente, senão sugestão
+  function checkboxState(teamId, jogadorIdx, sugerido) {
+    const override = reconciliarChoices[teamId]?.[jogadorIdx]
+    return override !== undefined ? override : sugerido
+  }
+
+  function toggleCheckbox(teamId, jogadorIdx, sugerido) {
+    setReconciliarChoices(prev => {
+      const atual = checkboxState(teamId, jogadorIdx, sugerido)
+      const novoValor = !atual
+      const teamChoices = { ...(prev[teamId] ?? {}) }
+      // Se voltou pra sugestão, remove override (mantém estado limpo)
+      if (novoValor === sugerido) delete teamChoices[jogadorIdx]
+      else teamChoices[jogadorIdx] = novoValor
+      return { ...prev, [teamId]: teamChoices }
+    })
+  }
+
+  function abrirReconciliar() {
+    setReconciliarChoices({})  // limpa overrides anteriores
+    setReconciliarOpen(true)
+  }
+
+  async function aplicarReconciliar() {
+    setReconciliarApplying(true)
     const updates = {}
-    let totalChanges = 0
+    let totalMudancas = 0
     Object.entries(times).forEach(([teamId, time]) => {
       if (time.fonte !== 'leilao') return
-      const { canonical, changes } = canonicalParaTime(teamId, time)
-      if (changes.length > 0) {
-        updates[`${teamPath(campeonatoId)}/${teamId}/jogadores`] = canonical
-        totalChanges += changes.length
+      const analise = analisarTime(teamId, time)
+      let mudou = false
+      const novosJogadores = analise.jogadores.map(({ idx, jogador, sugerido }) => {
+        const efetivoIsReserva = checkboxState(teamId, idx, sugerido)
+        if (efetivoIsReserva !== !!jogador.isReserva) mudou = true
+        const novo = { ...jogador }
+        if (efetivoIsReserva) novo.isReserva = true
+        else delete novo.isReserva
+        return novo
+      })
+      if (mudou) {
+        updates[`${teamPath(campeonatoId)}/${teamId}/jogadores`] = novosJogadores
+        totalMudancas += novosJogadores.filter((j, i) => (!!j.isReserva) !== (!!analise.jogadores[i].jogador.isReserva)).length
       }
     })
-    if (totalChanges === 0) {
-      setSyncReservasConfirm(false)
-      return flash('ok', 'Nada a sincronizar — times já refletem o leilão.')
+    if (totalMudancas === 0) {
+      setReconciliarApplying(false)
+      setReconciliarOpen(false)
+      return flash('ok', 'Nenhuma mudança a aplicar.')
     }
     try {
       await update(ref(db), updates)
-      setSyncReservasConfirm(false)
-      flash('ok', `${totalChanges} correção(ões) aplicada(s) conforme o leilão.`)
+      flash('ok', `${totalMudancas} jogador(es) atualizados.`)
+      setReconciliarOpen(false)
+      setReconciliarChoices({})
     } catch (e) {
       flash('erro', `Erro: ${e.message}`)
+    } finally {
+      setReconciliarApplying(false)
     }
   }
 
@@ -396,66 +429,141 @@ export default function AdminTeamsSection() {
           </div>
         )}
 
-        {/* ── Sincronizar reservas com /draftSession ─────────────────────────── */}
+        {/* ── Reconciliar reservas com o leilão ─────────────────────────────── */}
         {(() => {
           const temLeilao = Object.keys(playerState).length > 0
-          const temTimesImportados = timesArr.some(([, t]) => t.fonte === 'leilao')
-          if (!temLeilao || !temTimesImportados) return null
-          const changes = calcularChangesDeReservas()
+          const timesLeilao = timesArr.filter(([, t]) => t.fonte === 'leilao')
+          if (!temLeilao || timesLeilao.length === 0) return null
+
+          const analises = timesLeilao.map(([teamId, time]) => analisarTime(teamId, time))
+          const totalMudancasSugeridas = analises.reduce((sum, a) => {
+            return sum + a.jogadores.filter(j => {
+              const efetivo = checkboxState(a.teamId, j.idx, j.sugerido)
+              return efetivo !== !!j.jogador.isReserva
+            }).length
+          }, 0)
+
+          const sinalLabel = {
+            tipoPosse: { texto: '✓ leilão', cor: 'var(--green)',  hint: 'Confirmado pelo registro do leilão (tipoPosse)' },
+            bucket:    { texto: '◆ bucket', cor: 'var(--blue)',   hint: 'Estava no bucket /reservas do leilão' },
+            pref:      { texto: '~ inscrição', cor: 'var(--gold2)', hint: 'Inscreveu-se como Reserva no formulário' },
+            nenhum:    { texto: '', cor: 'var(--text3)', hint: 'Sem sinal automático — decisão manual' },
+            manual:    { texto: '', cor: 'var(--text3)', hint: 'Sem playerId vinculado' },
+            capitao:   { texto: '⚑ capitão', cor: 'var(--gold)', hint: 'Capitão — sempre titular' },
+          }
+
           return (
             <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 8, padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
                   <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 13, color: 'var(--gold2)' }}>
-                    Sincronizar reservas com o leilão
+                    Reconciliar reservas com o leilão
                   </span>
                   <span style={{ fontSize: 11, color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif" }}>
-                    {changes.length === 0
-                      ? '✓ todos os times já refletem em qual fase cada jogador foi pego'
-                      : `${changes.length} jogador(es) precisam ser remarcados conforme o registro do leilão`}
+                    Cruza tipoPosse, bucket do leilão e preferência da inscrição. Revise e ajuste antes de aplicar.
                   </span>
                 </div>
-                {changes.length > 0 && !syncReservasConfirm && (
+                {!reconciliarOpen && (
                   <button className="btn"
-                    onClick={() => setSyncReservasConfirm(true)}
+                    onClick={abrirReconciliar}
                     style={{ fontSize: 12, padding: '6px 14px', borderColor: 'var(--purple)', color: 'var(--purple)', flexShrink: 0 }}>
-                    Revisar mudanças
+                    Abrir reconciliação
                   </button>
                 )}
               </div>
-              {syncReservasConfirm && changes.length > 0 && (
-                <div style={{ borderTop: '1px solid var(--border)', paddingTop: 8 }}>
-                  <div style={{ maxHeight: 180, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 8 }}>
-                    {changes.map((c, i) => (
-                      <div key={i} style={{ fontSize: 11, color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif", display: 'flex', gap: 6, alignItems: 'center' }}>
-                        <span style={{ color: 'var(--text3)', minWidth: 90, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.teamNome}</span>
-                        <span style={{ flex: 1, color: 'var(--text)' }}>{c.jogadorNome}</span>
-                        {c.tipo === 'remove' ? (
-                          <>
-                            <span style={{ color: 'var(--red)', fontWeight: 700, letterSpacing: '0.05em' }}>REMOVER</span>
-                            <span style={{ color: 'var(--text3)', fontSize: 10 }}>({c.motivo})</span>
-                          </>
-                        ) : (
-                          <>
-                            <span style={{ color: c.antes ? 'var(--purple)' : 'var(--text3)' }}>{c.antes ? 'RESERVA' : 'titular'}</span>
-                            <span style={{ color: 'var(--text3)' }}>→</span>
-                            <span style={{ color: c.depois ? 'var(--purple)' : 'var(--green)', fontWeight: 700 }}>{c.depois ? 'RESERVA' : 'TITULAR'}</span>
-                          </>
-                        )}
-                      </div>
-                    ))}
+
+              {reconciliarOpen && (
+                <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {/* Legenda de sinais */}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, fontSize: 10, fontFamily: "'Barlow Condensed', sans-serif", color: 'var(--text2)' }}>
+                    <span><span style={{ color: 'var(--green)', fontWeight: 700 }}>✓ leilão</span> = tipoPosse confirmado</span>
+                    <span><span style={{ color: 'var(--blue)', fontWeight: 700 }}>◆ bucket</span> = estava em /reservas do leilão</span>
+                    <span><span style={{ color: 'var(--gold2)', fontWeight: 700 }}>~ inscrição</span> = pref do formulário</span>
                   </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
+
+                  {/* Lista de times */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 480, overflowY: 'auto' }}>
+                    {analises.map(a => {
+                      const efetivoReservas = a.jogadores.filter(j => checkboxState(a.teamId, j.idx, j.sugerido)).length
+                      const okCount = efetivoReservas === a.esperadoReservas
+                      return (
+                        <div key={a.teamId} style={{ border: `1px solid ${a.time.cor ?? 'var(--border)'}33`, borderRadius: 6, padding: '8px 10px', background: 'var(--bg)' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
+                            <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 13, color: a.time.cor }}>{a.time.nome}</span>
+                            <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: "'Barlow Condensed', sans-serif" }}>{a.total}p</span>
+                            <span style={{ fontSize: 11, color: okCount ? 'var(--green)' : 'var(--red)', fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700 }}>
+                              {efetivoReservas}/{a.esperadoReservas} reservas {okCount ? '✓' : '⚠'}
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                            {a.jogadores.map(({ idx, jogador, sinal, sugerido, locked }) => {
+                              if (jogador.isCaptain) return null  // capitão não toggleável
+                              const checked = checkboxState(a.teamId, idx, sugerido)
+                              const sLabel = sinalLabel[sinal]
+                              const ehOverride = reconciliarChoices[a.teamId]?.[idx] !== undefined
+                              return (
+                                <label
+                                  key={idx}
+                                  style={{
+                                    display: 'flex', alignItems: 'center', gap: 8,
+                                    padding: '4px 6px', borderRadius: 4, cursor: 'pointer',
+                                    background: checked ? 'rgba(155,110,232,0.08)' : 'transparent',
+                                    fontFamily: "'Barlow Condensed', sans-serif",
+                                  }}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    onChange={() => toggleCheckbox(a.teamId, idx, sugerido)}
+                                    disabled={locked}
+                                    style={{ cursor: locked ? 'not-allowed' : 'pointer' }}
+                                  />
+                                  <span style={{ fontSize: 13, color: 'var(--text)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {jogador.nome}
+                                  </span>
+                                  <span style={{ fontSize: 10, color: 'var(--text3)' }}>{jogador.role}</span>
+                                  {sLabel.texto && (
+                                    <span title={sLabel.hint} style={{ fontSize: 10, color: sLabel.cor, fontWeight: 700 }}>
+                                      {sLabel.texto}
+                                    </span>
+                                  )}
+                                  {ehOverride && (
+                                    <span title="Você ajustou esta marcação" style={{ fontSize: 9, color: 'var(--gold)', fontWeight: 700 }}>↺</span>
+                                  )}
+                                  {checked && (
+                                    <span style={{ fontSize: 9, padding: '0 5px', borderRadius: 2, color: 'var(--purple)', background: 'rgba(155,110,232,0.18)', border: '1px solid rgba(155,110,232,0.4)', fontWeight: 700, letterSpacing: '0.06em' }}>
+                                      RESERVA
+                                    </span>
+                                  )}
+                                </label>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', borderTop: '1px solid var(--border)', paddingTop: 8 }}>
                     <button className="btn primary"
-                      onClick={aplicarSyncReservas}
-                      style={{ fontSize: 12, padding: '6px 14px', background: 'var(--purple)', borderColor: 'var(--purple)', color: '#fff' }}>
-                      Aplicar {changes.length} mudança(s)
+                      onClick={aplicarReconciliar}
+                      disabled={reconciliarApplying || totalMudancasSugeridas === 0}
+                      style={{ fontSize: 12, padding: '6px 14px', background: 'var(--purple)', borderColor: 'var(--purple)', color: '#fff', opacity: totalMudancasSugeridas === 0 ? 0.5 : 1 }}>
+                      {reconciliarApplying ? 'Aplicando...' : `Aplicar ${totalMudancasSugeridas} mudança(s)`}
                     </button>
                     <button className="btn"
-                      onClick={() => setSyncReservasConfirm(false)}
+                      onClick={() => { setReconciliarOpen(false); setReconciliarChoices({}) }}
                       style={{ fontSize: 12, padding: '6px 12px' }}>
                       Cancelar
                     </button>
+                    {Object.keys(reconciliarChoices).length > 0 && (
+                      <button className="btn"
+                        onClick={() => setReconciliarChoices({})}
+                        title="Limpa seus ajustes manuais e volta às sugestões automáticas"
+                        style={{ fontSize: 11, padding: '5px 10px', color: 'var(--text2)' }}>
+                        ↺ Resetar ajustes
+                      </button>
+                    )}
                   </div>
                 </div>
               )}
