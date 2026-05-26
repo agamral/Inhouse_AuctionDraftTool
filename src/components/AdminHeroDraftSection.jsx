@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { ref, onValue, set, update, remove } from 'firebase/database'
 import { db } from '../firebase/database'
 import { useCampeonato } from '../contexts/CampeonatoContext'
@@ -71,6 +71,12 @@ export default function AdminHeroDraftSection() {
     useHeroDraft(sessaoId || null, 'admin', draftPathOverride)
   const timeOffset = useServerTimeOffset()
 
+  // liveRef pra evitar closure stale na auto-transição (setTimeout pode
+  // capturar `iniciar` e `estado` antigos; chamar iniciar com estado já
+  // em status=rodando resetaria os bans/picks recentes)
+  const liveDraftRef = useRef({})
+  liveDraftRef.current = { estado, iniciar }
+
   // ── Auto-transição: countdown → rodando (com serverTimeOffset) ──────────
   useEffect(() => {
     if (estado?.status !== 'countdown') return
@@ -79,7 +85,13 @@ export default function AdminHeroDraftSection() {
       : estado.countdownEndsAt
     if (!endsAt) return
     const remaining = Math.max(0, endsAt - (Date.now() + timeOffset))
-    const t = setTimeout(() => iniciar(), remaining + 100) // +100ms margem
+    const t = setTimeout(() => {
+      // Re-checa estado fresco antes de iniciar — evita iniciar() redundante
+      // se outro cliente/aba já transicionou
+      const estLive = liveDraftRef.current.estado
+      if (estLive?.status !== 'countdown') return
+      liveDraftRef.current.iniciar()
+    }, remaining + 100)
     return () => clearTimeout(t)
   }, [estado?.status, estado?.countdownEndsAt, estado?.countdownStartedAt, estado?.countdownSecs, timeOffset]) // eslint-disable-line
 

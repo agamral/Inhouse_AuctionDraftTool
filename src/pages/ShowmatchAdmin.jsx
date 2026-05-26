@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { ref, onValue, get, set, update, remove } from 'firebase/database'
 import { db } from '../firebase/database'
@@ -100,6 +100,10 @@ export default function ShowmatchAdmin() {
   )
   const timeOffset = useServerTimeOffset()
 
+  // liveRef pra evitar closure stale na auto-transição
+  const liveDraftRef = useRef({})
+  liveDraftRef.current = { draftEstado, iniciar: _iniciarDraft }
+
   // Auto-transição countdown → rodando (corrige clock drift com serverTimeOffset)
   useEffect(() => {
     if (draftEstado?.status !== 'countdown') return
@@ -108,7 +112,11 @@ export default function ShowmatchAdmin() {
       : draftEstado.countdownEndsAt
     if (!endsAt) return
     const remaining = Math.max(0, endsAt - (Date.now() + timeOffset))
-    const t = setTimeout(() => _iniciarDraft(), remaining + 100)
+    const t = setTimeout(() => {
+      const live = liveDraftRef.current
+      if (live.draftEstado?.status !== 'countdown') return
+      live.iniciar()
+    }, remaining + 100)
     return () => clearTimeout(t)
   }, [draftEstado?.status, draftEstado?.countdownEndsAt, draftEstado?.countdownStartedAt, draftEstado?.countdownSecs, timeOffset]) // eslint-disable-line
 

@@ -134,25 +134,38 @@ export default function HeroDraft() {
     return () => clearInterval(tick)
   }, [turnoIniciadoEm, estado?.status, timeOffset]) // eslint-disable-line
 
-  // Auto-pick: setTimeout preciso disparado quando o turno começa
+  // Auto-pick: setTimeout preciso disparado quando o turno começa.
+  // Usa liveRef.current pra acessar estado/agir SEMPRE frescos quando o
+  // callback dispara — sem isso, um setTimeout antigo pode chamar agir
+  // com estado de turno passado e SOBRESCREVER picks/bans recentes
+  // (bug do loop "ban → volta → ban → volta").
   useEffect(() => {
     if (autoPickTimer.current) clearTimeout(autoPickTimer.current)
     if (!estado || estado.status !== STATUS_DRAFT.RODANDO || !ehMinhaTez()) return
 
     autoPickedRef.current = false
-    const duracao     = getDuracao(estado)
-    const ts          = estado.turnoIniciadoEm ?? (Date.now() + timeOffset)
-    const remainingMs = Math.max(0, duracao * 1000 - (Date.now() + timeOffset - ts))
-    const snap        = estado // captura o estado do turno atual
+    const turnoOriginal  = estado.passoAtual            // pra abortar se mudou
+    const tsOriginal     = estado.turnoIniciadoEm        // idem
+    const duracao        = getDuracao(estado)
+    const ts             = estado.turnoIniciadoEm ?? (Date.now() + timeOffset)
+    const remainingMs    = Math.max(0, duracao * 1000 - (Date.now() + timeOffset - ts))
 
     autoPickTimer.current = setTimeout(() => {
       if (autoPickedRef.current) return
+      // Lê tudo fresco do liveRef — closure pode ter ficado obsoleta
+      const { estado: estadoLive, ehMinhaTez: emtLive, agir: agirLive } = liveRef.current
+      if (!estadoLive || estadoLive.status !== STATUS_DRAFT.RODANDO) return
+      // Aborta se o turno avançou enquanto o timer esperava (outro pick aconteceu)
+      if (estadoLive.passoAtual !== turnoOriginal) return
+      if (estadoLive.turnoIniciadoEm !== tsOriginal) return
+      if (!emtLive()) return
+
       autoPickedRef.current = true
       const heroiId = confirmandoRef.current
-        ?? HEROES.filter(h => !heroiBloqueado(snap, h.id)).sort(() => Math.random() - 0.5)[0]?.id
+        ?? HEROES.filter(h => !heroiBloqueado(estadoLive, h.id)).sort(() => Math.random() - 0.5)[0]?.id
       if (!heroiId) return
       setConfirmando(null)
-      agir(heroiId)
+      agirLive(heroiId)
     }, remainingMs)
 
     return () => clearTimeout(autoPickTimer.current)

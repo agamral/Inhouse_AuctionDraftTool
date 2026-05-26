@@ -53,13 +53,20 @@ export default function ShowmatchCapitao() {
   useEffect(() => {
     if (autoPickTimer.current) clearTimeout(autoPickTimer.current)
     if (!estado || estado.status !== STATUS_DRAFT.RODANDO || !ehMinhaTez()) return
+    const turnoOriginal = estado.passoAtual
+    const tsOriginal    = estado.turnoIniciadoEm
     const ts = estado.turnoIniciadoEm ?? (Date.now() + timeOffset)
     const decorrido = Math.floor((Date.now() + timeOffset - ts) / 1000)
     const restante = Math.max(0, TEMPO_TURNO - decorrido)
     autoPickTimer.current = setTimeout(async () => {
+      // Aborta se o turno avançou enquanto o timer esperava
+      const estLive = liveRef.current.estado
+      if (!estLive || estLive.status !== STATUS_DRAFT.RODANDO) return
+      if (estLive.passoAtual !== turnoOriginal) return
+      if (estLive.turnoIniciadoEm !== tsOriginal) return
       if (!liveRef.current.ehMinhaTez()) return
       if (confirmandoRef.current) return
-      const herosLivres = HEROES.filter(h => !heroiBloqueado(liveRef.current.estado, h.id))
+      const herosLivres = HEROES.filter(h => !heroiBloqueado(estLive, h.id))
       if (herosLivres.length === 0) return
       const h = herosLivres[Math.floor(Math.random() * herosLivres.length)]
       await liveRef.current.agir(h.id)
