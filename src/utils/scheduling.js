@@ -314,6 +314,10 @@ export function calcularPontos(resultado, config = PONTUACAO_PADRAO, tipoConfron
  * de playoff — classificatorio, quartas, semi, final_up, _lo variants,
  * grande_final) é excluído. Confronto sem `tipo` é tratado como REGULAR
  * pra compatibilidade com dados legados.
+ *
+ * Quando `confronto.pontosTabela` está preenchido (override do admin),
+ * usa esses valores em vez do cálculo automático. Útil pra penalizações,
+ * anulações ou correções pontuais.
  */
 export function calcularClassificacao(teamIds = [], confrontos = [], config = PONTUACAO_PADRAO) {
   const tabela = {}
@@ -333,22 +337,42 @@ export function calcularClassificacao(teamIds = [], confrontos = [], config = PO
     const tipo = c.tipo ?? TIPO_CONFRONTO.REGULAR
     if (tipo !== TIPO_CONFRONTO.REGULAR) continue
 
-    const pts = calcularPontos(c.resultado, config, c.tipo)
+    // Admin pode sobrescrever os pontos no confronto (penalização, anulação,
+    // correção). pontosTabela = null/ausente → usa cálculo automático.
+    const pts = (c.pontosTabela && typeof c.pontosTabela.timeA === 'number')
+      ? { timeA: c.pontosTabela.timeA, timeB: c.pontosTabela.timeB ?? 0 }
+      : calcularPontos(c.resultado, config, c.tipo)
     const gA  = c.resultado.timeA ?? 0
     const gB  = c.resultado.timeB ?? 0
 
-    const atualizar = (id, pontos, gMarcados, gSofridos) => {
+    // Deriva V/D/E do tipo do resultado (não dos pontos) pra continuar
+    // funcionando mesmo com override manual de pontos.
+    const statusPorTime = (() => {
+      switch (c.resultado.tipo) {
+        case TIPO_RESULTADO.WO_A:     return { timeA: 'V', timeB: 'D' }
+        case TIPO_RESULTADO.WO_B:     return { timeA: 'D', timeB: 'V' }
+        case TIPO_RESULTADO.DUPLO_WO: return { timeA: 'D', timeB: 'D' }
+        case TIPO_RESULTADO.EMPATE:   return { timeA: 'E', timeB: 'E' }
+        case TIPO_RESULTADO.NORMAL:
+          if (gA > gB) return { timeA: 'V', timeB: 'D' }
+          if (gB > gA) return { timeA: 'D', timeB: 'V' }
+          return { timeA: 'E', timeB: 'E' }
+        default: return { timeA: null, timeB: null }
+      }
+    })()
+
+    const atualizar = (id, pontos, gMarcados, gSofridos, status) => {
       if (!tabela[id]) return
       tabela[id].pontos += pontos
       tabela[id].jogos  += 1
       tabela[id].saldo  += gMarcados - gSofridos
-      if (pontos === config.vitoria || pontos === config.wo_vitoria) tabela[id].vitorias++
-      else if (pontos === config.derrota || pontos === config.wo_derrota) tabela[id].derrotas++
-      else tabela[id].empates++
+      if (status === 'V')      tabela[id].vitorias++
+      else if (status === 'D') tabela[id].derrotas++
+      else if (status === 'E') tabela[id].empates++
     }
 
-    atualizar(c.timeA, pts.timeA, gA, gB)
-    atualizar(c.timeB, pts.timeB, gB, gA)
+    atualizar(c.timeA, pts.timeA, gA, gB, statusPorTime.timeA)
+    atualizar(c.timeB, pts.timeB, gB, gA, statusPorTime.timeB)
   }
 
   return Object.values(tabela).sort((a, b) => {

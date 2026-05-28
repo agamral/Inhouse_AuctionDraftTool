@@ -101,9 +101,11 @@ export default function AdminRodadasSection() {
 
   // ── Registrar resultado ──────────────────────────────────────────────────────
 
-  async function registrarResultado(confrontoId, resultado) {
+  async function registrarResultado(confrontoId, payload) {
     try {
       const c = confrontos[confrontoId]
+      // payload: { resultado, observacoes, pontosTabela }
+      const { resultado, observacoes = null, pontosTabela = null } = payload
       let novoStatus = STATUS_CONFRONTO.REALIZADO
 
       // Se foi empate numa série MD2 → muda para empate_pendente
@@ -113,6 +115,8 @@ export default function AdminRodadasSection() {
 
       await update(ref(db, `${confrontosPath(campeonatoId)}/${confrontoId}`), {
         resultado,
+        observacoes,
+        pontosTabela,
         status: novoStatus,
         alertas: {},
         atualizadoEm: Date.now(),
@@ -478,6 +482,12 @@ function ConfrontoCard({ confrontoId, confronto: c, times, disponibilidade, onRe
             {formatarResultado(c.resultado)}
           </strong>
         </span>
+        {c.pontosTabela && (
+          <span title={`Pontos da tabela ajustados manualmente: ${c.pontosTabela.timeA} × ${c.pontosTabela.timeB}`}
+            style={{ color: 'var(--purple)', fontWeight: 700, letterSpacing: '0.06em', fontSize: 11 }}>
+            ✎ PTS AJUSTADOS ({c.pontosTabela.timeA}×{c.pontosTabela.timeB})
+          </span>
+        )}
         {emComum.length > 0 && (
           <span style={{ color: 'var(--blue)' }}>
             {emComum.length} slot{emComum.length > 1 ? 's' : ''} em comum
@@ -693,6 +703,11 @@ function ModalResultado({ confronto, confrontoId, times, onSalvar, onFechar }) {
   const [gB, setGB] = useState(0)
   const [obs, setObs] = useState(confronto.observacoes ?? '')
 
+  // Override de pontos pra tabela — pré-carrega se já existe no confronto
+  const [overrideAtivo, setOverrideAtivo] = useState(!!confronto.pontosTabela)
+  const [pontosOverrideA, setPontosOverrideA] = useState(confronto.pontosTabela?.timeA ?? 0)
+  const [pontosOverrideB, setPontosOverrideB] = useState(confronto.pontosTabela?.timeB ?? 0)
+
   const ehMD2 = confronto.formato === FORMATO_SERIE.MD2
 
   const opcoes = [
@@ -710,7 +725,20 @@ function ModalResultado({ confronto, confrontoId, times, onSalvar, onFechar }) {
     tipo === TIPO_RESULTADO.WO_B    ? { tipo, timeA: 0, timeB: 1 }   :
     /* DUPLO_WO */                    { tipo, timeA: 0, timeB: 0 }
 
-  const pontos = calcularPontos(resultado, PONTUACAO_PADRAO, confronto.tipo)
+  const pontosAuto = calcularPontos(resultado, PONTUACAO_PADRAO, confronto.tipo)
+
+  // Quando override desliga, sincroniza inputs com o cálculo automático
+  // (útil pra admin ver o que o sistema sugeriria antes de ativar override de novo)
+  useEffect(() => {
+    if (!overrideAtivo) {
+      setPontosOverrideA(pontosAuto.timeA)
+      setPontosOverrideB(pontosAuto.timeB)
+    }
+  }, [pontosAuto.timeA, pontosAuto.timeB, overrideAtivo])
+
+  const pontosFinais = overrideAtivo
+    ? { timeA: Number(pontosOverrideA) || 0, timeB: Number(pontosOverrideB) || 0 }
+    : pontosAuto
 
   return (
     <Modal titulo={`Resultado — ${tA?.nome ?? confronto.timeA} vs ${tB?.nome ?? confronto.timeB}`} onFechar={onFechar}>
@@ -740,10 +768,57 @@ function ModalResultado({ confronto, confrontoId, times, onSalvar, onFechar }) {
         </div>
       )}
 
-      {/* Preview de pontos */}
-      <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 12px', marginBottom: 14, fontSize: 12, fontFamily: "'Barlow Condensed', sans-serif", display: 'flex', gap: 24 }}>
-        <span style={{ color: tA?.cor ?? 'var(--text)' }}>{tA?.nome ?? 'Time A'}: <strong>+{pontos.timeA} pts</strong></span>
-        <span style={{ color: tB?.cor ?? 'var(--text)' }}>{tB?.nome ?? 'Time B'}: <strong>+{pontos.timeB} pts</strong></span>
+      {/* Pontos pra tabela: preview + toggle de override */}
+      <div style={{
+        background: overrideAtivo ? 'rgba(155,110,232,0.06)' : 'var(--bg2)',
+        border: `1px solid ${overrideAtivo ? 'rgba(155,110,232,0.35)' : 'var(--border)'}`,
+        borderRadius: 6, padding: '10px 12px', marginBottom: 14,
+        display: 'flex', flexDirection: 'column', gap: 10,
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 18, fontSize: 12, fontFamily: "'Barlow Condensed', sans-serif" }}>
+            <span style={{ color: tA?.cor ?? 'var(--text)' }}>
+              {tA?.nome ?? 'Time A'}: <strong>+{pontosFinais.timeA} pts</strong>
+            </span>
+            <span style={{ color: tB?.cor ?? 'var(--text)' }}>
+              {tB?.nome ?? 'Time B'}: <strong>+{pontosFinais.timeB} pts</strong>
+            </span>
+            {overrideAtivo && (
+              <span style={{ color: 'var(--purple)', fontWeight: 700, letterSpacing: '0.06em' }}>
+                AJUSTE MANUAL
+              </span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => setOverrideAtivo(v => !v)}
+            style={{
+              fontSize: 11, padding: '4px 10px', borderRadius: 4,
+              border: `1px solid ${overrideAtivo ? 'rgba(155,110,232,0.4)' : 'var(--border2)'}`,
+              background: overrideAtivo ? 'rgba(155,110,232,0.15)' : 'transparent',
+              color: overrideAtivo ? 'var(--purple)' : 'var(--text2)',
+              cursor: 'pointer', fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700,
+            }}
+          >
+            {overrideAtivo ? '↺ Usar automático' : '✎ Ajustar manualmente'}
+          </button>
+        </div>
+        {overrideAtivo && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <div>
+              <FieldLabel label={`Pts ${tA?.nome ?? 'Time A'}`} />
+              <input type="number" min={-20} max={20} value={pontosOverrideA}
+                onChange={e => setPontosOverrideA(e.target.value)}
+                style={{ ...inputStyle, textAlign: 'center' }} />
+            </div>
+            <div>
+              <FieldLabel label={`Pts ${tB?.nome ?? 'Time B'}`} />
+              <input type="number" min={-20} max={20} value={pontosOverrideB}
+                onChange={e => setPontosOverrideB(e.target.value)}
+                style={{ ...inputStyle, textAlign: 'center' }} />
+            </div>
+          </div>
+        )}
       </div>
 
       <FieldLabel label="Observações" hint="opcional" />
@@ -752,7 +827,11 @@ function ModalResultado({ confronto, confrontoId, times, onSalvar, onFechar }) {
 
       <div style={{ display: 'flex', gap: 8 }}>
         <button className="btn primary" style={{ fontSize: 13 }}
-          onClick={() => onSalvar(confrontoId, { ...resultado, observacoes: obs || null })}>
+          onClick={() => onSalvar(confrontoId, {
+            resultado,
+            observacoes: obs || null,
+            pontosTabela: overrideAtivo ? { timeA: pontosFinais.timeA, timeB: pontosFinais.timeB } : null,
+          })}>
           Confirmar resultado
         </button>
         <button className="btn" style={{ fontSize: 13 }} onClick={onFechar}>Cancelar</button>
