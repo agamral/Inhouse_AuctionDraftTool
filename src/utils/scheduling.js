@@ -309,7 +309,11 @@ export function calcularPontos(resultado, config = PONTUACAO_PADRAO, tipoConfron
 /**
  * Calcula a tabela de classificação a partir de confrontos realizados.
  * Ordena por: pontos → saldo → vitórias
- * Confrontos de tipo 'desempate' não entram na tabela.
+ *
+ * Só conta confrontos de tipo REGULAR. Tudo mais (DESEMPATE, todos os tipos
+ * de playoff — classificatorio, quartas, semi, final_up, _lo variants,
+ * grande_final) é excluído. Confronto sem `tipo` é tratado como REGULAR
+ * pra compatibilidade com dados legados.
  */
 export function calcularClassificacao(teamIds = [], confrontos = [], config = PONTUACAO_PADRAO) {
   const tabela = {}
@@ -325,10 +329,9 @@ export function calcularClassificacao(teamIds = [], confrontos = [], config = PO
 
   for (const c of confrontos) {
     if (!statusContabilizados.has(c.status) || !c.resultado) continue
-    // Playoffs não entram na tabela da fase regular
-    if (c.tipo === TIPO_CONFRONTO.QUARTAS ||
-        c.tipo === TIPO_CONFRONTO.SEMI    ||
-        c.tipo === TIPO_CONFRONTO.FINAL) continue
+    // Whitelist: só REGULAR conta. Default pra REGULAR se tipo ausente (legado).
+    const tipo = c.tipo ?? TIPO_CONFRONTO.REGULAR
+    if (tipo !== TIPO_CONFRONTO.REGULAR) continue
 
     const pts = calcularPontos(c.resultado, config, c.tipo)
     const gA  = c.resultado.timeA ?? 0
