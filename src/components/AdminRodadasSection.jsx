@@ -570,10 +570,16 @@ function ConfrontoCard({ confrontoId, confronto: c, times, disponibilidade, onRe
             {emDraft ? '⚡ Gerenciar Draft Ativo' : `▶ Iniciar Draft${concluidas > 0 ? ` P${concluidas + 1}` : ''}`}
           </button>
         )}
-        {c.status !== STATUS_CONFRONTO.REALIZADO && c.status !== STATUS_CONFRONTO.CANCELADO && (
+        {c.status !== STATUS_CONFRONTO.REALIZADO && c.status !== STATUS_CONFRONTO.CANCELADO && c.status !== STATUS_CONFRONTO.EMPATE_PENDENTE && (
           <button className="btn" style={{ fontSize: 11, padding: '4px 10px', borderColor: 'var(--green)', color: 'var(--green)' }}
             onClick={onRegistrarResultado}>
             ✓ Registrar resultado
+          </button>
+        )}
+        {(c.status === STATUS_CONFRONTO.REALIZADO || c.status === STATUS_CONFRONTO.EMPATE_PENDENTE) && (
+          <button className="btn" style={{ fontSize: 11, padding: '4px 10px', borderColor: 'rgba(74,158,218,0.4)', color: 'var(--blue)' }}
+            onClick={onRegistrarResultado}>
+            ✎ Editar resultado
           </button>
         )}
         {c.status !== STATUS_CONFRONTO.REALIZADO && c.status !== STATUS_CONFRONTO.CANCELADO && (
@@ -698,9 +704,12 @@ function ModalNovoConfronto({ times, onSalvar, onFechar }) {
 function ModalResultado({ confronto, confrontoId, times, onSalvar, onFechar }) {
   const tA = times[confronto.timeA]
   const tB = times[confronto.timeB]
-  const [tipo, setTipo] = useState(TIPO_RESULTADO.NORMAL)
-  const [gA, setGA] = useState(0)
-  const [gB, setGB] = useState(0)
+
+  // Pré-carrega valores existentes pra permitir edição de resultados já registrados
+  const resultadoExistente = confronto.resultado ?? {}
+  const [tipo, setTipo] = useState(resultadoExistente.tipo ?? TIPO_RESULTADO.NORMAL)
+  const [gA, setGA]   = useState(resultadoExistente.tipo === TIPO_RESULTADO.NORMAL ? (resultadoExistente.timeA ?? 0) : 0)
+  const [gB, setGB]   = useState(resultadoExistente.tipo === TIPO_RESULTADO.NORMAL ? (resultadoExistente.timeB ?? 0) : 0)
   const [obs, setObs] = useState(confronto.observacoes ?? '')
 
   // Override de pontos pra tabela — pré-carrega se já existe no confronto
