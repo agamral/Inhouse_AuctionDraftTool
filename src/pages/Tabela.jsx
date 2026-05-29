@@ -166,6 +166,18 @@ export default function Tabela() {
                       <span className="tab-time-nome" style={{ color: cor }}>
                         {time?.nome ?? entry.id}
                       </span>
+                      {entry.posicaoPendente && (
+                        <span
+                          title="Posição pendente — empatado em pontos sem confronto direto resolvido. Desempate MD3 necessário."
+                          style={{
+                            marginLeft: 6, fontSize: 9, fontWeight: 700, letterSpacing: '0.08em',
+                            padding: '1px 5px', borderRadius: 3,
+                            color: 'var(--gold)', background: 'rgba(201,168,76,0.12)',
+                            border: '1px solid rgba(201,168,76,0.35)',
+                            fontFamily: "'Barlow Condensed', sans-serif",
+                          }}
+                        >⚖ DESEMPATE</span>
+                      )}
                     </td>
                     <td className="tab-td tab-td--num">{entry.jogos}</td>
                     <td className="tab-td tab-td--num tab-td--v">{entry.vitorias}</td>

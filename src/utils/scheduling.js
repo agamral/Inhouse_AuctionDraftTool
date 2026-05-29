@@ -375,11 +375,52 @@ export function calcularClassificacao(teamIds = [], confrontos = [], config = PO
     atualizar(c.timeB, pts.timeB, gB, gA, statusPorTime.timeB)
   }
 
-  return Object.values(tabela).sort((a, b) => {
+  // Head-to-head: compara 2 times pelo confronto direto na fase regular.
+  // Retorna -1 se A acima, 1 se B acima, 0 se não resolve (sem h2h ou empate 1-1).
+  function compararHeadToHead(idA, idB) {
+    const direto = confrontos.find(c => {
+      const tipo = c.tipo ?? TIPO_CONFRONTO.REGULAR
+      if (tipo !== TIPO_CONFRONTO.REGULAR) return false
+      if (!statusContabilizados.has(c.status) || !c.resultado) return false
+      return (c.timeA === idA && c.timeB === idB) || (c.timeA === idB && c.timeB === idA)
+    })
+    if (!direto) return 0  // não jogaram entre si
+
+    const aEhTimeA = direto.timeA === idA
+    switch (direto.resultado.tipo) {
+      case TIPO_RESULTADO.WO_A:     return aEhTimeA ? -1 : 1
+      case TIPO_RESULTADO.WO_B:     return aEhTimeA ? 1 : -1
+      case TIPO_RESULTADO.NORMAL: {
+        const gMeu  = aEhTimeA ? direto.resultado.timeA : direto.resultado.timeB
+        const gOut  = aEhTimeA ? direto.resultado.timeB : direto.resultado.timeA
+        if (gMeu > gOut) return -1
+        if (gOut > gMeu) return 1
+        return 0  // 1-1 sem resolução
+      }
+      default: return 0  // duplo_wo ou empate não decide
+    }
+  }
+
+  const sortedTabela = Object.values(tabela).sort((a, b) => {
     if (b.pontos   !== a.pontos)   return b.pontos   - a.pontos
+    const h2h = compararHeadToHead(a.id, b.id)
+    if (h2h !== 0) return h2h
     if (b.saldo    !== a.saldo)    return b.saldo    - a.saldo
     return b.vitorias - a.vitorias
   })
+
+  // Detecção de "posicaoPendente": pares consecutivos com mesma pontuação
+  // onde o head-to-head não resolveu — admin precisa marcar MD3 de desempate.
+  for (let i = 0; i < sortedTabela.length - 1; i++) {
+    if (sortedTabela[i].pontos === sortedTabela[i + 1].pontos) {
+      if (compararHeadToHead(sortedTabela[i].id, sortedTabela[i + 1].id) === 0) {
+        sortedTabela[i].posicaoPendente     = true
+        sortedTabela[i + 1].posicaoPendente = true
+      }
+    }
+  }
+
+  return sortedTabela
 }
 
 // ── Alertas para o admin ──────────────────────────────────────────────────────
