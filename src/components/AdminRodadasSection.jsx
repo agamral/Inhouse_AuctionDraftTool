@@ -734,7 +734,12 @@ function ModalResultado({ confronto, confrontoId, times, onSalvar, onFechar }) {
     tipo === TIPO_RESULTADO.WO_B    ? { tipo, timeA: 0, timeB: 1 }   :
     /* DUPLO_WO */                    { tipo, timeA: 0, timeB: 0 }
 
-  const pontosAuto = calcularPontos(resultado, PONTUACAO_PADRAO, confronto.tipo)
+  // Só REGULAR conta na tabela. Pra DESEMPATE e tipos de playoff o preview
+  // mostra 0/0 pra não enganar o admin com pontos que não serão somados.
+  const tipoConfronto = confronto.tipo ?? TIPO_CONFRONTO.REGULAR
+  const tipoContaNaTabela = tipoConfronto === TIPO_CONFRONTO.REGULAR
+  const pontosCalculados = calcularPontos(resultado, PONTUACAO_PADRAO, confronto.tipo)
+  const pontosAuto = tipoContaNaTabela ? pontosCalculados : { timeA: 0, timeB: 0 }
 
   // Quando override desliga, sincroniza inputs com o cálculo automático
   // (útil pra admin ver o que o sistema sugeriria antes de ativar override de novo)
@@ -795,6 +800,11 @@ function ModalResultado({ confronto, confrontoId, times, onSalvar, onFechar }) {
             {overrideAtivo && (
               <span style={{ color: 'var(--purple)', fontWeight: 700, letterSpacing: '0.06em' }}>
                 AJUSTE MANUAL
+              </span>
+            )}
+            {!tipoContaNaTabela && !overrideAtivo && (
+              <span style={{ color: 'var(--text3)', fontStyle: 'italic' }}>
+                ({tipoConfronto === TIPO_CONFRONTO.DESEMPATE ? 'desempate' : 'playoff'} não soma na tabela)
               </span>
             )}
           </div>
