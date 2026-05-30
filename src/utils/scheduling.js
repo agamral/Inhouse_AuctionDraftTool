@@ -411,12 +411,15 @@ export function calcularClassificacao(teamIds = [], confrontos = [], config = PO
 
   // Detecção de "posicaoPendente": pares consecutivos com mesma pontuação
   // onde o head-to-head não resolveu — admin precisa marcar MD3 de desempate.
+  // Times sem jogos (jogos=0) são ignorados: ainda não competiram, então não
+  // faz sentido falar em desempate com eles.
   for (let i = 0; i < sortedTabela.length - 1; i++) {
-    if (sortedTabela[i].pontos === sortedTabela[i + 1].pontos) {
-      if (compararHeadToHead(sortedTabela[i].id, sortedTabela[i + 1].id) === 0) {
-        sortedTabela[i].posicaoPendente     = true
-        sortedTabela[i + 1].posicaoPendente = true
-      }
+    const a = sortedTabela[i]
+    const b = sortedTabela[i + 1]
+    if (a.jogos === 0 || b.jogos === 0) continue
+    if (a.pontos === b.pontos && compararHeadToHead(a.id, b.id) === 0) {
+      a.posicaoPendente = true
+      b.posicaoPendente = true
     }
   }
 
