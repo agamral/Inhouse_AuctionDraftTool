@@ -14,6 +14,7 @@ import AdminDraftSimulator      from '../components/AdminDraftSimulator'
 import AdminHeroDraftSection    from '../components/AdminHeroDraftSection'
 import AdminTeamsSection        from '../components/AdminTeamsSection'
 import AdminRodadasSection      from '../components/AdminRodadasSection'
+import AdminBracketSection      from '../components/AdminBracketSection'
 import AdminCapitaoAcesso       from '../components/AdminCapitaoAcesso'
 import AdminMigracaoSection          from '../components/AdminMigracaoSection'
 import AdminProvisionamentoSection   from '../components/AdminProvisionamentoSection'
@@ -545,6 +546,7 @@ export default function Admin() {
       {aba === 'campeonato' && (
         <div className="admin-tab-content">
           <AdminRodadasSection />
+          <AdminBracketSection />
           <AdminHeroDraftSection />
         </div>
       )}
