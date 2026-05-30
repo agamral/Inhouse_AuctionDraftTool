@@ -4,7 +4,7 @@ import { db } from '../firebase/database'
 import { useCampeonato } from '../contexts/CampeonatoContext'
 import { teamPath, rodadasPath, confrontosPath, tabelaOverridePath } from '../utils/campeonatoPaths'
 import { calcularClassificacao } from '../utils/scheduling'
-import { BRACKET_8_DOUBLE_ELIM } from '../utils/bracketTemplates'
+import { BRACKET_8_DOUBLE_ELIM, BRACKET_PHASES } from '../utils/bracketTemplates'
 import { STATUS_CONFRONTO } from '../utils/scheduling'
 
 // aplicarOverridesDePosicao — duplicado aqui pra não criar dependência circular
@@ -81,35 +81,44 @@ export default function AdminBracketSection() {
     setGerando(true)
     setConfirmGerarOpen(false)
     try {
-      // 1. Cria a rodada "Playoffs"
-      const rodadaId = push(ref(db, rodadasPath(campeonatoId))).key
-      await set(ref(db, `${rodadasPath(campeonatoId)}/${rodadaId}`), {
-        nome:     'Playoffs',
-        numero:   'P',
-        status:   'configurando',
-        criadoEm: Date.now(),
-      })
+      // 1. Cria as 4 rodadas de playoff (uma por semana/fase)
+      const faseIds = {}
+      for (const [faseKey, fase] of Object.entries(BRACKET_PHASES)) {
+        const rId = push(ref(db, rodadasPath(campeonatoId))).key
+        await set(ref(db, `${rodadasPath(campeonatoId)}/${rId}`), {
+          nome:     fase.nome,
+          numero:   faseKey,       // 'P-1', 'P-2', 'P-3', 'P-4'
+          status:   'configurando',
+          criadoEm: Date.now(),
+        })
+        faseIds[faseKey] = rId
+      }
 
       // 2. Monta o seeding (posição 1-indexed → teamId)
       const seeds = {}
       classificacao.forEach((entry, idx) => { seeds[idx + 1] = entry.id })
 
-      // 3. Cria todos os 14 confrontos com update atômico
+      // 3. Mapa bracketSlot → faseKey (qual rodada recebe cada confronto)
+      const slotFase = {}
+      for (const [faseKey, fase] of Object.entries(BRACKET_PHASES)) {
+        fase.slots.forEach(s => { slotFase[s] = faseKey })
+      }
+
+      // 4. Cria todos os 14 confrontos com update atômico
       const updates = {}
       const slotToId = {}
 
-      // Reserva IDs antes de escrever pra poder linkar winnerTo/loserTo por ID real
-      // (Firebase não usa IDs preditivos, mas os confrontos têm bracketSlot como chave
-      // lógica — a propagação usa bracketSlot, não o ID Firebase)
       for (const slot of Object.values(BRACKET_8_DOUBLE_ELIM)) {
         const newId = push(ref(db, confrontosPath(campeonatoId))).key
         slotToId[slot.id] = newId
       }
 
       for (const slot of Object.values(BRACKET_8_DOUBLE_ELIM)) {
-        const id = slotToId[slot.id]
-        const timeA = slot.seedA ? (seeds[slot.seedA] ?? null) : null
-        const timeB = slot.seedB ? (seeds[slot.seedB] ?? null) : null
+        const id       = slotToId[slot.id]
+        const faseKey  = slotFase[slot.id]
+        const rodadaId = faseIds[faseKey]
+        const timeA    = slot.seedA ? (seeds[slot.seedA] ?? null) : null
+        const timeB    = slot.seedB ? (seeds[slot.seedB] ?? null) : null
 
         updates[`${confrontosPath(campeonatoId)}/${id}`] = {
           rodadaId,
@@ -134,7 +143,7 @@ export default function AdminBracketSection() {
       }
 
       await update(ref(db), updates)
-      flash('ok', `Bracket gerado! 14 confrontos criados na rodada "Playoffs". Quartas: ${times[seeds[1]]?.nome ?? seeds[1]} vs ${times[seeds[8]]?.nome ?? seeds[8]}, etc.`)
+      flash('ok', `Bracket gerado! 14 confrontos em 4 rodadas. P-1 Quartas: ${times[seeds[1]]?.nome ?? seeds[1]} vs ${times[seeds[8]]?.nome ?? seeds[8]}, etc.`)
     } catch (e) {
       flash('erro', `Erro ao gerar: ${e.message}`)
     } finally {
@@ -156,7 +165,7 @@ export default function AdminBracketSection() {
       })
       // Apaga também a rodada de Playoffs se existir
       Object.entries(rodadas).forEach(([rid, r]) => {
-        if (r.numero === 'P') updates[`${rodadasPath(campeonatoId)}/${rid}`] = null
+        if (r.numero?.startsWith('P')) updates[`${rodadasPath(campeonatoId)}/${rid}`] = null
       })
       await update(ref(db), updates)
       flash('ok', 'Bracket apagado.')

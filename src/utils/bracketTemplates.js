@@ -160,3 +160,15 @@ export const BRACKET_COLS = {
   ],
   final: ['gf'],
 }
+
+// Divisão por fases do playoff (Opção B — espalhado por 4 semanas)
+//   P-1 Quartas:       M1–M4 (Upper Quartas)
+//   P-2 Semifinal:     M5–M6 (Upper Semi) + L1–L2 (Lower R1)
+//   P-3 Final:         M7 (Upper Final) + L3–L4 (Lower R2)
+//   P-4 Grande Final:  L5 (Lower R3) + L6 (Lower Final) + GF
+export const BRACKET_PHASES = {
+  'P-1': { slots: ['m1', 'm2', 'm3', 'm4'],   nome: 'Playoffs — Quartas de Final' },
+  'P-2': { slots: ['m5', 'm6', 'l1', 'l2'],   nome: 'Playoffs — Semifinal'        },
+  'P-3': { slots: ['m7', 'l3', 'l4'],          nome: 'Playoffs — Final'            },
+  'P-4': { slots: ['l5', 'l6', 'gf'],          nome: 'Playoffs — Grande Final'     },
+}
