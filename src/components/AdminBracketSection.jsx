@@ -165,7 +165,7 @@ export default function AdminBracketSection() {
       })
       // Apaga também a rodada de Playoffs se existir
       Object.entries(rodadas).forEach(([rid, r]) => {
-        if (r.numero?.startsWith('P')) updates[`${rodadasPath(campeonatoId)}/${rid}`] = null
+        if (String(r.numero ?? '').startsWith('P')) updates[`${rodadasPath(campeonatoId)}/${rid}`] = null
       })
       await update(ref(db), updates)
       flash('ok', 'Bracket apagado.')

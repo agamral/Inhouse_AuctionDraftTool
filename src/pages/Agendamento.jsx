@@ -217,7 +217,7 @@ export default function Agendamento() {
     const c = confrontos[confrontoId]
     if (!c) return {}
     const rodada    = rodadas[c.rodadaId]
-    const ehPlayoff = rodada?.numero?.startsWith('P')
+    const ehPlayoff = String(rodada?.numero ?? '').startsWith('P')
     const ocupados  = {}
     Object.entries(confrontos)
       .filter(([id, oc]) =>
@@ -415,7 +415,7 @@ export default function Agendamento() {
             const advId    = c.timeA === teamSel ? c.timeB : c.timeA
             const adv      = teams[advId]
                     const rodada    = rodadas[c.rodadaId]
-            const ehPlayoff = rodada?.numero?.startsWith('P')
+            const ehPlayoff = String(rodada?.numero ?? '').startsWith('P')
             const slotsRodada = ehPlayoff ? SLOTS_PLAYOFF : SLOTS
             const meusSlots = selecoes[id] ?? []
             const advSlots  = dispon[id]?.[advId]?.slots ?? []
