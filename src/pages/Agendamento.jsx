@@ -209,6 +209,10 @@ export default function Agendamento() {
     setTimeout(() => setFeedback(f => ({ ...f, [confrontoId]: null })), 5000)
   }
 
+  // Slot é GLOBAL por rodada: só pode 1 confronto por dia+horário em toda
+  // a rodada (a equipe da Inhouse organiza um lobby de cada vez, com
+  // transmissão única — não dá pra ter 2 partidas simultâneas).
+  // Decisão do brainstorm 2026-05-26 (batch 2.8).
   function slotsOcupadosNaRodada(confrontoId) {
     const c = confrontos[confrontoId]
     if (!c) return {}
@@ -218,7 +222,6 @@ export default function Agendamento() {
         id !== confrontoId &&
         oc.rodadaId === c.rodadaId &&
         oc.status === STATUS_CONFRONTO.CONFIRMADO &&
-        (oc.timeA === teamSel || oc.timeB === teamSel) &&
         oc.slot
       )
       .forEach(([, oc]) => { ocupados[oc.slot] = true })
