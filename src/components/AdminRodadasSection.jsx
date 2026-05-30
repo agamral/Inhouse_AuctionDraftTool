@@ -7,10 +7,20 @@ import { teamPath, rodadasPath, confrontosPath, disponibilidadePath } from '../u
 import {
   SLOTS, SLOT_LABEL, SLOT_DIA, DIA_LABEL,
   STATUS_CONFRONTO, STATUS_LABEL, STATUS_COR,
-  TIPO_CONFRONTO, FORMATO_SERIE,
+  TIPO_CONFRONTO, FORMATO_SERIE, BRACKET_LABELS,
   TIPO_RESULTADO, PONTUACAO_PADRAO,
   encontrarSlotsEmComum, calcularPontos, formatarResultado, confrontosComAlertas,
 } from '../utils/scheduling'
+
+// Labels legíveis pra tipos de confronto no card admin
+const TIPO_LABEL = {
+  [TIPO_CONFRONTO.REGULAR]:      'Regular',
+  [TIPO_CONFRONTO.DESEMPATE]:    'Desempate',
+  [TIPO_CONFRONTO.CLASSIFICATORIO]: 'Classificatório',
+  ...Object.fromEntries(
+    Object.entries(BRACKET_LABELS).map(([tipo, label]) => [tipo, label])
+  ),
+}
 
 const inputStyle = {
   background: 'var(--bg)', border: '1px solid var(--border2)', borderRadius: 6,
@@ -36,6 +46,7 @@ export default function AdminRodadasSection() {
   const [modalNovoConfr, setModalNovoConfr]       = useState(false)
   const [modalResultado, setModalResultado]       = useState(null) // confrontoId
   const [modalSlot, setModalSlot]                 = useState(null) // confrontoId
+  const [modalEditarTimes, setModalEditarTimes]   = useState(null) // confrontoId (só bracket)
   const [confirmDelete, setConfirmDelete]         = useState(null) // confrontoId
 
   useEffect(() => onValue(ref(db, rodadasPath(campeonatoId)),         snap => setRodadas(snap.val()    ?? {})), [campeonatoId])
@@ -162,6 +173,21 @@ export default function AdminRodadasSection() {
         if (resultado.timeB > resultado.timeA) return timeB
         return null  // empate
       default: return null
+    }
+  }
+
+  // ── Editar times do confronto manualmente (só bracket) ──────────────────────
+  async function editarTimesBracket(confrontoId, { timeA, timeB }) {
+    try {
+      await update(ref(db, `${confrontosPath(campeonatoId)}/${confrontoId}`), {
+        timeA: timeA || null,
+        timeB: timeB || null,
+        atualizadoEm: Date.now(),
+      })
+      setModalEditarTimes(null)
+      flash('ok', 'Times atualizados.')
+    } catch (e) {
+      flash('erro', e.message)
     }
   }
 
@@ -361,6 +387,7 @@ export default function AdminRodadasSection() {
                   disponibilidade={disponibilidade[id] ?? {}}
                   onRegistrarResultado={() => setModalResultado(id)}
                   onForcarSlot={() => setModalSlot(id)}
+                  onEditarTimes={c.bracketSlot ? () => setModalEditarTimes(id) : undefined}
                   onMudarStatus={(status, extras) => mudarStatus(id, status, extras)}
                   onAgendarDesempate={() => agendarDesempate(id)}
                   onDeletar={() => setConfirmDelete(id)}
@@ -414,6 +441,15 @@ export default function AdminRodadasSection() {
           onFechar={() => setModalSlot(null)}
         />
       )}
+      {modalEditarTimes && confrontos[modalEditarTimes] && (
+        <ModalEditarTimesBracket
+          confronto={confrontos[modalEditarTimes]}
+          confrontoId={modalEditarTimes}
+          times={times}
+          onSalvar={editarTimesBracket}
+          onFechar={() => setModalEditarTimes(null)}
+        />
+      )}
     </section>
   )
 }
@@ -452,7 +488,7 @@ function RodadaHeader({ rodada, rodadaId, onChange }) {
   )
 }
 
-function ConfrontoCard({ confrontoId, confronto: c, times, disponibilidade, onRegistrarResultado, onForcarSlot, onMudarStatus, onAgendarDesempate, onDeletar, confirmandoDelete, onConfirmarDelete, onCancelarDelete, onIniciarDraft }) {
+function ConfrontoCard({ confrontoId, confronto: c, times, disponibilidade, onRegistrarResultado, onForcarSlot, onEditarTimes, onMudarStatus, onAgendarDesempate, onDeletar, confirmandoDelete, onConfirmarDelete, onCancelarDelete, onIniciarDraft }) {
   const tA = times[c.timeA]
   const tB = times[c.timeB]
   const dispA = disponibilidade[c.timeA]?.slots ?? []
@@ -493,7 +529,7 @@ function ConfrontoCard({ confrontoId, confronto: c, times, disponibilidade, onRe
         </span>
 
         <span style={{ fontSize: 10, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text3)', background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 3, padding: '1px 6px' }}>
-          {c.tipo} · {c.formato}
+          {TIPO_LABEL[c.tipo] ?? c.tipo} · {c.formato}
         </span>
 
         {emDraft && (
@@ -600,6 +636,20 @@ function ConfrontoCard({ confrontoId, confronto: c, times, disponibilidade, onRe
 
       {/* Ações admin */}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {/* Override de times (só confrontos do bracket com times ainda indefinidos) */}
+        {onEditarTimes && (!c.timeA || !c.timeB) && (
+          <button className="btn" style={{ fontSize: 11, padding: '4px 10px', borderColor: 'rgba(201,168,76,0.4)', color: 'var(--gold)' }}
+            onClick={onEditarTimes}>
+            ✎ Definir times
+          </button>
+        )}
+        {onEditarTimes && c.timeA && c.timeB && c.status !== STATUS_CONFRONTO.REALIZADO && (
+          <button className="btn" style={{ fontSize: 11, padding: '4px 10px', borderColor: 'rgba(201,168,76,0.2)', color: 'var(--text3)' }}
+            title="Substituir os times deste confronto manualmente"
+            onClick={onEditarTimes}>
+            ✎ Trocar times
+          </button>
+        )}
         {/* Botão de draft — aparece em confirmado (iniciar) ou em_jogo (gerenciar) */}
         {(c.status === STATUS_CONFRONTO.CONFIRMADO || c.status === 'em_jogo') && (
           <button className="btn" style={{ fontSize: 11, padding: '4px 10px', borderColor: 'var(--purple)', color: 'var(--purple)', fontWeight: 700 }}
@@ -667,6 +717,54 @@ function ConfrontoCard({ confrontoId, confronto: c, times, disponibilidade, onRe
 }
 
 // ── Modais ─────────────────────────────────────────────────────────────────────
+
+function ModalEditarTimesBracket({ confronto: c, confrontoId, times, onSalvar, onFechar }) {
+  const timesArr = Object.entries(times).sort(([,a],[,b]) => a.nome.localeCompare(b.nome))
+  const [timeA, setTimeA] = useState(c.timeA ?? '')
+  const [timeB, setTimeB] = useState(c.timeB ?? '')
+
+  const selectStyle = {
+    background: 'var(--bg)', border: '1px solid var(--border2)', borderRadius: 6,
+    padding: '7px 10px', color: 'var(--text)', fontFamily: "'Barlow', sans-serif",
+    fontSize: 13, outline: 'none', width: '100%',
+  }
+
+  return (
+    <Modal titulo={`Definir times — ${TIPO_LABEL[c.tipo] ?? c.tipo}`} onFechar={onFechar}>
+      <div style={{ fontSize: 12, color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif", marginBottom: 14 }}>
+        Override manual do bracket. Use com cautela — a propagação automática pode sobrescrever esses valores se um confronto anterior ainda não foi registrado.
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+        <div>
+          <label style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif", display: 'block', marginBottom: 4 }}>Time A</label>
+          <select value={timeA} onChange={e => setTimeA(e.target.value)} style={selectStyle}>
+            <option value="">— A definir —</option>
+            {timesArr.map(([id, t]) => (
+              <option key={id} value={id}>{t.nome}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif", display: 'block', marginBottom: 4 }}>Time B</label>
+          <select value={timeB} onChange={e => setTimeB(e.target.value)} style={selectStyle}>
+            <option value="">— A definir —</option>
+            {timesArr.map(([id, t]) => (
+              <option key={id} value={id}>{t.nome}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button className="btn primary" style={{ fontSize: 13 }}
+          disabled={timeA === timeB && timeA !== ''}
+          onClick={() => onSalvar(confrontoId, { timeA, timeB })}>
+          Salvar
+        </button>
+        <button className="btn" style={{ fontSize: 13 }} onClick={onFechar}>Cancelar</button>
+      </div>
+    </Modal>
+  )
+}
 
 function ModalNovaRodada({ onSalvar, onFechar }) {
   const [form, setForm] = useState({ numero: '', semanaAnuncio: '', semanaJogos: '' })
@@ -744,9 +842,20 @@ function ModalResultado({ confronto, confrontoId, times, onSalvar, onFechar }) {
 
   // Pré-carrega valores existentes pra permitir edição de resultados já registrados
   const resultadoExistente = confronto.resultado ?? {}
+
+  // Grande Final MD7: timeA (Upper) começa com vantagem 1×0.
+  // Pré-preenche gA=1 se for GF e não tiver resultado ainda.
+  const ehGrandeFinal = confronto.vantagem === 'A_1_0'
+  const gAInicial = resultadoExistente.tipo === TIPO_RESULTADO.NORMAL
+    ? (resultadoExistente.timeA ?? 0)
+    : (ehGrandeFinal ? 1 : 0)
+  const gBInicial = resultadoExistente.tipo === TIPO_RESULTADO.NORMAL
+    ? (resultadoExistente.timeB ?? 0)
+    : 0
+
   const [tipo, setTipo] = useState(resultadoExistente.tipo ?? TIPO_RESULTADO.NORMAL)
-  const [gA, setGA]   = useState(resultadoExistente.tipo === TIPO_RESULTADO.NORMAL ? (resultadoExistente.timeA ?? 0) : 0)
-  const [gB, setGB]   = useState(resultadoExistente.tipo === TIPO_RESULTADO.NORMAL ? (resultadoExistente.timeB ?? 0) : 0)
+  const [gA, setGA]   = useState(gAInicial)
+  const [gB, setGB]   = useState(gBInicial)
   const [obs, setObs] = useState(confronto.observacoes ?? '')
 
   // Override de pontos pra tabela — pré-carrega se já existe no confronto
@@ -793,6 +902,11 @@ function ModalResultado({ confronto, confrontoId, times, onSalvar, onFechar }) {
 
   return (
     <Modal titulo={`Resultado — ${tA?.nome ?? confronto.timeA} vs ${tB?.nome ?? confronto.timeB}`} onFechar={onFechar}>
+      {ehGrandeFinal && (
+        <div style={{ padding: '7px 12px', borderRadius: 6, marginBottom: 12, background: 'rgba(201,168,76,0.08)', border: '1px solid rgba(201,168,76,0.25)', fontSize: 12, color: 'var(--gold2)', fontFamily: "'Barlow Condensed', sans-serif" }}>
+          🏆 <strong>Grande Final MD7</strong> — {tA?.nome ?? 'Time A'} (Upper) começa com vantagem 1×0. Placar já pré-preenchido.
+        </div>
+      )}
       <FieldLabel label="Tipo de resultado" />
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
         {opcoes.map(o => (
