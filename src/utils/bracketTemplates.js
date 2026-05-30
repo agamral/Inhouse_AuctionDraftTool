@@ -63,13 +63,13 @@ export const BRACKET_8_DOUBLE_ELIM = {
 
   // ── Upper Bracket — Semi ─────────────────────────────────────────────────
   m5: {
-    id: 'm5', label: 'Semi UB (1)', tipo: 'semi',
+    id: 'm5', label: 'Semi UB (1)', tipo: 'semifinal',
     formato: 'MD5',
     winnerTo: 'm7', winnerSlot: 'A',
     loserTo:  'l4', loserSlot:  'B',   // perdedor da semi vai pra L4 como B (anti-rematch)
   },
   m6: {
-    id: 'm6', label: 'Semi UB (2)', tipo: 'semi',
+    id: 'm6', label: 'Semi UB (2)', tipo: 'semifinal',
     formato: 'MD5',
     winnerTo: 'm7', winnerSlot: 'B',
     loserTo:  'l3', loserSlot:  'B',   // perdedor da semi vai pra L3 como B (anti-rematch)
@@ -99,13 +99,13 @@ export const BRACKET_8_DOUBLE_ELIM = {
 
   // ── Lower Bracket — R2 (crossover anti-rematch) ──────────────────────────
   l3: {
-    id: 'l3', label: 'Lower R2 (1)', tipo: 'semi_lo',
+    id: 'l3', label: 'Lower R2 (1)', tipo: 'semifinal_lo',
     formato: 'MD5',
     winnerTo: 'l5', winnerSlot: 'A',
     loserTo:  null,
   },
   l4: {
-    id: 'l4', label: 'Lower R2 (2)', tipo: 'semi_lo',
+    id: 'l4', label: 'Lower R2 (2)', tipo: 'semifinal_lo',
     formato: 'MD5',
     winnerTo: 'l5', winnerSlot: 'B',
     loserTo:  null,
@@ -113,7 +113,7 @@ export const BRACKET_8_DOUBLE_ELIM = {
 
   // ── Lower Bracket — R3 ───────────────────────────────────────────────────
   l5: {
-    id: 'l5', label: 'Lower R3', tipo: 'final_lo',
+    id: 'l5', label: 'Lower R3', tipo: 'round3_lo',
     formato: 'MD5',
     winnerTo: 'l6', winnerSlot: 'A',
     loserTo:  null,
@@ -121,7 +121,7 @@ export const BRACKET_8_DOUBLE_ELIM = {
 
   // ── Lower Bracket — Final ─────────────────────────────────────────────────
   l6: {
-    id: 'l6', label: 'Final Lower', tipo: 'grande_final',
+    id: 'l6', label: 'Final Lower', tipo: 'final_lo',
     formato: 'MD5',
     winnerTo: 'gf', winnerSlot: 'B',
     loserTo:  null,

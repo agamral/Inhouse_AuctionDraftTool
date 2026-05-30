@@ -129,9 +129,12 @@ export const TIPO_CONFRONTO = {
   FINAL_UP:  'final_up',    // Vencedor vai direto pra Grande Final
 
   // Chave de Perdedores (Lower Bracket)
-  QUARTAS_LO:'quartas_lo',
-  SEMI_LO:   'semifinal_lo',
-  FINAL_LO:  'final_lo',    // Vencedor vai pra Grande Final
+  // 4 rodadas no formato 8-times double elim:
+  //   R1 (quartas_lo) → R2 (semifinal_lo) → R3 (round3_lo) → Final (final_lo)
+  QUARTAS_LO: 'quartas_lo',
+  SEMI_LO:    'semifinal_lo',
+  ROUND3_LO:  'round3_lo',  // R3 — L5 (vL3 × vL4)
+  FINAL_LO:   'final_lo',   // Final Lower — L6 (vL5 × dM7) → vencedor pra GF
 
   // Grande Final (dupla eliminação — pode ter revanche)
   GRANDE_FINAL: 'grande_final',
@@ -140,7 +143,7 @@ export const TIPO_CONFRONTO = {
 // Classificatório é exibido separadamente (não entra no algoritmo de bracket)
 // O bracket principal começa sempre das quartas (rounds decrescentes)
 export const BRACKET_UPPER = ['quartas', 'semifinal', 'final_up']
-export const BRACKET_LOWER = ['quartas_lo', 'semifinal_lo', 'final_lo']
+export const BRACKET_LOWER = ['quartas_lo', 'semifinal_lo', 'round3_lo', 'final_lo']
 export const BRACKET_LABELS = {
   classificatorio: 'Classificatório',
   quartas:         'Quartas de Final',
@@ -148,6 +151,7 @@ export const BRACKET_LABELS = {
   final_up:        'Final — Chave A',
   quartas_lo:      'Quartas',
   semifinal_lo:    'Semifinal',
+  round3_lo:       'Rodada 3',
   final_lo:        'Final — Chave B',
   grande_final:    'Grande Final',
 }
