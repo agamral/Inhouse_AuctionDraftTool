@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
-import { onAuthStateChanged } from 'firebase/auth'
+import { onAuthStateChanged, signOut } from 'firebase/auth'
 import { ref, get, set, remove } from 'firebase/database'
-import { auth } from '../firebase/auth'
+import { auth, emailEhSintetico } from '../firebase/auth'
 import { db } from '../firebase/database'
 
 const sanitizeEmail = (email) => email.toLowerCase().replace(/\./g, ',')
@@ -80,6 +80,12 @@ export function useAuth() {
           setIsSuperAdmin(isSA)
           setIsAdmin(isAdm)
 
+          // ── Kick automático de capitão sem acesso ────────────────────────
+          // Se o usuário tem email sintético (@copa.inhouse) mas não é admin,
+          // significa que é uma conta de capitão. Se não encontrar time vinculado
+          // ao seu UID/email, o acesso foi removido pelo admin → faz logout.
+          // O check de capitão abaixo determinará se found ou não.
+
           // ── Verificação de capitão ───────────────────────────────────────
           if (!isAdm) {
             const email = firebaseUser.email ?? ''
@@ -110,6 +116,12 @@ export function useAuth() {
                 }
               }
               setCapitao(found)
+            }
+
+            // Kick: conta de capitão (@copa.inhouse) sem time vinculado = acesso revogado
+            if (!isAdm && emailEhSintetico(firebaseUser.email ?? '') && !found) {
+              await signOut(auth)
+              return
             }
           } else {
             setCapitao(null)

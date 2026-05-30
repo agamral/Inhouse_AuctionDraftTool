@@ -65,3 +65,8 @@ export async function criarContaCapitao(email, password) {
   if (data.error) throw new Error(data.error.message)
   return data.localId // UID do novo usuário
 }
+
+/** Gera email sintético único com timestamp — sem risco de colisão. */
+export function gerarEmailSinteticoUnico() {
+  return `cap-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}@copa.inhouse`
+}

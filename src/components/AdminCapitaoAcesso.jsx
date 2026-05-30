@@ -5,7 +5,7 @@
 import { useState, useEffect } from 'react'
 import { ref, onValue, update } from 'firebase/database'
 import { db } from '../firebase/database'
-import { criarContaCapitao, gerarEmailSintetico, emailEhSintetico } from '../firebase/auth'
+import { criarContaCapitao, gerarEmailSintetico, gerarEmailSinteticoUnico, emailEhSintetico } from '../firebase/auth'
 import { useCampeonato } from '../contexts/CampeonatoContext'
 import { teamPath } from '../utils/campeonatoPaths'
 
@@ -88,14 +88,15 @@ export default function AdminCapitaoAcesso() {
       setSenhas(s => ({ ...s, [teamId]: { email, senha, sintetico } }))
       flash('ok', `Conta criada para ${team.nome}.`)
     } catch (e) {
-      // Email já em uso no Firebase Auth → tenta com sufixo do time
+      // Email já em uso no Firebase Auth (conta anterior não foi deletada).
+      // Gera email único com timestamp — sem risco de colisão mesmo em recriacoes.
       if (e.message.includes('EMAIL_EXISTS')) {
         try {
-          const emailAlt = gerarEmailSintetico(team.nome + '-' + teamId.slice(-4))
-          const uid = await criarContaCapitao(emailAlt, senha)
-          await update(ref(db, `${teamPath(campeonatoId)}/${teamId}`), { capitaoUid: uid, capitaoEmail: emailAlt })
-          setSenhas(s => ({ ...s, [teamId]: { email: emailAlt, senha, sintetico: true } }))
-          flash('ok', `Conta criada com email alternativo (original já existia).`)
+          const emailUnico = gerarEmailSinteticoUnico()
+          const uid = await criarContaCapitao(emailUnico, senha)
+          await update(ref(db, `${teamPath(campeonatoId)}/${teamId}`), { capitaoUid: uid, capitaoEmail: emailUnico })
+          setSenhas(s => ({ ...s, [teamId]: { email: emailUnico, senha, sintetico: true } }))
+          flash('ok', `Conta criada com nova chave (a anterior ainda existe no Firebase Auth).`)
         } catch (e2) {
           flash('erro', `Erro: ${e2.message}`)
         }
