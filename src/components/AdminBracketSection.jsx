@@ -68,7 +68,9 @@ export default function AdminBracketSection() {
   confrontosBracket.forEach(([id, c]) => { slotMap[c.bracketSlot] = id })
 
   // ── Classificação exibida com pendências ──────────────────────────────────
-  const semPendencia = classificacao.every(e => !e.posicaoPendente)
+  // Posição manual já resolve o empate do ponto de vista do admin.
+  // Só bloqueia se houver times pendentes SEM override manual definido.
+  const semPendencia = classificacao.every(e => !e.posicaoPendente || e.posicaoManual != null)
   const totalTimes   = classificacao.length
 
   // ── Gerar bracket ─────────────────────────────────────────────────────────
