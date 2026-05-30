@@ -18,7 +18,7 @@ function aplicarOverrides(classificacao, overrides) {
     const pos = overrides[entry.id]?.posicaoManual
     if (pos != null && pos >= 1 && pos <= n) {
       const idx = pos - 1
-      if (slots[idx] === null) slots[idx] = { ...entry, posicaoManual: pos }
+      if (slots[idx] === null) slots[idx] = { ...entry, posicaoManual: pos, posicaoPendente: false }
       else semOverride.push(entry)
     } else {
       semOverride.push(entry)

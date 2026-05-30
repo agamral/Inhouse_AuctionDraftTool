@@ -30,7 +30,8 @@ function aplicarOverridesDePosicao(classificacao, overrides) {
     if (pos != null && pos >= 1 && pos <= n) {
       const idx = pos - 1
       if (slots[idx] === null) {
-        slots[idx] = { ...entry, posicaoManual: pos }
+        // posicaoManual é uma decisão explícita sobre o empate — limpa a badge pendente
+        slots[idx] = { ...entry, posicaoManual: pos, posicaoPendente: false }
       } else {
         semOverride.push(entry)
       }
