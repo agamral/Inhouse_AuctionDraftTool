@@ -842,19 +842,24 @@ function ModalResultado({ confronto, confrontoId, times, onSalvar, onFechar }) {
 
   // Pré-carrega valores existentes pra permitir edição de resultados já registrados
   const resultadoExistente = confronto.resultado ?? {}
-
-  // Grande Final MD7: timeA (Upper) começa com vantagem 1×0.
-  // Pré-preenche gA=1 se for GF e não tiver resultado ainda.
   const ehGrandeFinal = confronto.vantagem === 'A_1_0'
+  const VANTAGEM_GF   = 1  // timeA (Upper) começa com 1 vitória já contada
+
+  // Grande Final MD7 — admin entra com vitórias JOGADAS (sem a vantagem).
+  // O sistema soma a vantagem ao salvar: totalA = jogadasA + VANTAGEM_GF
+  // Isso evita confusão de admin entrar "3×3 jogados" e o sistema salvar
+  // como empate quando o real é 4×3 (ScarletC vence pela vantagem).
   const gAInicial = resultadoExistente.tipo === TIPO_RESULTADO.NORMAL
-    ? (resultadoExistente.timeA ?? 0)
-    : (ehGrandeFinal ? 1 : 0)
+    ? (ehGrandeFinal
+        ? Math.max(0, (resultadoExistente.timeA ?? 0) - VANTAGEM_GF)
+        : (resultadoExistente.timeA ?? 0))
+    : 0
   const gBInicial = resultadoExistente.tipo === TIPO_RESULTADO.NORMAL
     ? (resultadoExistente.timeB ?? 0)
     : 0
 
   const [tipo, setTipo] = useState(resultadoExistente.tipo ?? TIPO_RESULTADO.NORMAL)
-  const [gA, setGA]   = useState(gAInicial)
+  const [gA, setGA]   = useState(gAInicial)  // vitórias jogadas (sem vantagem na GF)
   const [gB, setGB]   = useState(gBInicial)
   const [obs, setObs] = useState(confronto.observacoes ?? '')
 
@@ -873,8 +878,12 @@ function ModalResultado({ confronto, confrontoId, times, onSalvar, onFechar }) {
     ...(ehMD2 ? [{ valor: TIPO_RESULTADO.EMPATE, label: '1-1 — empate (agenda desempate MD3)' }] : []),
   ]
 
+  // Na GF, totalA = jogadasA + vantagem (1). Nos outros formatos sem vantagem.
+  const totalA = ehGrandeFinal ? gA + VANTAGEM_GF : gA
+  const totalB = gB
+
   const resultado =
-    tipo === TIPO_RESULTADO.NORMAL  ? { tipo, timeA: gA, timeB: gB } :
+    tipo === TIPO_RESULTADO.NORMAL  ? { tipo, timeA: totalA, timeB: totalB } :
     tipo === TIPO_RESULTADO.EMPATE  ? { tipo, timeA: 1, timeB: 1 }   : // 1-1, cada time leva 1pt
     tipo === TIPO_RESULTADO.WO_A    ? { tipo, timeA: 1, timeB: 0 }   :
     tipo === TIPO_RESULTADO.WO_B    ? { tipo, timeA: 0, timeB: 1 }   :
@@ -903,8 +912,16 @@ function ModalResultado({ confronto, confrontoId, times, onSalvar, onFechar }) {
   return (
     <Modal titulo={`Resultado — ${tA?.nome ?? confronto.timeA} vs ${tB?.nome ?? confronto.timeB}`} onFechar={onFechar}>
       {ehGrandeFinal && (
-        <div style={{ padding: '7px 12px', borderRadius: 6, marginBottom: 12, background: 'rgba(201,168,76,0.08)', border: '1px solid rgba(201,168,76,0.25)', fontSize: 12, color: 'var(--gold2)', fontFamily: "'Barlow Condensed', sans-serif" }}>
-          🏆 <strong>Grande Final MD7</strong> — {tA?.nome ?? 'Time A'} (Upper) começa com vantagem 1×0. Placar já pré-preenchido.
+        <div style={{ padding: '8px 12px', borderRadius: 6, marginBottom: 12, background: 'rgba(201,168,76,0.08)', border: '1px solid rgba(201,168,76,0.25)', fontSize: 12, color: 'var(--gold2)', fontFamily: "'Barlow Condensed', sans-serif", display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div>🏆 <strong>Grande Final MD7</strong> — {tA?.nome ?? 'Time A'} (Upper) tem vantagem de <strong>+1 vitória</strong></div>
+          <div style={{ color: 'var(--text2)', fontSize: 11 }}>
+            Digite as vitórias <em>jogadas</em> (sem contar a vantagem). O sistema soma automaticamente.
+            {tipo === TIPO_RESULTADO.NORMAL && (
+              <span style={{ marginLeft: 6, color: 'var(--gold)', fontWeight: 700 }}>
+                Total: {totalA}×{totalB} — {totalA > totalB ? `${tA?.nome ?? 'Time A'} vence` : totalB > totalA ? `${tB?.nome ?? 'Time B'} vence` : 'empate (precisa de mais uma partida)'}
+              </span>
+            )}
+          </div>
         </div>
       )}
       <FieldLabel label="Tipo de resultado" />
@@ -920,9 +937,14 @@ function ModalResultado({ confronto, confrontoId, times, onSalvar, onFechar }) {
       {tipo === TIPO_RESULTADO.NORMAL && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 8, alignItems: 'center', marginBottom: 14 }}>
           <div>
-            <FieldLabel label={tA?.nome ?? 'Time A'} />
+            <FieldLabel label={ehGrandeFinal ? `${tA?.nome ?? 'Time A'} (jogadas)` : (tA?.nome ?? 'Time A')} />
             <input type="number" min={0} max={10} value={gA} onChange={e => setGA(Number(e.target.value))}
               style={{ ...inputStyle, textAlign: 'center' }} />
+            {ehGrandeFinal && (
+              <div style={{ fontSize: 10, textAlign: 'center', color: 'var(--gold)', fontFamily: "'Barlow Condensed', sans-serif", marginTop: 2 }}>
+                total: {totalA}
+              </div>
+            )}
           </div>
           <span style={{ color: 'var(--text3)', fontSize: 18, marginTop: 20 }}>×</span>
           <div>
