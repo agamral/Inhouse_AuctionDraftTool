@@ -104,27 +104,64 @@ export default function AdminRodadasSection() {
   async function registrarResultado(confrontoId, payload) {
     try {
       const c = confrontos[confrontoId]
-      // payload: { resultado, observacoes, pontosTabela }
       const { resultado, observacoes = null, pontosTabela = null } = payload
       let novoStatus = STATUS_CONFRONTO.REALIZADO
 
-      // Se foi empate numa série MD2 → muda para empate_pendente
       if (resultado.tipo === TIPO_RESULTADO.EMPATE && c?.formato === FORMATO_SERIE.MD2) {
         novoStatus = STATUS_CONFRONTO.EMPATE_PENDENTE
       }
 
-      await update(ref(db, `${confrontosPath(campeonatoId)}/${confrontoId}`), {
-        resultado,
-        observacoes,
-        pontosTabela,
-        status: novoStatus,
-        alertas: {},
-        atualizadoEm: Date.now(),
-      })
+      const updates = {
+        [`${confrontosPath(campeonatoId)}/${confrontoId}/resultado`]:    resultado,
+        [`${confrontosPath(campeonatoId)}/${confrontoId}/observacoes`]:  observacoes,
+        [`${confrontosPath(campeonatoId)}/${confrontoId}/pontosTabela`]: pontosTabela,
+        [`${confrontosPath(campeonatoId)}/${confrontoId}/status`]:       novoStatus,
+        [`${confrontosPath(campeonatoId)}/${confrontoId}/alertas`]:      {},
+        [`${confrontosPath(campeonatoId)}/${confrontoId}/atualizadoEm`]: Date.now(),
+      }
+
+      // ── Auto-propagação do bracket ──────────────────────────────────────
+      // Se o confronto faz parte do bracket (tem bracketSlot), propaga o
+      // vencedor e o perdedor para os próximos slots automaticamente.
+      if (c?.bracketSlot && novoStatus === STATUS_CONFRONTO.REALIZADO) {
+        const winnerId = getWinnerFromResult(resultado, c.timeA, c.timeB)
+        const loserId  = winnerId === c.timeA ? c.timeB : c.timeA
+
+        // Mapa bracketSlot → confrontoId Firebase
+        const slotMap = {}
+        Object.entries(confrontos).forEach(([id, conf]) => {
+          if (conf.bracketSlot) slotMap[conf.bracketSlot] = id
+        })
+
+        if (winnerId && c.winnerTo && slotMap[c.winnerTo]) {
+          const campo = c.winnerSlot === 'B' ? 'timeB' : 'timeA'
+          updates[`${confrontosPath(campeonatoId)}/${slotMap[c.winnerTo]}/${campo}`] = winnerId
+        }
+        if (loserId && c.loserTo && slotMap[c.loserTo]) {
+          const campo = c.loserSlot === 'B' ? 'timeB' : 'timeA'
+          updates[`${confrontosPath(campeonatoId)}/${slotMap[c.loserTo]}/${campo}`] = loserId
+        }
+      }
+
+      await update(ref(db), updates)
       setModalResultado(null)
       flash('ok', 'Resultado registrado.')
     } catch (e) {
       flash('erro', e.message)
+    }
+  }
+
+  // Retorna o teamId vencedor a partir de um resultado. null = inconclusivo.
+  function getWinnerFromResult(resultado, timeA, timeB) {
+    if (!resultado) return null
+    switch (resultado.tipo) {
+      case TIPO_RESULTADO.WO_A:   return timeA
+      case TIPO_RESULTADO.WO_B:   return timeB
+      case TIPO_RESULTADO.NORMAL:
+        if (resultado.timeA > resultado.timeB) return timeA
+        if (resultado.timeB > resultado.timeA) return timeB
+        return null  // empate
+      default: return null
     }
   }
 
