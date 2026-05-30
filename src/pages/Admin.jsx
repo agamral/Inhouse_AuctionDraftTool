@@ -14,6 +14,7 @@ import AdminDraftSimulator      from '../components/AdminDraftSimulator'
 import AdminHeroDraftSection    from '../components/AdminHeroDraftSection'
 import AdminTeamsSection        from '../components/AdminTeamsSection'
 import AdminRodadasSection      from '../components/AdminRodadasSection'
+import AdminBracketSection      from '../components/AdminBracketSection'
 import AdminCapitaoAcesso       from '../components/AdminCapitaoAcesso'
 import AdminMigracaoSection          from '../components/AdminMigracaoSection'
 import AdminProvisionamentoSection   from '../components/AdminProvisionamentoSection'
@@ -189,6 +190,47 @@ export default function Admin() {
           </div>
         )}
       </div>
+
+      {/* ── Acesso rápido: páginas públicas do campeonato ─────────────────────
+          Admin pode abrir as páginas mesmo com módulos desligados (Tabela,
+          Elenco, etc.). Útil pra testar em campeonato sem expor publicamente. */}
+      {campeonatoId && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap',
+          padding: '7px 18px', background: 'var(--bg2)',
+          borderBottom: '1px solid var(--border)',
+        }}>
+          <span style={{ fontSize: 10, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)', marginRight: 4 }}>
+            Ver público:
+          </span>
+          {[
+            { label: 'Início',      path: '' },
+            { label: 'Inscritos',   path: '/inscritos' },
+            { label: 'Elenco',      path: '/elenco' },
+            { label: 'Agendamento', path: '/agendamento' },
+            { label: 'Tabela',      path: '/tabela' },
+            { label: 'Chave',       path: '/chave' },
+            { label: 'Hero Draft',  path: '/hero-draft' },
+          ].map(({ label, path }) => (
+            <a
+              key={label}
+              href={`/campeonatos/${campeonatoId}${path}`}
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                fontSize: 11, padding: '3px 10px', borderRadius: 4, cursor: 'pointer',
+                fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600,
+                border: '1px solid var(--border)', background: 'transparent',
+                color: 'var(--text2)', textDecoration: 'none', whiteSpace: 'nowrap',
+              }}
+              onMouseEnter={e => { e.target.style.color = 'var(--text)'; e.target.style.borderColor = 'var(--border2)' }}
+              onMouseLeave={e => { e.target.style.color = 'var(--text2)'; e.target.style.borderColor = 'var(--border)' }}
+            >
+              {label} ↗
+            </a>
+          ))}
+        </div>
+      )}
 
       <div className="admin-dash-header">
         <div>
@@ -504,6 +546,7 @@ export default function Admin() {
       {aba === 'campeonato' && (
         <div className="admin-tab-content">
           <AdminRodadasSection />
+          <AdminBracketSection />
           <AdminHeroDraftSection />
         </div>
       )}

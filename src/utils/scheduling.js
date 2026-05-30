@@ -6,6 +6,7 @@
 // ── Slots disponíveis ────────────────────────────────────────────────────────
 // A ORDEM importa: define preferência ao sugerir slot automaticamente
 
+// Slots da fase regular (sem 19h nos dias de semana)
 export const SLOTS = [
   'terca-20h', 'terca-21h', 'terca-22h',
   'quarta-20h', 'quarta-21h', 'quarta-22h',
@@ -13,23 +14,53 @@ export const SLOTS = [
   'sabado-17h', 'sabado-18h', 'sabado-19h',
 ]
 
+// Slots do playoff — adiciona 19h nos dias de semana
+// Decisão da organização: mais um horário disponível pra acomodar a chave
+export const SLOTS_PLAYOFF = [
+  'terca-19h', 'terca-20h', 'terca-21h', 'terca-22h',
+  'quarta-19h', 'quarta-20h', 'quarta-21h', 'quarta-22h',
+  'quinta-19h', 'quinta-20h', 'quinta-21h', 'quinta-22h',
+  'sabado-17h', 'sabado-18h', 'sabado-19h',
+]
+
 export const SLOT_LABEL = {
-  'terca-20h':  'Terça 20h',  'terca-21h':  'Terça 21h',  'terca-22h':  'Terça 22h',
-  'quarta-20h': 'Quarta 20h', 'quarta-21h': 'Quarta 21h', 'quarta-22h': 'Quarta 22h',
-  'quinta-20h': 'Quinta 20h', 'quinta-21h': 'Quinta 21h', 'quinta-22h': 'Quinta 22h',
+  'terca-19h':  'Terça 19h',  'terca-20h':  'Terça 20h',  'terca-21h':  'Terça 21h',  'terca-22h':  'Terça 22h',
+  'quarta-19h': 'Quarta 19h', 'quarta-20h': 'Quarta 20h', 'quarta-21h': 'Quarta 21h', 'quarta-22h': 'Quarta 22h',
+  'quinta-19h': 'Quinta 19h', 'quinta-20h': 'Quinta 20h', 'quinta-21h': 'Quinta 21h', 'quinta-22h': 'Quinta 22h',
   'sabado-17h': 'Sábado 17h', 'sabado-18h': 'Sábado 18h', 'sabado-19h': 'Sábado 19h',
 }
 
 export const SLOT_DIA = {
-  'terca-20h': 'terca',  'terca-21h': 'terca',  'terca-22h': 'terca',
-  'quarta-20h': 'quarta','quarta-21h': 'quarta', 'quarta-22h': 'quarta',
-  'quinta-20h': 'quinta','quinta-21h': 'quinta', 'quinta-22h': 'quinta',
+  'terca-19h': 'terca',  'terca-20h': 'terca',  'terca-21h': 'terca',  'terca-22h': 'terca',
+  'quarta-19h': 'quarta','quarta-20h': 'quarta', 'quarta-21h': 'quarta','quarta-22h': 'quarta',
+  'quinta-19h': 'quinta','quinta-20h': 'quinta', 'quinta-21h': 'quinta','quinta-22h': 'quinta',
   'sabado-17h': 'sabado','sabado-18h': 'sabado', 'sabado-19h': 'sabado',
 }
 
 export const DIA_LABEL = {
   terca: 'Terça-feira', quarta: 'Quarta-feira',
   quinta: 'Quinta-feira', sabado: 'Sábado',
+}
+
+// Mapa de adjacência — slots que ficam bloqueados quando um horário é confirmado.
+// Usado na fase de playoff pra evitar transmissões consecutivas sem intervalo.
+// Regra: se jogo marcado em X, bloqueia X-1h e X+1h no mesmo dia.
+export const ADJACENT_SLOTS = {
+  'terca-19h':  ['terca-20h'],
+  'terca-20h':  ['terca-19h', 'terca-21h'],
+  'terca-21h':  ['terca-20h', 'terca-22h'],
+  'terca-22h':  ['terca-21h'],
+  'quarta-19h': ['quarta-20h'],
+  'quarta-20h': ['quarta-19h', 'quarta-21h'],
+  'quarta-21h': ['quarta-20h', 'quarta-22h'],
+  'quarta-22h': ['quarta-21h'],
+  'quinta-19h': ['quinta-20h'],
+  'quinta-20h': ['quinta-19h', 'quinta-21h'],
+  'quinta-21h': ['quinta-20h', 'quinta-22h'],
+  'quinta-22h': ['quinta-21h'],
+  'sabado-17h': ['sabado-18h'],
+  'sabado-18h': ['sabado-17h', 'sabado-19h'],
+  'sabado-19h': ['sabado-18h'],
 }
 
 // ── Fuso horário ─────────────────────────────────────────────────────────────
@@ -129,9 +160,12 @@ export const TIPO_CONFRONTO = {
   FINAL_UP:  'final_up',    // Vencedor vai direto pra Grande Final
 
   // Chave de Perdedores (Lower Bracket)
-  QUARTAS_LO:'quartas_lo',
-  SEMI_LO:   'semifinal_lo',
-  FINAL_LO:  'final_lo',    // Vencedor vai pra Grande Final
+  // 4 rodadas no formato 8-times double elim:
+  //   R1 (quartas_lo) → R2 (semifinal_lo) → R3 (round3_lo) → Final (final_lo)
+  QUARTAS_LO: 'quartas_lo',
+  SEMI_LO:    'semifinal_lo',
+  ROUND3_LO:  'round3_lo',  // R3 — L5 (vL3 × vL4)
+  FINAL_LO:   'final_lo',   // Final Lower — L6 (vL5 × dM7) → vencedor pra GF
 
   // Grande Final (dupla eliminação — pode ter revanche)
   GRANDE_FINAL: 'grande_final',
@@ -140,7 +174,7 @@ export const TIPO_CONFRONTO = {
 // Classificatório é exibido separadamente (não entra no algoritmo de bracket)
 // O bracket principal começa sempre das quartas (rounds decrescentes)
 export const BRACKET_UPPER = ['quartas', 'semifinal', 'final_up']
-export const BRACKET_LOWER = ['quartas_lo', 'semifinal_lo', 'final_lo']
+export const BRACKET_LOWER = ['quartas_lo', 'semifinal_lo', 'round3_lo', 'final_lo']
 export const BRACKET_LABELS = {
   classificatorio: 'Classificatório',
   quartas:         'Quartas de Final',
@@ -148,6 +182,7 @@ export const BRACKET_LABELS = {
   final_up:        'Final — Chave A',
   quartas_lo:      'Quartas',
   semifinal_lo:    'Semifinal',
+  round3_lo:       'Rodada 3',
   final_lo:        'Final — Chave B',
   grande_final:    'Grande Final',
 }
@@ -309,7 +344,15 @@ export function calcularPontos(resultado, config = PONTUACAO_PADRAO, tipoConfron
 /**
  * Calcula a tabela de classificação a partir de confrontos realizados.
  * Ordena por: pontos → saldo → vitórias
- * Confrontos de tipo 'desempate' não entram na tabela.
+ *
+ * Só conta confrontos de tipo REGULAR. Tudo mais (DESEMPATE, todos os tipos
+ * de playoff — classificatorio, quartas, semi, final_up, _lo variants,
+ * grande_final) é excluído. Confronto sem `tipo` é tratado como REGULAR
+ * pra compatibilidade com dados legados.
+ *
+ * Quando `confronto.pontosTabela` está preenchido (override do admin),
+ * usa esses valores em vez do cálculo automático. Útil pra penalizações,
+ * anulações ou correções pontuais.
  */
 export function calcularClassificacao(teamIds = [], confrontos = [], config = PONTUACAO_PADRAO) {
   const tabela = {}
@@ -325,34 +368,112 @@ export function calcularClassificacao(teamIds = [], confrontos = [], config = PO
 
   for (const c of confrontos) {
     if (!statusContabilizados.has(c.status) || !c.resultado) continue
-    // Playoffs não entram na tabela da fase regular
-    if (c.tipo === TIPO_CONFRONTO.QUARTAS ||
-        c.tipo === TIPO_CONFRONTO.SEMI    ||
-        c.tipo === TIPO_CONFRONTO.FINAL) continue
+    // Whitelist: só REGULAR conta. Default pra REGULAR se tipo ausente (legado).
+    const tipo = c.tipo ?? TIPO_CONFRONTO.REGULAR
+    if (tipo !== TIPO_CONFRONTO.REGULAR) continue
 
-    const pts = calcularPontos(c.resultado, config, c.tipo)
+    // Admin pode sobrescrever os pontos no confronto (penalização, anulação,
+    // correção). pontosTabela = null/ausente → usa cálculo automático.
+    const pts = (c.pontosTabela && typeof c.pontosTabela.timeA === 'number')
+      ? { timeA: c.pontosTabela.timeA, timeB: c.pontosTabela.timeB ?? 0 }
+      : calcularPontos(c.resultado, config, c.tipo)
     const gA  = c.resultado.timeA ?? 0
     const gB  = c.resultado.timeB ?? 0
 
-    const atualizar = (id, pontos, gMarcados, gSofridos) => {
+    // Deriva V/D/E do tipo do resultado (não dos pontos) pra continuar
+    // funcionando mesmo com override manual de pontos.
+    const statusPorTime = (() => {
+      switch (c.resultado.tipo) {
+        case TIPO_RESULTADO.WO_A:     return { timeA: 'V', timeB: 'D' }
+        case TIPO_RESULTADO.WO_B:     return { timeA: 'D', timeB: 'V' }
+        case TIPO_RESULTADO.DUPLO_WO: return { timeA: 'D', timeB: 'D' }
+        case TIPO_RESULTADO.EMPATE:   return { timeA: 'E', timeB: 'E' }
+        case TIPO_RESULTADO.NORMAL:
+          if (gA > gB) return { timeA: 'V', timeB: 'D' }
+          if (gB > gA) return { timeA: 'D', timeB: 'V' }
+          return { timeA: 'E', timeB: 'E' }
+        default: return { timeA: null, timeB: null }
+      }
+    })()
+
+    const atualizar = (id, pontos, gMarcados, gSofridos, status) => {
       if (!tabela[id]) return
       tabela[id].pontos += pontos
       tabela[id].jogos  += 1
       tabela[id].saldo  += gMarcados - gSofridos
-      if (pontos === config.vitoria || pontos === config.wo_vitoria) tabela[id].vitorias++
-      else if (pontos === config.derrota || pontos === config.wo_derrota) tabela[id].derrotas++
-      else tabela[id].empates++
+      if (status === 'V')      tabela[id].vitorias++
+      else if (status === 'D') tabela[id].derrotas++
+      else if (status === 'E') tabela[id].empates++
     }
 
-    atualizar(c.timeA, pts.timeA, gA, gB)
-    atualizar(c.timeB, pts.timeB, gB, gA)
+    atualizar(c.timeA, pts.timeA, gA, gB, statusPorTime.timeA)
+    atualizar(c.timeB, pts.timeB, gB, gA, statusPorTime.timeB)
   }
 
-  return Object.values(tabela).sort((a, b) => {
+  // Head-to-head: compara 2 times pelo confronto direto entre eles.
+  // Retorna -1 se A acima, 1 se B acima, 0 se não resolve (sem h2h, 1-1, etc).
+  //
+  // Ordem de prioridade:
+  //   1. DESEMPATE (MD3) — se existe e resolveu, manda. É a decisão oficial
+  //      pra quebrar empate quando regular não decidiu.
+  //   2. REGULAR — confronto da fase normal. Se resolveu, usa.
+  function compararHeadToHead(idA, idB) {
+    const buscarPor = (tipoAlvo) => confrontos.find(c => {
+      const tipo = c.tipo ?? TIPO_CONFRONTO.REGULAR
+      if (tipo !== tipoAlvo) return false
+      if (!statusContabilizados.has(c.status) || !c.resultado) return false
+      return (c.timeA === idA && c.timeB === idB) || (c.timeA === idB && c.timeB === idA)
+    })
+
+    const resolver = (confronto) => {
+      if (!confronto) return 0
+      const aEhTimeA = confronto.timeA === idA
+      switch (confronto.resultado.tipo) {
+        case TIPO_RESULTADO.WO_A:     return aEhTimeA ? -1 : 1
+        case TIPO_RESULTADO.WO_B:     return aEhTimeA ? 1 : -1
+        case TIPO_RESULTADO.NORMAL: {
+          const gMeu  = aEhTimeA ? confronto.resultado.timeA : confronto.resultado.timeB
+          const gOut  = aEhTimeA ? confronto.resultado.timeB : confronto.resultado.timeA
+          if (gMeu > gOut) return -1
+          if (gOut > gMeu) return 1
+          return 0
+        }
+        default: return 0  // duplo_wo ou empate não decide
+      }
+    }
+
+    // 1. Desempate explícito (MD3) tem prioridade — foi criado justamente
+    //    pra resolver esse empate.
+    const desempate = resolver(buscarPor(TIPO_CONFRONTO.DESEMPATE))
+    if (desempate !== 0) return desempate
+
+    // 2. Confronto regular como fallback.
+    return resolver(buscarPor(TIPO_CONFRONTO.REGULAR))
+  }
+
+  const sortedTabela = Object.values(tabela).sort((a, b) => {
     if (b.pontos   !== a.pontos)   return b.pontos   - a.pontos
+    const h2h = compararHeadToHead(a.id, b.id)
+    if (h2h !== 0) return h2h
     if (b.saldo    !== a.saldo)    return b.saldo    - a.saldo
     return b.vitorias - a.vitorias
   })
+
+  // Detecção de "posicaoPendente": pares consecutivos com mesma pontuação
+  // onde o head-to-head não resolveu — admin precisa marcar MD3 de desempate.
+  // Times sem jogos (jogos=0) são ignorados: ainda não competiram, então não
+  // faz sentido falar em desempate com eles.
+  for (let i = 0; i < sortedTabela.length - 1; i++) {
+    const a = sortedTabela[i]
+    const b = sortedTabela[i + 1]
+    if (a.jogos === 0 || b.jogos === 0) continue
+    if (a.pontos === b.pontos && compararHeadToHead(a.id, b.id) === 0) {
+      a.posicaoPendente = true
+      b.posicaoPendente = true
+    }
+  }
+
+  return sortedTabela
 }
 
 // ── Alertas para o admin ──────────────────────────────────────────────────────

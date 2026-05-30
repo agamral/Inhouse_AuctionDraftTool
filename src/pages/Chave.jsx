@@ -28,9 +28,34 @@ function calcPositions(rounds) {
   for (let r = 1; r < rounds.length; r++) {
     const prev = all[r - 1]
     const curr = rounds[r].map((_, i) => {
-      const yTop = prev[i * 2]      ?? prev[prev.length - 1] ?? 0
-      const yBot = prev[i * 2 + 1] ?? yTop
-      return (yTop + yBot) / 2
+      const prevCount = prev.length
+      const currCount = rounds[r].length
+
+      // Caso clássico: metade dos jogos (2:1) — ex: 4 quartas → 2 semis
+      if (prevCount === currCount * 2) {
+        const yTop = prev[i * 2]      ?? prev[prev.length - 1] ?? 0
+        const yBot = prev[i * 2 + 1] ?? yTop
+        return (yTop + yBot) / 2
+      }
+
+      // Mesmo número de jogos (2:2) — ex: Lower R1 → Lower R2.
+      // Distribui igualmente no mesmo espaço vertical do round anterior.
+      if (prevCount === currCount) {
+        return prev[i] ?? i * (CARD_H + CARD_GAP)
+      }
+
+      // 2:1 com n par → agrupa pares
+      if (prevCount > currCount) {
+        const ratio = prevCount / currCount
+        const start = Math.floor(i * ratio)
+        const end   = Math.floor((i + 1) * ratio) - 1
+        const yTop = prev[start] ?? 0
+        const yBot = prev[Math.min(end, prev.length - 1)] ?? yTop
+        return (yTop + yBot) / 2
+      }
+
+      // Fallback
+      return i * (CARD_H + CARD_GAP)
     })
     all.push(curr)
   }
@@ -260,25 +285,39 @@ function BracketSide({ rounds, labels, times, timeSel }) {
 
   const svgLines = []
   for (let r = 0; r < rounds.length - 1; r++) {
-    const currPos  = positions[r]
-    const nextPos  = positions[r + 1]
-    const currMtch = rounds[r]
-    for (let i = 0; i < nextPos.length; i++) {
-      const yTop  = currPos[i * 2]      ?? currPos[currPos.length - 1] ?? 0
-      const yBot  = currPos[i * 2 + 1] ?? yTop
-      const yNext = nextPos[i]
+    const currPos   = positions[r]
+    const nextPos   = positions[r + 1]
+    const currMtch  = rounds[r]
+    const prevCount = currPos.length
+    const nextCount = nextPos.length
+    const isHalf    = prevCount === nextCount * 2  // caso clássico 2:1
+
+    for (let i = 0; i < nextCount; i++) {
+      const yNext  = nextPos[i]
       const xRight = r * COL_STEP + COL_W
       const xMid   = r * COL_STEP + COL_W + CONN_W / 2
       const xLeft  = (r + 1) * COL_STEP
-      const cy1    = winnerY(currMtch[i * 2],     yTop)
-      const cy2    = winnerY(currMtch[i * 2 + 1], yBot)
       const cnext  = yNext + LABEL_H + CARD_H / 2
-      const yJoin  = (cy1 + cy2) / 2
-      svgLines.push(
-        <polyline key={`${r}-${i}-t`}  points={`${xRight},${cy1} ${xMid},${cy1} ${xMid},${yJoin}`}    fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1.5" />,
-        ...(yTop !== yBot ? [<polyline key={`${r}-${i}-b`}  points={`${xRight},${cy2} ${xMid},${cy2} ${xMid},${yJoin}`}    fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1.5" />] : []),
-        <polyline key={`${r}-${i}-f`}  points={`${xMid},${yJoin} ${xMid},${cnext} ${xLeft},${cnext}`} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1.5" />,
-      )
+
+      if (isHalf) {
+        // Dois jogos alimentam um — liga os dois com linhas convergindo pra yJoin
+        const yTop = currPos[i * 2]      ?? currPos[currPos.length - 1] ?? 0
+        const yBot = currPos[i * 2 + 1] ?? yTop
+        const cy1   = winnerY(currMtch[i * 2],     yTop)
+        const cy2   = winnerY(currMtch[i * 2 + 1], yBot)
+        const yJoin = (cy1 + cy2) / 2
+        svgLines.push(
+          <polyline key={`${r}-${i}-t`} points={`${xRight},${cy1} ${xMid},${cy1} ${xMid},${yJoin}`}    fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1.5" />,
+          ...(yTop !== yBot ? [<polyline key={`${r}-${i}-b`} points={`${xRight},${cy2} ${xMid},${cy2} ${xMid},${yJoin}`}    fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1.5" />] : []),
+          <polyline key={`${r}-${i}-f`} points={`${xMid},${yJoin} ${xMid},${cnext} ${xLeft},${cnext}`} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1.5" />,
+        )
+      } else {
+        // 1:1 — linha simples do jogo anterior pro próximo
+        const yCurr = (currPos[i] ?? 0) + LABEL_H + CARD_H / 2
+        svgLines.push(
+          <polyline key={`${r}-${i}-s`} points={`${xRight},${yCurr} ${xMid},${yCurr} ${xMid},${cnext} ${xLeft},${cnext}`} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1.5" />,
+        )
+      }
     }
   }
 

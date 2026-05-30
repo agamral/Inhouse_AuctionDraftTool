@@ -7,10 +7,20 @@ import { teamPath, rodadasPath, confrontosPath, disponibilidadePath } from '../u
 import {
   SLOTS, SLOT_LABEL, SLOT_DIA, DIA_LABEL,
   STATUS_CONFRONTO, STATUS_LABEL, STATUS_COR,
-  TIPO_CONFRONTO, FORMATO_SERIE,
+  TIPO_CONFRONTO, FORMATO_SERIE, BRACKET_LABELS,
   TIPO_RESULTADO, PONTUACAO_PADRAO,
   encontrarSlotsEmComum, calcularPontos, formatarResultado, confrontosComAlertas,
 } from '../utils/scheduling'
+
+// Labels legíveis pra tipos de confronto no card admin
+const TIPO_LABEL = {
+  [TIPO_CONFRONTO.REGULAR]:      'Regular',
+  [TIPO_CONFRONTO.DESEMPATE]:    'Desempate',
+  [TIPO_CONFRONTO.CLASSIFICATORIO]: 'Classificatório',
+  ...Object.fromEntries(
+    Object.entries(BRACKET_LABELS).map(([tipo, label]) => [tipo, label])
+  ),
+}
 
 const inputStyle = {
   background: 'var(--bg)', border: '1px solid var(--border2)', borderRadius: 6,
@@ -36,6 +46,7 @@ export default function AdminRodadasSection() {
   const [modalNovoConfr, setModalNovoConfr]       = useState(false)
   const [modalResultado, setModalResultado]       = useState(null) // confrontoId
   const [modalSlot, setModalSlot]                 = useState(null) // confrontoId
+  const [modalEditarTimes, setModalEditarTimes]   = useState(null) // confrontoId (só bracket)
   const [confirmDelete, setConfirmDelete]         = useState(null) // confrontoId
 
   useEffect(() => onValue(ref(db, rodadasPath(campeonatoId)),         snap => setRodadas(snap.val()    ?? {})), [campeonatoId])
@@ -101,24 +112,80 @@ export default function AdminRodadasSection() {
 
   // ── Registrar resultado ──────────────────────────────────────────────────────
 
-  async function registrarResultado(confrontoId, resultado) {
+  async function registrarResultado(confrontoId, payload) {
     try {
       const c = confrontos[confrontoId]
+      const { resultado, observacoes = null, pontosTabela = null } = payload
       let novoStatus = STATUS_CONFRONTO.REALIZADO
 
-      // Se foi empate numa série MD2 → muda para empate_pendente
       if (resultado.tipo === TIPO_RESULTADO.EMPATE && c?.formato === FORMATO_SERIE.MD2) {
         novoStatus = STATUS_CONFRONTO.EMPATE_PENDENTE
       }
 
-      await update(ref(db, `${confrontosPath(campeonatoId)}/${confrontoId}`), {
-        resultado,
-        status: novoStatus,
-        alertas: {},
-        atualizadoEm: Date.now(),
-      })
+      const updates = {
+        [`${confrontosPath(campeonatoId)}/${confrontoId}/resultado`]:    resultado,
+        [`${confrontosPath(campeonatoId)}/${confrontoId}/observacoes`]:  observacoes,
+        [`${confrontosPath(campeonatoId)}/${confrontoId}/pontosTabela`]: pontosTabela,
+        [`${confrontosPath(campeonatoId)}/${confrontoId}/status`]:       novoStatus,
+        [`${confrontosPath(campeonatoId)}/${confrontoId}/alertas`]:      {},
+        [`${confrontosPath(campeonatoId)}/${confrontoId}/atualizadoEm`]: Date.now(),
+      }
+
+      // ── Auto-propagação do bracket ──────────────────────────────────────
+      // Se o confronto faz parte do bracket (tem bracketSlot), propaga o
+      // vencedor e o perdedor para os próximos slots automaticamente.
+      if (c?.bracketSlot && novoStatus === STATUS_CONFRONTO.REALIZADO) {
+        const winnerId = getWinnerFromResult(resultado, c.timeA, c.timeB)
+        const loserId  = winnerId === c.timeA ? c.timeB : c.timeA
+
+        // Mapa bracketSlot → confrontoId Firebase
+        const slotMap = {}
+        Object.entries(confrontos).forEach(([id, conf]) => {
+          if (conf.bracketSlot) slotMap[conf.bracketSlot] = id
+        })
+
+        if (winnerId && c.winnerTo && slotMap[c.winnerTo]) {
+          const campo = c.winnerSlot === 'B' ? 'timeB' : 'timeA'
+          updates[`${confrontosPath(campeonatoId)}/${slotMap[c.winnerTo]}/${campo}`] = winnerId
+        }
+        if (loserId && c.loserTo && slotMap[c.loserTo]) {
+          const campo = c.loserSlot === 'B' ? 'timeB' : 'timeA'
+          updates[`${confrontosPath(campeonatoId)}/${slotMap[c.loserTo]}/${campo}`] = loserId
+        }
+      }
+
+      await update(ref(db), updates)
       setModalResultado(null)
       flash('ok', 'Resultado registrado.')
+    } catch (e) {
+      flash('erro', e.message)
+    }
+  }
+
+  // Retorna o teamId vencedor a partir de um resultado. null = inconclusivo.
+  function getWinnerFromResult(resultado, timeA, timeB) {
+    if (!resultado) return null
+    switch (resultado.tipo) {
+      case TIPO_RESULTADO.WO_A:   return timeA
+      case TIPO_RESULTADO.WO_B:   return timeB
+      case TIPO_RESULTADO.NORMAL:
+        if (resultado.timeA > resultado.timeB) return timeA
+        if (resultado.timeB > resultado.timeA) return timeB
+        return null  // empate
+      default: return null
+    }
+  }
+
+  // ── Editar times do confronto manualmente (só bracket) ──────────────────────
+  async function editarTimesBracket(confrontoId, { timeA, timeB }) {
+    try {
+      await update(ref(db, `${confrontosPath(campeonatoId)}/${confrontoId}`), {
+        timeA: timeA || null,
+        timeB: timeB || null,
+        atualizadoEm: Date.now(),
+      })
+      setModalEditarTimes(null)
+      flash('ok', 'Times atualizados.')
     } catch (e) {
       flash('erro', e.message)
     }
@@ -320,6 +387,7 @@ export default function AdminRodadasSection() {
                   disponibilidade={disponibilidade[id] ?? {}}
                   onRegistrarResultado={() => setModalResultado(id)}
                   onForcarSlot={() => setModalSlot(id)}
+                  onEditarTimes={c.bracketSlot ? () => setModalEditarTimes(id) : undefined}
                   onMudarStatus={(status, extras) => mudarStatus(id, status, extras)}
                   onAgendarDesempate={() => agendarDesempate(id)}
                   onDeletar={() => setConfirmDelete(id)}
@@ -373,6 +441,15 @@ export default function AdminRodadasSection() {
           onFechar={() => setModalSlot(null)}
         />
       )}
+      {modalEditarTimes && confrontos[modalEditarTimes] && (
+        <ModalEditarTimesBracket
+          confronto={confrontos[modalEditarTimes]}
+          confrontoId={modalEditarTimes}
+          times={times}
+          onSalvar={editarTimesBracket}
+          onFechar={() => setModalEditarTimes(null)}
+        />
+      )}
     </section>
   )
 }
@@ -411,7 +488,7 @@ function RodadaHeader({ rodada, rodadaId, onChange }) {
   )
 }
 
-function ConfrontoCard({ confrontoId, confronto: c, times, disponibilidade, onRegistrarResultado, onForcarSlot, onMudarStatus, onAgendarDesempate, onDeletar, confirmandoDelete, onConfirmarDelete, onCancelarDelete, onIniciarDraft }) {
+function ConfrontoCard({ confrontoId, confronto: c, times, disponibilidade, onRegistrarResultado, onForcarSlot, onEditarTimes, onMudarStatus, onAgendarDesempate, onDeletar, confirmandoDelete, onConfirmarDelete, onCancelarDelete, onIniciarDraft }) {
   const tA = times[c.timeA]
   const tB = times[c.timeB]
   const dispA = disponibilidade[c.timeA]?.slots ?? []
@@ -452,7 +529,7 @@ function ConfrontoCard({ confrontoId, confronto: c, times, disponibilidade, onRe
         </span>
 
         <span style={{ fontSize: 10, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text3)', background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 3, padding: '1px 6px' }}>
-          {c.tipo} · {c.formato}
+          {TIPO_LABEL[c.tipo] ?? c.tipo} · {c.formato}
         </span>
 
         {emDraft && (
@@ -478,6 +555,12 @@ function ConfrontoCard({ confrontoId, confronto: c, times, disponibilidade, onRe
             {formatarResultado(c.resultado)}
           </strong>
         </span>
+        {c.pontosTabela && (
+          <span title={`Pontos da tabela ajustados manualmente: ${c.pontosTabela.timeA} × ${c.pontosTabela.timeB}`}
+            style={{ color: 'var(--purple)', fontWeight: 700, letterSpacing: '0.06em', fontSize: 11 }}>
+            ✎ PTS AJUSTADOS ({c.pontosTabela.timeA}×{c.pontosTabela.timeB})
+          </span>
+        )}
         {emComum.length > 0 && (
           <span style={{ color: 'var(--blue)' }}>
             {emComum.length} slot{emComum.length > 1 ? 's' : ''} em comum
@@ -553,6 +636,20 @@ function ConfrontoCard({ confrontoId, confronto: c, times, disponibilidade, onRe
 
       {/* Ações admin */}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {/* Override de times (só confrontos do bracket com times ainda indefinidos) */}
+        {onEditarTimes && (!c.timeA || !c.timeB) && (
+          <button className="btn" style={{ fontSize: 11, padding: '4px 10px', borderColor: 'rgba(201,168,76,0.4)', color: 'var(--gold)' }}
+            onClick={onEditarTimes}>
+            ✎ Definir times
+          </button>
+        )}
+        {onEditarTimes && c.timeA && c.timeB && c.status !== STATUS_CONFRONTO.REALIZADO && (
+          <button className="btn" style={{ fontSize: 11, padding: '4px 10px', borderColor: 'rgba(201,168,76,0.2)', color: 'var(--text3)' }}
+            title="Substituir os times deste confronto manualmente"
+            onClick={onEditarTimes}>
+            ✎ Trocar times
+          </button>
+        )}
         {/* Botão de draft — aparece em confirmado (iniciar) ou em_jogo (gerenciar) */}
         {(c.status === STATUS_CONFRONTO.CONFIRMADO || c.status === 'em_jogo') && (
           <button className="btn" style={{ fontSize: 11, padding: '4px 10px', borderColor: 'var(--purple)', color: 'var(--purple)', fontWeight: 700 }}
@@ -560,10 +657,16 @@ function ConfrontoCard({ confrontoId, confronto: c, times, disponibilidade, onRe
             {emDraft ? '⚡ Gerenciar Draft Ativo' : `▶ Iniciar Draft${concluidas > 0 ? ` P${concluidas + 1}` : ''}`}
           </button>
         )}
-        {c.status !== STATUS_CONFRONTO.REALIZADO && c.status !== STATUS_CONFRONTO.CANCELADO && (
+        {c.status !== STATUS_CONFRONTO.REALIZADO && c.status !== STATUS_CONFRONTO.CANCELADO && c.status !== STATUS_CONFRONTO.EMPATE_PENDENTE && (
           <button className="btn" style={{ fontSize: 11, padding: '4px 10px', borderColor: 'var(--green)', color: 'var(--green)' }}
             onClick={onRegistrarResultado}>
             ✓ Registrar resultado
+          </button>
+        )}
+        {(c.status === STATUS_CONFRONTO.REALIZADO || c.status === STATUS_CONFRONTO.EMPATE_PENDENTE) && (
+          <button className="btn" style={{ fontSize: 11, padding: '4px 10px', borderColor: 'rgba(74,158,218,0.4)', color: 'var(--blue)' }}
+            onClick={onRegistrarResultado}>
+            ✎ Editar resultado
           </button>
         )}
         {c.status !== STATUS_CONFRONTO.REALIZADO && c.status !== STATUS_CONFRONTO.CANCELADO && (
@@ -614,6 +717,54 @@ function ConfrontoCard({ confrontoId, confronto: c, times, disponibilidade, onRe
 }
 
 // ── Modais ─────────────────────────────────────────────────────────────────────
+
+function ModalEditarTimesBracket({ confronto: c, confrontoId, times, onSalvar, onFechar }) {
+  const timesArr = Object.entries(times).sort(([,a],[,b]) => a.nome.localeCompare(b.nome))
+  const [timeA, setTimeA] = useState(c.timeA ?? '')
+  const [timeB, setTimeB] = useState(c.timeB ?? '')
+
+  const selectStyle = {
+    background: 'var(--bg)', border: '1px solid var(--border2)', borderRadius: 6,
+    padding: '7px 10px', color: 'var(--text)', fontFamily: "'Barlow', sans-serif",
+    fontSize: 13, outline: 'none', width: '100%',
+  }
+
+  return (
+    <Modal titulo={`Definir times — ${TIPO_LABEL[c.tipo] ?? c.tipo}`} onFechar={onFechar}>
+      <div style={{ fontSize: 12, color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif", marginBottom: 14 }}>
+        Override manual do bracket. Use com cautela — a propagação automática pode sobrescrever esses valores se um confronto anterior ainda não foi registrado.
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+        <div>
+          <label style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif", display: 'block', marginBottom: 4 }}>Time A</label>
+          <select value={timeA} onChange={e => setTimeA(e.target.value)} style={selectStyle}>
+            <option value="">— A definir —</option>
+            {timesArr.map(([id, t]) => (
+              <option key={id} value={id}>{t.nome}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif", display: 'block', marginBottom: 4 }}>Time B</label>
+          <select value={timeB} onChange={e => setTimeB(e.target.value)} style={selectStyle}>
+            <option value="">— A definir —</option>
+            {timesArr.map(([id, t]) => (
+              <option key={id} value={id}>{t.nome}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button className="btn primary" style={{ fontSize: 13 }}
+          disabled={timeA === timeB && timeA !== ''}
+          onClick={() => onSalvar(confrontoId, { timeA, timeB })}>
+          Salvar
+        </button>
+        <button className="btn" style={{ fontSize: 13 }} onClick={onFechar}>Cancelar</button>
+      </div>
+    </Modal>
+  )
+}
 
 function ModalNovaRodada({ onSalvar, onFechar }) {
   const [form, setForm] = useState({ numero: '', semanaAnuncio: '', semanaJogos: '' })
@@ -688,10 +839,34 @@ function ModalNovoConfronto({ times, onSalvar, onFechar }) {
 function ModalResultado({ confronto, confrontoId, times, onSalvar, onFechar }) {
   const tA = times[confronto.timeA]
   const tB = times[confronto.timeB]
-  const [tipo, setTipo] = useState(TIPO_RESULTADO.NORMAL)
-  const [gA, setGA] = useState(0)
-  const [gB, setGB] = useState(0)
+
+  // Pré-carrega valores existentes pra permitir edição de resultados já registrados
+  const resultadoExistente = confronto.resultado ?? {}
+  const ehGrandeFinal = confronto.vantagem === 'A_1_0'
+  const VANTAGEM_GF   = 1  // timeA (Upper) começa com 1 vitória já contada
+
+  // Grande Final MD7 — admin entra com vitórias JOGADAS (sem a vantagem).
+  // O sistema soma a vantagem ao salvar: totalA = jogadasA + VANTAGEM_GF
+  // Isso evita confusão de admin entrar "3×3 jogados" e o sistema salvar
+  // como empate quando o real é 4×3 (ScarletC vence pela vantagem).
+  const gAInicial = resultadoExistente.tipo === TIPO_RESULTADO.NORMAL
+    ? (ehGrandeFinal
+        ? Math.max(0, (resultadoExistente.timeA ?? 0) - VANTAGEM_GF)
+        : (resultadoExistente.timeA ?? 0))
+    : 0
+  const gBInicial = resultadoExistente.tipo === TIPO_RESULTADO.NORMAL
+    ? (resultadoExistente.timeB ?? 0)
+    : 0
+
+  const [tipo, setTipo] = useState(resultadoExistente.tipo ?? TIPO_RESULTADO.NORMAL)
+  const [gA, setGA]   = useState(gAInicial)  // vitórias jogadas (sem vantagem na GF)
+  const [gB, setGB]   = useState(gBInicial)
   const [obs, setObs] = useState(confronto.observacoes ?? '')
+
+  // Override de pontos pra tabela — pré-carrega se já existe no confronto
+  const [overrideAtivo, setOverrideAtivo] = useState(!!confronto.pontosTabela)
+  const [pontosOverrideA, setPontosOverrideA] = useState(confronto.pontosTabela?.timeA ?? 0)
+  const [pontosOverrideB, setPontosOverrideB] = useState(confronto.pontosTabela?.timeB ?? 0)
 
   const ehMD2 = confronto.formato === FORMATO_SERIE.MD2
 
@@ -703,17 +878,52 @@ function ModalResultado({ confronto, confrontoId, times, onSalvar, onFechar }) {
     ...(ehMD2 ? [{ valor: TIPO_RESULTADO.EMPATE, label: '1-1 — empate (agenda desempate MD3)' }] : []),
   ]
 
+  // Na GF, totalA = jogadasA + vantagem (1). Nos outros formatos sem vantagem.
+  const totalA = ehGrandeFinal ? gA + VANTAGEM_GF : gA
+  const totalB = gB
+
   const resultado =
-    tipo === TIPO_RESULTADO.NORMAL  ? { tipo, timeA: gA, timeB: gB } :
+    tipo === TIPO_RESULTADO.NORMAL  ? { tipo, timeA: totalA, timeB: totalB } :
     tipo === TIPO_RESULTADO.EMPATE  ? { tipo, timeA: 1, timeB: 1 }   : // 1-1, cada time leva 1pt
     tipo === TIPO_RESULTADO.WO_A    ? { tipo, timeA: 1, timeB: 0 }   :
     tipo === TIPO_RESULTADO.WO_B    ? { tipo, timeA: 0, timeB: 1 }   :
     /* DUPLO_WO */                    { tipo, timeA: 0, timeB: 0 }
 
-  const pontos = calcularPontos(resultado, PONTUACAO_PADRAO, confronto.tipo)
+  // Só REGULAR conta na tabela. Pra DESEMPATE e tipos de playoff o preview
+  // mostra 0/0 pra não enganar o admin com pontos que não serão somados.
+  const tipoConfronto = confronto.tipo ?? TIPO_CONFRONTO.REGULAR
+  const tipoContaNaTabela = tipoConfronto === TIPO_CONFRONTO.REGULAR
+  const pontosCalculados = calcularPontos(resultado, PONTUACAO_PADRAO, confronto.tipo)
+  const pontosAuto = tipoContaNaTabela ? pontosCalculados : { timeA: 0, timeB: 0 }
+
+  // Quando override desliga, sincroniza inputs com o cálculo automático
+  // (útil pra admin ver o que o sistema sugeriria antes de ativar override de novo)
+  useEffect(() => {
+    if (!overrideAtivo) {
+      setPontosOverrideA(pontosAuto.timeA)
+      setPontosOverrideB(pontosAuto.timeB)
+    }
+  }, [pontosAuto.timeA, pontosAuto.timeB, overrideAtivo])
+
+  const pontosFinais = overrideAtivo
+    ? { timeA: Number(pontosOverrideA) || 0, timeB: Number(pontosOverrideB) || 0 }
+    : pontosAuto
 
   return (
     <Modal titulo={`Resultado — ${tA?.nome ?? confronto.timeA} vs ${tB?.nome ?? confronto.timeB}`} onFechar={onFechar}>
+      {ehGrandeFinal && (
+        <div style={{ padding: '8px 12px', borderRadius: 6, marginBottom: 12, background: 'rgba(201,168,76,0.08)', border: '1px solid rgba(201,168,76,0.25)', fontSize: 12, color: 'var(--gold2)', fontFamily: "'Barlow Condensed', sans-serif", display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div>🏆 <strong>Grande Final MD7</strong> — {tA?.nome ?? 'Time A'} (Upper) tem vantagem de <strong>+1 vitória</strong></div>
+          <div style={{ color: 'var(--text2)', fontSize: 11 }}>
+            Digite as vitórias <em>jogadas</em> (sem contar a vantagem). O sistema soma automaticamente.
+            {tipo === TIPO_RESULTADO.NORMAL && (
+              <span style={{ marginLeft: 6, color: 'var(--gold)', fontWeight: 700 }}>
+                Total: {totalA}×{totalB} — {totalA > totalB ? `${tA?.nome ?? 'Time A'} vence` : totalB > totalA ? `${tB?.nome ?? 'Time B'} vence` : 'empate (precisa de mais uma partida)'}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
       <FieldLabel label="Tipo de resultado" />
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
         {opcoes.map(o => (
@@ -727,9 +937,14 @@ function ModalResultado({ confronto, confrontoId, times, onSalvar, onFechar }) {
       {tipo === TIPO_RESULTADO.NORMAL && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 8, alignItems: 'center', marginBottom: 14 }}>
           <div>
-            <FieldLabel label={tA?.nome ?? 'Time A'} />
+            <FieldLabel label={ehGrandeFinal ? `${tA?.nome ?? 'Time A'} (jogadas)` : (tA?.nome ?? 'Time A')} />
             <input type="number" min={0} max={10} value={gA} onChange={e => setGA(Number(e.target.value))}
               style={{ ...inputStyle, textAlign: 'center' }} />
+            {ehGrandeFinal && (
+              <div style={{ fontSize: 10, textAlign: 'center', color: 'var(--gold)', fontFamily: "'Barlow Condensed', sans-serif", marginTop: 2 }}>
+                total: {totalA}
+              </div>
+            )}
           </div>
           <span style={{ color: 'var(--text3)', fontSize: 18, marginTop: 20 }}>×</span>
           <div>
@@ -740,10 +955,62 @@ function ModalResultado({ confronto, confrontoId, times, onSalvar, onFechar }) {
         </div>
       )}
 
-      {/* Preview de pontos */}
-      <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 12px', marginBottom: 14, fontSize: 12, fontFamily: "'Barlow Condensed', sans-serif", display: 'flex', gap: 24 }}>
-        <span style={{ color: tA?.cor ?? 'var(--text)' }}>{tA?.nome ?? 'Time A'}: <strong>+{pontos.timeA} pts</strong></span>
-        <span style={{ color: tB?.cor ?? 'var(--text)' }}>{tB?.nome ?? 'Time B'}: <strong>+{pontos.timeB} pts</strong></span>
+      {/* Pontos pra tabela: preview + toggle de override */}
+      <div style={{
+        background: overrideAtivo ? 'rgba(155,110,232,0.06)' : 'var(--bg2)',
+        border: `1px solid ${overrideAtivo ? 'rgba(155,110,232,0.35)' : 'var(--border)'}`,
+        borderRadius: 6, padding: '10px 12px', marginBottom: 14,
+        display: 'flex', flexDirection: 'column', gap: 10,
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 18, fontSize: 12, fontFamily: "'Barlow Condensed', sans-serif" }}>
+            <span style={{ color: tA?.cor ?? 'var(--text)' }}>
+              {tA?.nome ?? 'Time A'}: <strong>+{pontosFinais.timeA} pts</strong>
+            </span>
+            <span style={{ color: tB?.cor ?? 'var(--text)' }}>
+              {tB?.nome ?? 'Time B'}: <strong>+{pontosFinais.timeB} pts</strong>
+            </span>
+            {overrideAtivo && (
+              <span style={{ color: 'var(--purple)', fontWeight: 700, letterSpacing: '0.06em' }}>
+                AJUSTE MANUAL
+              </span>
+            )}
+            {!tipoContaNaTabela && !overrideAtivo && (
+              <span style={{ color: 'var(--text3)', fontStyle: 'italic' }}>
+                ({tipoConfronto === TIPO_CONFRONTO.DESEMPATE ? 'desempate' : 'playoff'} não soma na tabela)
+              </span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => setOverrideAtivo(v => !v)}
+            style={{
+              fontSize: 11, padding: '4px 10px', borderRadius: 4,
+              border: `1px solid ${overrideAtivo ? 'rgba(155,110,232,0.4)' : 'var(--border2)'}`,
+              background: overrideAtivo ? 'rgba(155,110,232,0.15)' : 'transparent',
+              color: overrideAtivo ? 'var(--purple)' : 'var(--text2)',
+              cursor: 'pointer', fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700,
+            }}
+          >
+            {overrideAtivo ? '↺ Usar automático' : '✎ Ajustar manualmente'}
+          </button>
+        </div>
+        {overrideAtivo && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <div>
+              <FieldLabel label={`Pts ${tA?.nome ?? 'Time A'}`} />
+              <input type="number" min={-20} max={20} value={pontosOverrideA}
+                onChange={e => setPontosOverrideA(e.target.value)}
+                style={{ ...inputStyle, textAlign: 'center' }} />
+            </div>
+            <div>
+              <FieldLabel label={`Pts ${tB?.nome ?? 'Time B'}`} />
+              <input type="number" min={-20} max={20} value={pontosOverrideB}
+                onChange={e => setPontosOverrideB(e.target.value)}
+                style={{ ...inputStyle, textAlign: 'center' }} />
+            </div>
+          </div>
+        )}
       </div>
 
       <FieldLabel label="Observações" hint="opcional" />
@@ -752,7 +1019,11 @@ function ModalResultado({ confronto, confrontoId, times, onSalvar, onFechar }) {
 
       <div style={{ display: 'flex', gap: 8 }}>
         <button className="btn primary" style={{ fontSize: 13 }}
-          onClick={() => onSalvar(confrontoId, { ...resultado, observacoes: obs || null })}>
+          onClick={() => onSalvar(confrontoId, {
+            resultado,
+            observacoes: obs || null,
+            pontosTabela: overrideAtivo ? { timeA: pontosFinais.timeA, timeB: pontosFinais.timeB } : null,
+          })}>
           Confirmar resultado
         </button>
         <button className="btn" style={{ fontSize: 13 }} onClick={onFechar}>Cancelar</button>
