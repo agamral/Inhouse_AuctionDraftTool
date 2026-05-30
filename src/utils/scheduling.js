@@ -375,30 +375,45 @@ export function calcularClassificacao(teamIds = [], confrontos = [], config = PO
     atualizar(c.timeB, pts.timeB, gB, gA, statusPorTime.timeB)
   }
 
-  // Head-to-head: compara 2 times pelo confronto direto na fase regular.
-  // Retorna -1 se A acima, 1 se B acima, 0 se não resolve (sem h2h ou empate 1-1).
+  // Head-to-head: compara 2 times pelo confronto direto entre eles.
+  // Retorna -1 se A acima, 1 se B acima, 0 se não resolve (sem h2h, 1-1, etc).
+  //
+  // Ordem de prioridade:
+  //   1. DESEMPATE (MD3) — se existe e resolveu, manda. É a decisão oficial
+  //      pra quebrar empate quando regular não decidiu.
+  //   2. REGULAR — confronto da fase normal. Se resolveu, usa.
   function compararHeadToHead(idA, idB) {
-    const direto = confrontos.find(c => {
+    const buscarPor = (tipoAlvo) => confrontos.find(c => {
       const tipo = c.tipo ?? TIPO_CONFRONTO.REGULAR
-      if (tipo !== TIPO_CONFRONTO.REGULAR) return false
+      if (tipo !== tipoAlvo) return false
       if (!statusContabilizados.has(c.status) || !c.resultado) return false
       return (c.timeA === idA && c.timeB === idB) || (c.timeA === idB && c.timeB === idA)
     })
-    if (!direto) return 0  // não jogaram entre si
 
-    const aEhTimeA = direto.timeA === idA
-    switch (direto.resultado.tipo) {
-      case TIPO_RESULTADO.WO_A:     return aEhTimeA ? -1 : 1
-      case TIPO_RESULTADO.WO_B:     return aEhTimeA ? 1 : -1
-      case TIPO_RESULTADO.NORMAL: {
-        const gMeu  = aEhTimeA ? direto.resultado.timeA : direto.resultado.timeB
-        const gOut  = aEhTimeA ? direto.resultado.timeB : direto.resultado.timeA
-        if (gMeu > gOut) return -1
-        if (gOut > gMeu) return 1
-        return 0  // 1-1 sem resolução
+    const resolver = (confronto) => {
+      if (!confronto) return 0
+      const aEhTimeA = confronto.timeA === idA
+      switch (confronto.resultado.tipo) {
+        case TIPO_RESULTADO.WO_A:     return aEhTimeA ? -1 : 1
+        case TIPO_RESULTADO.WO_B:     return aEhTimeA ? 1 : -1
+        case TIPO_RESULTADO.NORMAL: {
+          const gMeu  = aEhTimeA ? confronto.resultado.timeA : confronto.resultado.timeB
+          const gOut  = aEhTimeA ? confronto.resultado.timeB : confronto.resultado.timeA
+          if (gMeu > gOut) return -1
+          if (gOut > gMeu) return 1
+          return 0
+        }
+        default: return 0  // duplo_wo ou empate não decide
       }
-      default: return 0  // duplo_wo ou empate não decide
     }
+
+    // 1. Desempate explícito (MD3) tem prioridade — foi criado justamente
+    //    pra resolver esse empate.
+    const desempate = resolver(buscarPor(TIPO_CONFRONTO.DESEMPATE))
+    if (desempate !== 0) return desempate
+
+    // 2. Confronto regular como fallback.
+    return resolver(buscarPor(TIPO_CONFRONTO.REGULAR))
   }
 
   const sortedTabela = Object.values(tabela).sort((a, b) => {
