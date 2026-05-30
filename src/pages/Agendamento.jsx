@@ -8,7 +8,7 @@ import { useCampeonato } from '../contexts/CampeonatoContext'
 import { teamPath, rodadasPath, confrontosPath, disponibilidadePath } from '../utils/campeonatoPaths'
 import HeroDraftAlerta from '../components/HeroDraftAlerta'
 import {
-  SLOTS, SLOT_LABEL, SLOT_DIA, DIA_LABEL,
+  SLOTS, SLOTS_PLAYOFF, SLOT_LABEL, SLOT_DIA, DIA_LABEL, ADJACENT_SLOTS,
   STATUS_CONFRONTO, STATUS_LABEL, STATUS_COR,
   FUSO_PADRAO, FUSOS, slotLabelFuso, slotHoraLocal,
   resolverDisponibilidade, avisaBackToBack, encontrarSlotsEmComum,
@@ -84,7 +84,7 @@ function AgendaPublica({ teams, confrontos, rodadas }) {
             <div className="ag-rodada-label">Rodada {rodada.numero}</div>
             <div className="ag-partidas-list">
               {confrontosRodada
-                .sort((a, b) => SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot))
+                .sort((a, b) => SLOTS_PLAYOFF.indexOf(a.slot) - SLOTS_PLAYOFF.indexOf(b.slot))
                 .map(c => (
                   <PartidaCard key={c.id} c={c} teams={teams} />
                 ))}
@@ -210,13 +210,15 @@ export default function Agendamento() {
   }
 
   // Slot é GLOBAL por rodada: só pode 1 confronto por dia+horário em toda
-  // a rodada (a equipe da Inhouse organiza um lobby de cada vez, com
-  // transmissão única — não dá pra ter 2 partidas simultâneas).
-  // Decisão do brainstorm 2026-05-26 (batch 2.8).
+  // a rodada (a equipe da Inhouse organiza um lobby de cada vez).
+  // Na fase de playoffs (rodada.numero === 'P'): também bloqueia slots
+  // adjacentes (±1h no mesmo dia) pra garantir intervalo entre transmissões.
   function slotsOcupadosNaRodada(confrontoId) {
     const c = confrontos[confrontoId]
     if (!c) return {}
-    const ocupados = {}
+    const rodada    = rodadas[c.rodadaId]
+    const ehPlayoff = rodada?.numero === 'P'
+    const ocupados  = {}
     Object.entries(confrontos)
       .filter(([id, oc]) =>
         id !== confrontoId &&
@@ -224,7 +226,12 @@ export default function Agendamento() {
         oc.status === STATUS_CONFRONTO.CONFIRMADO &&
         oc.slot
       )
-      .forEach(([, oc]) => { ocupados[oc.slot] = true })
+      .forEach(([, oc]) => {
+        ocupados[oc.slot] = true
+        if (ehPlayoff) {
+          ADJACENT_SLOTS[oc.slot]?.forEach(adj => { ocupados[adj] = true })
+        }
+      })
     return ocupados
   }
 
@@ -407,7 +414,9 @@ export default function Agendamento() {
           {teamSel && confsMeuTime.map(([id, c]) => {
             const advId    = c.timeA === teamSel ? c.timeB : c.timeA
             const adv      = teams[advId]
-            const rodada   = rodadas[c.rodadaId]
+            const rodada    = rodadas[c.rodadaId]
+            const ehPlayoff = rodada?.numero === 'P'
+            const slotsRodada = ehPlayoff ? SLOTS_PLAYOFF : SLOTS
             const meusSlots = selecoes[id] ?? []
             const advSlots  = dispon[id]?.[advId]?.slots ?? []
             const emComum   = encontrarSlotsEmComum(meusSlots, advSlots)
@@ -468,7 +477,7 @@ export default function Agendamento() {
 
                     <div className="ag-grid">
                       {Object.entries(DIA_LABEL).map(([dia, diaLabel]) => {
-                        const slotsHoje = SLOTS.filter(s => SLOT_DIA[s] === dia)
+                        const slotsHoje = slotsRodada.filter(s => SLOT_DIA[s] === dia)
                         return (
                           <div key={dia} className="ag-dia">
                             <div className="ag-dia-label">{diaLabel}</div>
@@ -564,7 +573,7 @@ export default function Agendamento() {
                       <button
                         className="btn"
                         style={{ fontSize: 12 }}
-                        onClick={() => setSelecoes(s => ({ ...s, [id]: SLOTS }))}
+                        onClick={() => setSelecoes(s => ({ ...s, [id]: slotsRodada }))}
                         title="Marcar todos os slots disponíveis"
                       >
                         Disponível sempre

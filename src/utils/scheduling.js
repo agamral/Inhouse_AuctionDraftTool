@@ -6,6 +6,7 @@
 // ── Slots disponíveis ────────────────────────────────────────────────────────
 // A ORDEM importa: define preferência ao sugerir slot automaticamente
 
+// Slots da fase regular (sem 19h nos dias de semana)
 export const SLOTS = [
   'terca-20h', 'terca-21h', 'terca-22h',
   'quarta-20h', 'quarta-21h', 'quarta-22h',
@@ -13,23 +14,53 @@ export const SLOTS = [
   'sabado-17h', 'sabado-18h', 'sabado-19h',
 ]
 
+// Slots do playoff — adiciona 19h nos dias de semana
+// Decisão da organização: mais um horário disponível pra acomodar a chave
+export const SLOTS_PLAYOFF = [
+  'terca-19h', 'terca-20h', 'terca-21h', 'terca-22h',
+  'quarta-19h', 'quarta-20h', 'quarta-21h', 'quarta-22h',
+  'quinta-19h', 'quinta-20h', 'quinta-21h', 'quinta-22h',
+  'sabado-17h', 'sabado-18h', 'sabado-19h',
+]
+
 export const SLOT_LABEL = {
-  'terca-20h':  'Terça 20h',  'terca-21h':  'Terça 21h',  'terca-22h':  'Terça 22h',
-  'quarta-20h': 'Quarta 20h', 'quarta-21h': 'Quarta 21h', 'quarta-22h': 'Quarta 22h',
-  'quinta-20h': 'Quinta 20h', 'quinta-21h': 'Quinta 21h', 'quinta-22h': 'Quinta 22h',
+  'terca-19h':  'Terça 19h',  'terca-20h':  'Terça 20h',  'terca-21h':  'Terça 21h',  'terca-22h':  'Terça 22h',
+  'quarta-19h': 'Quarta 19h', 'quarta-20h': 'Quarta 20h', 'quarta-21h': 'Quarta 21h', 'quarta-22h': 'Quarta 22h',
+  'quinta-19h': 'Quinta 19h', 'quinta-20h': 'Quinta 20h', 'quinta-21h': 'Quinta 21h', 'quinta-22h': 'Quinta 22h',
   'sabado-17h': 'Sábado 17h', 'sabado-18h': 'Sábado 18h', 'sabado-19h': 'Sábado 19h',
 }
 
 export const SLOT_DIA = {
-  'terca-20h': 'terca',  'terca-21h': 'terca',  'terca-22h': 'terca',
-  'quarta-20h': 'quarta','quarta-21h': 'quarta', 'quarta-22h': 'quarta',
-  'quinta-20h': 'quinta','quinta-21h': 'quinta', 'quinta-22h': 'quinta',
+  'terca-19h': 'terca',  'terca-20h': 'terca',  'terca-21h': 'terca',  'terca-22h': 'terca',
+  'quarta-19h': 'quarta','quarta-20h': 'quarta', 'quarta-21h': 'quarta','quarta-22h': 'quarta',
+  'quinta-19h': 'quinta','quinta-20h': 'quinta', 'quinta-21h': 'quinta','quinta-22h': 'quinta',
   'sabado-17h': 'sabado','sabado-18h': 'sabado', 'sabado-19h': 'sabado',
 }
 
 export const DIA_LABEL = {
   terca: 'Terça-feira', quarta: 'Quarta-feira',
   quinta: 'Quinta-feira', sabado: 'Sábado',
+}
+
+// Mapa de adjacência — slots que ficam bloqueados quando um horário é confirmado.
+// Usado na fase de playoff pra evitar transmissões consecutivas sem intervalo.
+// Regra: se jogo marcado em X, bloqueia X-1h e X+1h no mesmo dia.
+export const ADJACENT_SLOTS = {
+  'terca-19h':  ['terca-20h'],
+  'terca-20h':  ['terca-19h', 'terca-21h'],
+  'terca-21h':  ['terca-20h', 'terca-22h'],
+  'terca-22h':  ['terca-21h'],
+  'quarta-19h': ['quarta-20h'],
+  'quarta-20h': ['quarta-19h', 'quarta-21h'],
+  'quarta-21h': ['quarta-20h', 'quarta-22h'],
+  'quarta-22h': ['quarta-21h'],
+  'quinta-19h': ['quinta-20h'],
+  'quinta-20h': ['quinta-19h', 'quinta-21h'],
+  'quinta-21h': ['quinta-20h', 'quinta-22h'],
+  'quinta-22h': ['quinta-21h'],
+  'sabado-17h': ['sabado-18h'],
+  'sabado-18h': ['sabado-17h', 'sabado-19h'],
+  'sabado-19h': ['sabado-18h'],
 }
 
 // ── Fuso horário ─────────────────────────────────────────────────────────────
