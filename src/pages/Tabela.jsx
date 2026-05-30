@@ -1,17 +1,51 @@
-import { useState, useEffect } from 'react'
-import { ref, onValue } from 'firebase/database'
+import { useState, useEffect, useCallback } from 'react'
+import { ref, onValue, set, remove } from 'firebase/database'
 import { db } from '../firebase/database'
 import { useAuth } from '../hooks/useAuth'
 import { useModules } from '../hooks/useConfig'
 import { useCampeonato } from '../contexts/CampeonatoContext'
 import PaginaInativa from '../components/PaginaInativa'
-import { teamPath, rodadasPath, confrontosPath } from '../utils/campeonatoPaths'
+import { teamPath, rodadasPath, confrontosPath, tabelaOverridePath } from '../utils/campeonatoPaths'
 import {
   calcularClassificacao, calcularPontos,
   STATUS_CONFRONTO, TIPO_CONFRONTO,
   SLOT_LABEL, formatarResultado, PONTUACAO_PADRAO,
 } from '../utils/scheduling'
 import './Tabela.css'
+
+// Reordena a classificação aplicando posições manuais.
+// Times com posicaoManual definida vão pra slot N-1 (1-indexed → 0-indexed);
+// os demais preenchem as posições vazias mantendo a ordem calculada.
+// Em caso de conflito (2 times pedindo a mesma posição), o que vier primeiro
+// fica no slot; o outro cai pra lista de "sem override".
+function aplicarOverridesDePosicao(classificacao, overrides) {
+  const n = classificacao.length
+  if (!n || !overrides || !Object.keys(overrides).length) return classificacao
+
+  const slots = new Array(n).fill(null)
+  const semOverride = []
+
+  for (const entry of classificacao) {
+    const pos = overrides[entry.id]?.posicaoManual
+    if (pos != null && pos >= 1 && pos <= n) {
+      const idx = pos - 1
+      if (slots[idx] === null) {
+        slots[idx] = { ...entry, posicaoManual: pos }
+      } else {
+        semOverride.push(entry)
+      }
+    } else {
+      semOverride.push(entry)
+    }
+  }
+
+  let j = 0
+  for (let i = 0; i < n; i++) {
+    if (slots[i] === null) slots[i] = semOverride[j++]
+  }
+
+  return slots.filter(Boolean)
+}
 
 export default function Tabela() {
   const { isAdmin } = useAuth()
@@ -20,12 +54,14 @@ export default function Tabela() {
   const [rodadas,    setRodadas]    = useState({})
   const [confrontos, setConfrontos] = useState({})
   const [times,      setTimes]      = useState({})
+  const [overrides,  setOverrides]  = useState({})
   const [rodadaSel,  setRodadaSel]  = useState('todas')
   const [timeSel,    setTimeSel]    = useState('')
 
-  useEffect(() => onValue(ref(db, rodadasPath(idPublico)),    snap => setRodadas(snap.val()    ?? {})), [idPublico])
-  useEffect(() => onValue(ref(db, confrontosPath(idPublico)), snap => setConfrontos(snap.val() ?? {})), [idPublico])
-  useEffect(() => onValue(ref(db, teamPath(idPublico)),       snap => setTimes(snap.val()      ?? {})), [idPublico])
+  useEffect(() => onValue(ref(db, rodadasPath(idPublico)),         snap => setRodadas(snap.val()    ?? {})), [idPublico])
+  useEffect(() => onValue(ref(db, confrontosPath(idPublico)),      snap => setConfrontos(snap.val() ?? {})), [idPublico])
+  useEffect(() => onValue(ref(db, teamPath(idPublico)),            snap => setTimes(snap.val()      ?? {})), [idPublico])
+  useEffect(() => onValue(ref(db, tabelaOverridePath(idPublico)),  snap => setOverrides(snap.val()  ?? {})), [idPublico])
 
   // ── Derivados ──────────────────────────────────────────────────────────────
 
@@ -40,7 +76,19 @@ export default function Tabela() {
   const todosConfrontos = Object.values(confrontos)
 
   const teamIds = Object.keys(times)
-  const classificacao = calcularClassificacao(teamIds, todosConfrontos)
+  const classificacaoBase = calcularClassificacao(teamIds, todosConfrontos)
+  const classificacao    = aplicarOverridesDePosicao(classificacaoBase, overrides)
+
+  // Admin grava ou apaga posicaoManual de um time
+  const salvarPosicaoManual = useCallback(async (teamId, valor) => {
+    const n = parseInt(valor, 10)
+    const caminho = `${tabelaOverridePath(idPublico)}/${teamId}`
+    if (!valor || Number.isNaN(n) || n < 1) {
+      await remove(ref(db, caminho))
+    } else {
+      await set(ref(db, caminho), { posicaoManual: n })
+    }
+  }, [idPublico])
 
   // Confrontos exibidos na seção de partidas (filtrado pela rodada e time selecionados)
   const confrontosExibidos = confrontosArr
@@ -140,6 +188,7 @@ export default function Tabela() {
                 <th className="tab-th tab-th--num" title="Saldo">SG</th>
                 <th className="tab-th tab-th--pts">Pts</th>
                 <th className="tab-th tab-th--forma">Forma</th>
+                {isAdmin && <th className="tab-th" style={{ textAlign: 'center', width: 90 }} title="Forçar posição manualmente (override de admin)">Pos. manual</th>}
               </tr>
             </thead>
             <tbody>
@@ -178,6 +227,18 @@ export default function Tabela() {
                           }}
                         >⚖ DESEMPATE</span>
                       )}
+                      {entry.posicaoManual != null && (
+                        <span
+                          title={`Posição forçada manualmente pelo admin (${entry.posicaoManual}º)`}
+                          style={{
+                            marginLeft: 6, fontSize: 9, fontWeight: 700, letterSpacing: '0.08em',
+                            padding: '1px 5px', borderRadius: 3,
+                            color: 'var(--purple)', background: 'rgba(155,110,232,0.12)',
+                            border: '1px solid rgba(155,110,232,0.35)',
+                            fontFamily: "'Barlow Condensed', sans-serif",
+                          }}
+                        >✎ POS. MANUAL</span>
+                      )}
                     </td>
                     <td className="tab-td tab-td--num">{entry.jogos}</td>
                     <td className="tab-td tab-td--num tab-td--v">{entry.vitorias}</td>
@@ -198,6 +259,26 @@ export default function Tabela() {
                         ))}
                       </div>
                     </td>
+                    {isAdmin && (
+                      <td className="tab-td" style={{ textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+                        <input
+                          type="number"
+                          min={1}
+                          max={classificacao.length}
+                          placeholder="—"
+                          defaultValue={overrides[entry.id]?.posicaoManual ?? ''}
+                          onBlur={e => salvarPosicaoManual(entry.id, e.target.value)}
+                          onKeyDown={e => { if (e.key === 'Enter') e.target.blur() }}
+                          title="Digite uma posição (1-N) e dê Tab/Enter. Vazio = remove o override."
+                          style={{
+                            width: 50, textAlign: 'center',
+                            background: 'var(--bg2)', border: '1px solid var(--border2)',
+                            color: 'var(--text)', borderRadius: 4, padding: '3px 6px',
+                            fontFamily: "'Barlow', sans-serif", fontSize: 13,
+                          }}
+                        />
+                      </td>
+                    )}
                   </tr>
                 )
               })}
