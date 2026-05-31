@@ -590,7 +590,7 @@ export default function Agendamento() {
 
       {!user && !capitaoEfetivo && (
         <div className="ag-aviso" style={{ marginTop: '0.5rem', fontSize: 13 }}>
-          <a href="/login-capitao" style={{ color: 'var(--blue)' }}>Faça login como capitão</a> para marcar sua disponibilidade.
+          <a href={idPublico ? `/campeonatos/${idPublico}/login-capitao` : '/login-capitao'} style={{ color: 'var(--blue)' }}>Faça login como capitão</a> para marcar sua disponibilidade.
         </div>
       )}
     </div>
