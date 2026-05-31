@@ -25,6 +25,15 @@ function gerarSessaoId() {
 
 const SCRIM_PATH = (uid) => `scrims/${uid}`  // /scrims/{criadorUid}/{sessaoId}
 
+// serverTimestamp() retorna {'.sv': 'timestamp'} localmente antes de resolver no servidor.
+// Só converte pra Date quando for um número válido.
+function formatarData(ts) {
+  if (!ts || typeof ts !== 'number') return null
+  const d = new Date(ts)
+  if (isNaN(d.getTime())) return null
+  return d.toLocaleDateString('pt-BR')
+}
+
 export default function ShowmatchCapitaoHost() {
   const { user, capitao, isAdmin, loading: authLoading } = useAuth()
   const { idPublico } = useCampeonato()
@@ -116,7 +125,7 @@ export default function ShowmatchCapitaoHost() {
         await set(ref(db, `scrims/${timeBUid}/historico/${sessaoId}`), {
           sessaoNome:  formNome.trim(),
           campeonatoId: idPublico,
-          dono:        { uid, nome: capitao?.capitaoNome ?? '' },
+          dono:        { uid, nome: capitao?.capitaoNome ?? capitao?.nome ?? user?.email?.split('@')[0] ?? '' },
           meuTime:     { nome: tB?.nome ?? 'Time B', cor: tB?.cor ?? '#e05555' },
           adversario:  { nome: tA?.nome ?? 'Time A', cor: tA?.cor ?? '#4a9eda' },
           criadoEm:    serverTimestamp(),
@@ -276,7 +285,7 @@ export default function ShowmatchCapitaoHost() {
                         · <strong style={{ color: s.timeA?.cor }}>{vA}</strong>–<strong style={{ color: s.timeB?.cor }}>{vB}</strong> ({totalJogadas} partida{totalJogadas > 1 ? 's' : ''})
                       </span>
                     )}
-                    <span>· {new Date(s.criadoEm).toLocaleDateString('pt-BR')}</span>
+                    {formatarData(s.criadoEm) && <span>· {formatarData(s.criadoEm)}</span>}
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
@@ -328,8 +337,8 @@ export default function ShowmatchCapitaoHost() {
                           {total > 0 && (
                             <span>· <strong style={{ color: h.meuTime?.cor }}>{meuV}</strong>–<strong style={{ color: h.adversario?.cor }}>{advV}</strong> ({total} partida{total > 1 ? 's' : ''})</span>
                           )}
-                          {h.criadoEm && <span>· {new Date(h.criadoEm).toLocaleDateString('pt-BR')}</span>}
-                          <span style={{ opacity: 0.6 }}>· organizado por {h.dono?.nome}</span>
+                          {formatarData(h.criadoEm) && <span>· {formatarData(h.criadoEm)}</span>}
+                          {h.dono?.nome && <span style={{ opacity: 0.6 }}>· org. por {h.dono.nome}</span>}
                         </div>
                       </div>
                       {/* Partidas resumidas */}
