@@ -1,7 +1,7 @@
 import { NavLink, useNavigate, useMatch, Link, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useEffect, useState } from 'react'
-import { useAuth } from '../hooks/useAuth'
+import { useEffectiveAuth as useAuth } from '../hooks/useEffectiveAuth'
 import { useModules, useConteudo } from '../hooks/useConfig'
 import { logout } from '../firebase/auth'
 import './Navbar.css'

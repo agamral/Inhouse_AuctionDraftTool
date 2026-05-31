@@ -9,7 +9,7 @@
 import { useState, useEffect } from 'react'
 import { ref, onValue, set, update, remove, push } from 'firebase/database'
 import { db } from '../firebase/database'
-import { useAuth } from '../hooks/useAuth'
+import { useEffectiveAuth as useAuth } from '../hooks/useEffectiveAuth'
 import { useCampeonato } from '../contexts/CampeonatoContext'
 import { teamPath } from '../utils/campeonatoPaths'
 import PaginaInativa from '../components/PaginaInativa'
