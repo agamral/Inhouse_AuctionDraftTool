@@ -344,12 +344,14 @@ function SessaoDetalhe({ sessaoId, sessao, uid, campeonatoId, teams, scrimPath, 
         </div>
       )}
 
-      {/* Criar próxima partida */}
+      {/* Criar próxima partida — alinhado à esquerda */}
       {sessao.status === 'ativa' && (
-        <button className="btn primary" style={{ fontSize: 14, padding: '10px 0', alignSelf: 'flex-start', minWidth: 200 }}
-          onClick={criarPartida} disabled={criandoPartida}>
-          {criandoPartida ? 'Criando...' : `+ Partida ${proximoNum}`}
-        </button>
+        <div>
+          <button className="btn primary" style={{ fontSize: 13, padding: '8px 20px' }}
+            onClick={criarPartida} disabled={criandoPartida}>
+            {criandoPartida ? 'Criando...' : `+ Partida ${proximoNum}`}
+          </button>
+        </div>
       )}
     </div>
   )
@@ -528,6 +530,14 @@ function PartidaCard({ num, partida: p, sessao, sessaoId, scrimPath, campeonatoI
   const statusCor   = { configurando: 'var(--text3)', lobby: 'var(--gold)', em_draft: 'var(--blue)', encerrada: 'var(--green)' }
   const statusLabel = { configurando: 'Configurando', lobby: 'Aguardando capitães', em_draft: 'Em andamento', encerrada: 'Encerrada' }
   const heroisFiltrados = HEROES.filter(h => !buscaBan || h.nome.toLowerCase().includes(buscaBan.toLowerCase()))
+  const [confirmDelete, setConfirmDelete] = useState(false)
+
+  async function deletarPartida() {
+    try {
+      await update(ref(db, scrimPath + '/' + sessaoId + '/partidas'), { [num]: null })
+      onFlash('ok', `Partida ${num} removida.`)
+    } catch (e) { onFlash('erro', `Erro: ${e.message}`) }
+  }
 
   return (
     <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 8, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -543,6 +553,20 @@ function PartidaCard({ num, partida: p, sessao, sessaoId, scrimPath, campeonatoI
           <span style={{ fontSize: 12, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, color: p.vencedor === 'A' ? sessao.timeA?.cor : sessao.timeB?.cor }}>
             ✓ {p.vencedor === 'A' ? sessao.timeA?.nome : sessao.timeB?.nome} venceu
           </span>
+        )}
+        {/* Deletar partida */}
+        {p.status !== 'em_draft' && (
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center' }}>
+            {confirmDelete ? (
+              <>
+                <span style={{ fontSize: 11, color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif" }}>Apagar partida {num}?</span>
+                <button className="btn" onClick={deletarPartida} style={{ fontSize: 11, padding: '2px 10px', background: 'var(--red)', borderColor: 'var(--red)', color: '#fff' }}>Sim</button>
+                <button className="btn" onClick={() => setConfirmDelete(false)} style={{ fontSize: 11, padding: '2px 8px' }}>Não</button>
+              </>
+            ) : (
+              <button className="btn" onClick={() => setConfirmDelete(true)} style={{ fontSize: 11, padding: '2px 8px', borderColor: 'rgba(224,85,85,0.3)', color: 'var(--text3)' }}>🗑</button>
+            )}
+          </div>
         )}
       </div>
 

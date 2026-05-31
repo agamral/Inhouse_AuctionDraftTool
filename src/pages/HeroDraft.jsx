@@ -477,7 +477,7 @@ function TurnStrip({ estado, passo, tempoRestante, mapa }) {
   if (estado.status === STATUS_DRAFT.AGUARDANDO) {
     return (
       <div className="hd-turn-strip hd-turn-strip--aguardando">
-        {mapa && <span className="hd-turn-mapa">{mapa.nome}</span>}
+        {mapa && <span className="hd-turn-mapa">{mapa.splashUrl && <img src={mapa.splashUrl} alt={mapa.nome} onError={e=>{e.target.style.display='none'}} />}{mapa.nome}</span>}
         <span>Em breve</span>
       </div>
     )
@@ -485,7 +485,7 @@ function TurnStrip({ estado, passo, tempoRestante, mapa }) {
   if (estado.status === STATUS_DRAFT.ENCERRADO || !passo) {
     return (
       <div className="hd-turn-strip hd-turn-strip--fim">
-        {mapa && <span className="hd-turn-mapa">{mapa.nome}</span>}
+        {mapa && <span className="hd-turn-mapa">{mapa.splashUrl && <img src={mapa.splashUrl} alt={mapa.nome} onError={e=>{e.target.style.display='none'}} />}{mapa.nome}</span>}
         <span>FIM</span>
       </div>
     )
