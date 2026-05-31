@@ -394,6 +394,7 @@ function PartidaCard({ num, partida: p, sessao, sessaoId, scrimPath, campeonatoI
   const [criando,      setCriando]      = useState(false)
   const [salvandoVenc, setSalvandoVenc] = useState(false)
   const [copiado,      setCopiado]      = useState(null)
+  const [editandoConfig, setEditandoConfig] = useState(false)
 
   // Hook do heroDraft (só ativo quando partida tem heroDraftId)
   const heroDraftPath = p.heroDraftId
@@ -506,6 +507,35 @@ function PartidaCard({ num, partida: p, sessao, sessaoId, scrimPath, campeonatoI
     } finally {
       setCriando(false)
     }
+  }
+
+  async function atualizarDraft() {
+    if (!p.heroDraftId) return
+    setCriando(true)
+    try {
+      const seqBase = SEQUENCIAS_SCRIM[numBans] ?? SEQUENCIAS_SCRIM[2]
+      const sequencia = primeiroTime === 'B'
+        ? seqBase.map(s => ({ ...s, time: s.time === 'A' ? 'B' : 'A' }))
+        : seqBase
+      const novoEstado = criarEstadoInicial({
+        timeA: { nome: sessao.timeA?.nome ?? 'Time A' },
+        timeB: { nome: sessao.timeB?.nome ?? 'Time B' },
+        sequencia, globalBans,
+        mapaId: mapaId || null,
+        timerConfig: {
+          ban:       Number(timerBan)  || DEFAULT_TIMER_CONFIG.ban,
+          pick:      Number(timerPick) || DEFAULT_TIMER_CONFIG.pick,
+          pickDuplo: Number(timerPickD)|| DEFAULT_TIMER_CONFIG.pickDuplo,
+        },
+      })
+      await set(ref(db, `campeonatos/${campeonatoId}/heroDraft/${p.heroDraftId}`), novoEstado)
+      await update(ref(db, partRef), {
+        mapaId: mapaId || null,
+        config: { numBans, timerBan, timerPick, timerPickD, primeiroTime, globalBans },
+      })
+      setEditandoConfig(false)
+    } catch (e) { onFlash('erro', `Erro: ${e.message}`) }
+    finally { setCriando(false) }
   }
 
   async function iniciarDraft() {
@@ -669,12 +699,81 @@ function PartidaCard({ num, partida: p, sessao, sessaoId, scrimPath, campeonatoI
             ))}
           </div>
 
+          {/* Editar config (lobby apenas — antes de iniciar) */}
+          {p.status === 'lobby' && editandoConfig && (
+            <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 8, padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 13, color: 'var(--gold2)', marginBottom: 2 }}>
+                Editar configuração (draft será recriado)
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div>
+                  <label style={labelStyle}>Mapa</label>
+                  <select value={mapaId} onChange={e => setMapaId(e.target.value)} style={inputStyle}>
+                    <option value="">— Nenhum —</option>
+                    {MAPAS.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={labelStyle}>Quem começa</label>
+                  <select value={primeiroTime} onChange={e => setPrimeiroTime(e.target.value)} style={inputStyle}>
+                    <option value="A">{sessao.timeA?.nome}</option>
+                    <option value="B">{sessao.timeB?.nome}</option>
+                  </select>
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8 }}>
+                <div><label style={labelStyle}>Bans</label>
+                  <select value={numBans} onChange={e => setNumBans(Number(e.target.value))} style={inputStyle}>
+                    <option value={0}>0</option><option value={2}>2</option><option value={3}>3</option>
+                  </select>
+                </div>
+                <div><label style={labelStyle}>Timer ban</label>
+                  <input type="number" min={0} max={120} value={timerBan} onChange={e => setTimerBan(e.target.value)} style={inputStyle} />
+                </div>
+                <div><label style={labelStyle}>Timer pick</label>
+                  <input type="number" min={0} max={120} value={timerPick} onChange={e => setTimerPick(e.target.value)} style={inputStyle} />
+                </div>
+                <div><label style={labelStyle}>Pick duplo</label>
+                  <input type="number" min={0} max={120} value={timerPickD} onChange={e => setTimerPickD(e.target.value)} style={inputStyle} />
+                </div>
+              </div>
+              <div>
+                <label style={labelStyle}>Bans globais ({globalBans.length})</label>
+                <input value={buscaBan} onChange={e => setBuscaBan(e.target.value)} placeholder="Buscar herói..." style={{ ...inputStyle, marginBottom: 6 }} />
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, maxHeight: 100, overflowY: 'auto' }}>
+                  {heroisFiltrados.map(h => (
+                    <button key={h.id} onClick={() => toggleBan(h.id)}
+                      style={{ padding: '2px 7px', borderRadius: 3, fontSize: 10, cursor: 'pointer', fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600,
+                        background: globalBans.includes(h.id) ? 'rgba(224,85,85,0.18)' : 'var(--bg3)',
+                        border: `1px solid ${globalBans.includes(h.id) ? 'rgba(224,85,85,0.5)' : 'var(--border)'}`,
+                        color: globalBans.includes(h.id) ? 'var(--red)' : 'var(--text2)' }}>
+                      {globalBans.includes(h.id) ? '✕ ' : ''}{h.nome}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="btn primary" style={{ fontSize: 12, padding: '6px 16px' }} disabled={criando} onClick={atualizarDraft}>
+                  {criando ? 'Salvando...' : '✓ Aplicar mudanças'}
+                </button>
+                <button className="btn" style={{ fontSize: 12, padding: '6px 12px' }} onClick={() => setEditandoConfig(false)}>
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Botão Iniciar (lobby) */}
           {p.status === 'lobby' && (
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
               <button className="btn primary" style={{ fontSize: 13, padding: '7px 18px' }} onClick={iniciarDraft}>
                 ▶ Iniciar draft
               </button>
+              {!editandoConfig && (
+                <button className="btn" style={{ fontSize: 12, padding: '6px 12px', color: 'var(--text2)' }} onClick={() => setEditandoConfig(true)}>
+                  ✎ Editar configuração
+                </button>
+              )}
               <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: "'Barlow Condensed', sans-serif" }}>
                 {(!confA || !confB) && '— aguardando confirmação dos capitães'}
               </span>
