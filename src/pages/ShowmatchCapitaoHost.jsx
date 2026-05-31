@@ -427,7 +427,7 @@ function PartidaCard({ num, partida: p, sessao, sessaoId, scrimPath, campeonatoI
   const urlB    = p.heroDraftId ? `${urlBase}?sessao=${p.heroDraftId}&time=B` : null
 
   // Bloco 3: detecta quando o draft encerrou e salva resumo na partida
-  const jaFinalizouRef = { current: false }
+  const jaFinalizouRef = useRef(false)
   useEffect(() => {
     if (p.status !== 'em_draft') return
     if (draftEstado?.status !== STATUS_DRAFT.ENCERRADO) return
