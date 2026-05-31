@@ -230,6 +230,11 @@ export default function Navbar() {
                 {t('nav.agenda')}
               </NavLink>
             )}
+            {(isAdmin || capitao) && (
+              <NavLink to={`${base}/scrim`} className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                Scrims
+              </NavLink>
+            )}
             {modules.espectadorAtivo && (
               <NavLink to={`${base}/espectador`} className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
                 {t('nav.espectador')}
