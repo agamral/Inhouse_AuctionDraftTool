@@ -130,6 +130,12 @@ export default function Navbar() {
   const { t, i18n } = useTranslation()
   const { user, isAdmin, isSuperAdmin, adminCampeonatoIds, capitao } = useAuth()
   const { isAdmin: realIsAdmin } = useRealAuth()  // pra manter admin area visível no modo viewAs
+
+  // Capitão via PIN session (link ?cap=ID&pin=PIN) — não usa Firebase Auth
+  const pinSession = (() => {
+    try { return JSON.parse(sessionStorage.getItem('captainSession')) } catch { return null }
+  })()
+  const isCapitao = !!(capitao || pinSession?.captainId)
   const { viewAs } = useViewAs()
   const modules = useModules()
   const conteudo = useConteudo()
@@ -230,7 +236,7 @@ export default function Navbar() {
                 {t('nav.agenda')}
               </NavLink>
             )}
-            {(isAdmin || capitao) && (
+            {(isAdmin || isCapitao) && (
               <NavLink to={`${base}/scrim`} className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
                 Scrims
               </NavLink>
