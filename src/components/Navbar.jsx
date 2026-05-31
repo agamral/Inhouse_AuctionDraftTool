@@ -129,13 +129,23 @@ function MenuItem({ label, active, color, onClick }) {
 export default function Navbar() {
   const { t, i18n } = useTranslation()
   const { user, isAdmin, isSuperAdmin, adminCampeonatoIds, capitao } = useAuth()
-  const { isAdmin: realIsAdmin } = useRealAuth()  // pra manter admin area visível no modo viewAs
+  // realAuth usado direto pra não depender do ciclo async do useEffectiveAuth
+  const { capitao: realCapitao, isAdmin: realIsAdmin } = useRealAuth()
 
   // Capitão via PIN session (link ?cap=ID&pin=PIN) — não usa Firebase Auth
   const pinSession = (() => {
     try { return JSON.parse(sessionStorage.getItem('captainSession')) } catch { return null }
   })()
-  const isCapitao = !!(capitao || pinSession?.captainId)
+  // Três formas de ser capitão:
+  //   1. capitao/realCapitao: Firebase Auth + time vinculado no DB
+  //   2. pinSession: link personalizado (sessionStorage)
+  //   3. email @copa.inhouse: conta criada pelo admin, ainda buscando time no DB
+  const isCapitao = !!(
+    capitao ||
+    realCapitao ||
+    pinSession?.captainId ||
+    (user && user.email?.endsWith('@copa.inhouse'))
+  )
   const { viewAs } = useViewAs()
   const modules = useModules()
   const conteudo = useConteudo()
