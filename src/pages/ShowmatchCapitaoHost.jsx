@@ -49,8 +49,9 @@ export default function ShowmatchCapitaoHost() {
   const [teams,    setTeams]    = useState({})
   const [sessoes,  setSessoes]  = useState({})
   const [historico, setHistorico] = useState({})  // sessões onde fui convidado
-  const [view,     setView]     = useState('lista')   // 'lista' | 'criar' | 'sessao'
-  const [sessaoSel, setSessaoSel] = useState(null)    // id da sessão em foco
+  const [view,        setView]       = useState('lista')   // 'lista' | 'criar' | 'sessao' | 'historico'
+  const [sessaoSel,   setSessaoSel]  = useState(null)    // id da sessão em foco
+  const [historicoSel, setHistoricoSel] = useState(null) // id do histórico em foco
   const [feedback, setFeedback] = useState(null)
   const [salvando, setSalvando] = useState(false)
 
@@ -179,9 +180,9 @@ export default function ShowmatchCapitaoHost() {
             + Nova sessão
           </button>
         )}
-        {(view === 'criar' || view === 'sessao') && (
+        {(view === 'criar' || view === 'sessao' || view === 'historico') && (
           <button className="btn" style={{ fontSize: 13, padding: '8px 14px' }}
-            onClick={() => { setView('lista'); setSessaoSel(null) }}>
+            onClick={() => { setView('lista'); setSessaoSel(null); setHistoricoSel(null) }}>
             ← Voltar
           </button>
         )}
@@ -341,19 +342,25 @@ export default function ShowmatchCapitaoHost() {
                           {h.dono?.nome && <span style={{ opacity: 0.6 }}>· org. por {h.dono.nome}</span>}
                         </div>
                       </div>
-                      {/* Partidas resumidas */}
-                      {pArr.length > 0 && (
-                        <div style={{ display: 'flex', gap: 4 }}>
-                          {pArr.map(([num, p]) => (
-                            <div key={num} title={`Partida ${num}${p.mapaId ? ' · ' + p.mapaId : ''}${p.vencedor ? ' · ' + (p.vencedor === 'B' ? h.meuTime?.nome : h.adversario?.nome) + ' venceu' : ''}`}
-                              style={{ width: 28, height: 28, borderRadius: 4, border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700,
-                                background: p.vencedor === 'B' ? 'rgba(76,175,125,0.15)' : p.vencedor === 'A' ? 'rgba(224,85,85,0.12)' : 'var(--bg2)',
-                                color: p.vencedor === 'B' ? 'var(--green)' : p.vencedor === 'A' ? 'var(--red)' : 'var(--text3)' }}>
-                              {p.vencedor === 'B' ? 'V' : p.vencedor === 'A' ? 'D' : num}
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                      {/* Partidas resumidas + botão de detalhe */}
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        {pArr.length > 0 && (
+                          <div style={{ display: 'flex', gap: 4 }}>
+                            {pArr.map(([num, p]) => (
+                              <div key={num} title={`Partida ${num}${p.mapaId ? ' · ' + p.mapaId : ''}${p.vencedor ? ' · ' + (p.vencedor === 'B' ? h.meuTime?.nome : h.adversario?.nome) + ' venceu' : ''}`}
+                                style={{ width: 28, height: 28, borderRadius: 4, border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700,
+                                  background: p.vencedor === 'B' ? 'rgba(76,175,125,0.15)' : p.vencedor === 'A' ? 'rgba(224,85,85,0.12)' : 'var(--bg2)',
+                                  color: p.vencedor === 'B' ? 'var(--green)' : p.vencedor === 'A' ? 'var(--red)' : 'var(--text3)' }}>
+                                {p.vencedor === 'B' ? 'V' : p.vencedor === 'A' ? 'D' : num}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <button className="btn" style={{ fontSize: 12, padding: '3px 10px' }}
+                          onClick={() => { setHistoricoSel(id); setView('historico') }}>
+                          Ver detalhes
+                        </button>
+                      </div>
                     </div>
                   )
                 })
@@ -374,6 +381,11 @@ export default function ShowmatchCapitaoHost() {
           scrimPath={SCRIM_PATH(uid)}
           onFlash={flash}
         />
+      )}
+
+      {/* ── Detalhe do histórico (convidado) ─────────────────────────────── */}
+      {view === 'historico' && historicoSel && historico[historicoSel] && (
+        <HistoricoDetalhe entry={historico[historicoSel]} />
       )}
     </main>
   )
@@ -467,6 +479,63 @@ const SEQUENCIAS_SCRIM = {
 
 function gerarHeroDraftId() {
   return `scrim-draft-${Date.now().toString(36).slice(-5)}-${Math.random().toString(36).slice(2, 5)}`
+}
+
+// ── Detalhe read-only do histórico (perspectiva do convidado) ────────────────
+function HistoricoDetalhe({ entry: h }) {
+  const partidasArr = Object.entries(h.partidas ?? {}).sort(([a], [b]) => Number(a) - Number(b))
+  const meuV  = partidasArr.filter(([, p]) => p.vencedor === 'B').length
+  const advV  = partidasArr.filter(([, p]) => p.vencedor === 'A').length
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* Header da sessão */}
+      <div style={{ background: 'var(--bg3)', border: '1px solid var(--border2)', borderRadius: 10, padding: '14px 18px' }}>
+        <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 18, marginBottom: 4 }}>
+          {h.sessaoNome}
+        </div>
+        <div style={{ display: 'flex', gap: 16, fontSize: 13, fontFamily: "'Barlow Condensed', sans-serif", flexWrap: 'wrap' }}>
+          <span style={{ color: h.meuTime?.cor }}>⚑ {h.meuTime?.nome}</span>
+          <span style={{ color: 'var(--text3)' }}>vs</span>
+          <span style={{ color: h.adversario?.cor }}>{h.adversario?.nome}</span>
+          {(meuV > 0 || advV > 0) && (
+            <span style={{ color: 'var(--text2)' }}>
+              — <strong style={{ color: h.meuTime?.cor }}>{meuV}</strong>×<strong style={{ color: h.adversario?.cor }}>{advV}</strong>
+            </span>
+          )}
+          {h.dono?.nome && <span style={{ color: 'var(--text3)', opacity: 0.7 }}>· org. por {h.dono.nome}</span>}
+          {formatarData(h.criadoEm) && <span style={{ color: 'var(--text3)', opacity: 0.7 }}>· {formatarData(h.criadoEm)}</span>}
+        </div>
+      </div>
+
+      {/* Partidas */}
+      {partidasArr.length === 0 && (
+        <p style={{ color: 'var(--text3)', fontSize: 13 }}>Nenhuma partida registrada ainda.</p>
+      )}
+      {partidasArr.map(([num, p]) => {
+        const venceuMeu = p.vencedor === 'B'
+        const venceuAdv = p.vencedor === 'A'
+        return (
+          <div key={num} style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 8, padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {/* Header partida */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 15 }}>Partida {num}</span>
+              {p.mapaId && <span style={{ fontSize: 11, color: 'var(--gold)', fontFamily: "'Barlow Condensed', sans-serif" }}>🗺 {p.mapaId}</span>}
+              {p.vencedor ? (
+                <span style={{ fontSize: 12, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, color: venceuMeu ? 'var(--green)' : 'var(--red)' }}>
+                  {venceuMeu ? `✓ ${h.meuTime?.nome} venceu` : `✓ ${h.adversario?.nome} venceu`}
+                </span>
+              ) : (
+                <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: "'Barlow Condensed', sans-serif" }}>Resultado pendente</span>
+              )}
+            </div>
+            {/* Picks/bans */}
+            {p.draft && <DraftResumo draft={p.draft} sessao={{ timeA: h.adversario, timeB: h.meuTime }} />}
+          </div>
+        )
+      })}
+    </div>
+  )
 }
 
 // ── Card de partida individual ────────────────────────────────────────────────
