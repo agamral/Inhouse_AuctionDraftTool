@@ -7,24 +7,23 @@
  * histórico de sessões passadas. Não afeta dados do campeonato real.
  */
 import { useState, useEffect } from 'react'
-import { ref, onValue, set, update, remove, push } from 'firebase/database'
+import { ref, onValue, set, update, remove } from 'firebase/database'
 import { db } from '../firebase/database'
 import { useEffectiveAuth as useAuth } from '../hooks/useEffectiveAuth'
 import { useCampeonato } from '../contexts/CampeonatoContext'
 import { teamPath } from '../utils/campeonatoPaths'
 import PaginaInativa from '../components/PaginaInativa'
+import { MAPAS } from '../utils/mapPool'
+import { HEROES } from '../utils/heroPool'
+import { criarEstadoInicial, SEQUENCIA_PADRAO, DEFAULT_TIMER_CONFIG } from '../utils/heroDraft'
+import { useHeroDraft } from '../hooks/useHeroDraft'
+import { useServerTimeOffset } from '../hooks/useServerTimeOffset'
 
 function gerarSessaoId() {
   return `scrim-${Date.now().toString(36).slice(-5)}-${Math.random().toString(36).slice(2, 5)}`
 }
 
 const SCRIM_PATH = (uid) => `scrims/${uid}`  // /scrims/{criadorUid}/{sessaoId}
-
-const inputStyle = {
-  background: 'var(--bg)', border: '1px solid var(--border2)', borderRadius: 6,
-  padding: '8px 12px', color: 'var(--text)', fontFamily: "'Barlow', sans-serif",
-  fontSize: 13, outline: 'none', width: '100%', boxSizing: 'border-box',
-}
 
 export default function ShowmatchCapitaoHost() {
   const { user, capitao, isAdmin } = useAuth()
@@ -356,91 +355,303 @@ function SessaoDetalhe({ sessaoId, sessao, uid, campeonatoId, teams, scrimPath, 
   )
 }
 
+// Sequências de pick/ban (igual ao ShowmatchAdmin)
+const SEQUENCIAS_SCRIM = {
+  0: [
+    { acao: 'pick', time: 'A', quantidade: 1 }, { acao: 'pick', time: 'B', quantidade: 2 },
+    { acao: 'pick', time: 'A', quantidade: 2 }, { acao: 'pick', time: 'B', quantidade: 2 },
+    { acao: 'pick', time: 'A', quantidade: 2 }, { acao: 'pick', time: 'B', quantidade: 1 },
+  ],
+  2: [
+    { acao: 'ban',  time: 'A', quantidade: 1 }, { acao: 'ban',  time: 'B', quantidade: 1 },
+    { acao: 'ban',  time: 'A', quantidade: 1 }, { acao: 'ban',  time: 'B', quantidade: 1 },
+    { acao: 'pick', time: 'A', quantidade: 1 }, { acao: 'pick', time: 'B', quantidade: 2 },
+    { acao: 'pick', time: 'A', quantidade: 2 }, { acao: 'pick', time: 'B', quantidade: 2 },
+    { acao: 'pick', time: 'A', quantidade: 2 }, { acao: 'pick', time: 'B', quantidade: 1 },
+  ],
+  3: SEQUENCIA_PADRAO,
+}
+
+function gerarHeroDraftId() {
+  return `scrim-draft-${Date.now().toString(36).slice(-5)}-${Math.random().toString(36).slice(2, 5)}`
+}
+
 // ── Card de partida individual ────────────────────────────────────────────────
 function PartidaCard({ num, partida: p, sessao, sessaoId, scrimPath, campeonatoId, onFlash }) {
-  const MAPAS_LISTA = ['Alterac Pass', 'Battlefield of Eternity', 'Braxis Holdout', 'Cursed Hollow', 'Dragon Shire', 'Garden of Terror', 'Hanamura Temple', 'Infernal Shrines', 'Sky Temple', 'Tomb of the Spider Queen', 'Towers of Doom', 'Volskaya Foundry', 'Warhead Junction']
-  const [salvandoVencedor, setSalvandoVencedor] = useState(false)
+  const timeOffset = useServerTimeOffset()
 
-  const sessaoRef = `${scrimPath}/${sessaoId}/partidas/${num}`
+  // ── Config da partida (fase 'configurando') ───────────────────────────────
+  const [mapaId,       setMapaId]       = useState(p.mapaId ?? '')
+  const [numBans,      setNumBans]      = useState(p.config?.numBans ?? 2)
+  const [timerBan,     setTimerBan]     = useState(p.config?.timerBan     ?? DEFAULT_TIMER_CONFIG.ban)
+  const [timerPick,    setTimerPick]    = useState(p.config?.timerPick    ?? DEFAULT_TIMER_CONFIG.pick)
+  const [timerPickD,   setTimerPickD]   = useState(p.config?.timerPickD   ?? DEFAULT_TIMER_CONFIG.pickDuplo)
+  const [primeiroTime, setPrimeiroTime] = useState(p.config?.primeiroTime ?? 'A')
+  const [globalBans,   setGlobalBans]   = useState(p.config?.globalBans   ?? [])
+  const [buscaBan,     setBuscaBan]     = useState('')
+  const [criando,      setCriando]      = useState(false)
+  const [salvandoVenc, setSalvandoVenc] = useState(false)
+  const [copiado,      setCopiado]      = useState(null)
 
-  async function registrarVencedor(quem) {
-    setSalvandoVencedor(true)
+  // Hook do heroDraft (só ativo quando partida tem heroDraftId)
+  const heroDraftPath = p.heroDraftId
+    ? `campeonatos/${campeonatoId}/heroDraft/${p.heroDraftId}`
+    : null
+  const { estado: draftEstado, iniciar, iniciarComContagem } = useHeroDraft(
+    null, 'admin', heroDraftPath
+  )
+  const liveDraftRef = { current: { draftEstado, iniciar } }
+
+  const partRef = `${scrimPath}/${sessaoId}/partidas/${num}`
+  const urlBase = `${window.location.origin}/campeonatos/${campeonatoId}/hero-draft`
+  const urlA    = p.heroDraftId ? `${urlBase}?sessao=${p.heroDraftId}&time=A` : null
+  const urlB    = p.heroDraftId ? `${urlBase}?sessao=${p.heroDraftId}&time=B` : null
+
+  // Presença dos capitães no lobby
+  const presA = draftEstado?.presence?.A?.onlineEm
+  const presB = draftEstado?.presence?.B?.onlineEm
+  const confA = draftEstado?.presence?.A?.confirmado
+  const confB = draftEstado?.presence?.B?.confirmado
+
+  function toggleBan(heroId) {
+    setGlobalBans(prev => prev.includes(heroId) ? prev.filter(h => h !== heroId) : [...prev, heroId])
+  }
+
+  function copiar(url, key) {
+    navigator.clipboard.writeText(url).then(() => {
+      setCopiado(key)
+      setTimeout(() => setCopiado(null), 2000)
+    })
+  }
+
+  async function criarDraft() {
+    setCriando(true)
     try {
-      await update(ref(db, sessaoRef), { vencedor: quem, status: 'encerrada' })
-      onFlash('ok', `${quem === 'A' ? sessao.timeA?.nome : sessao.timeB?.nome} venceu a partida ${num}!`)
+      const heroDraftId = gerarHeroDraftId()
+      const seqBase = SEQUENCIAS_SCRIM[numBans] ?? SEQUENCIAS_SCRIM[2]
+      const sequencia = primeiroTime === 'B'
+        ? seqBase.map(s => ({ ...s, time: s.time === 'A' ? 'B' : 'A' }))
+        : seqBase
+      const estado = criarEstadoInicial({
+        timeA: { nome: sessao.timeA?.nome ?? 'Time A' },
+        timeB: { nome: sessao.timeB?.nome ?? 'Time B' },
+        sequencia, globalBans,
+        mapaId: mapaId || null,
+        timerConfig: {
+          ban:       Number(timerBan)  || DEFAULT_TIMER_CONFIG.ban,
+          pick:      Number(timerPick) || DEFAULT_TIMER_CONFIG.pick,
+          pickDuplo: Number(timerPickD)|| DEFAULT_TIMER_CONFIG.pickDuplo,
+        },
+      })
+      // HeroDraft fica no namespace do campeonato (não no showmatch)
+      // pra reutilizar o fluxo de confronto oficial (sala de espera, etc.)
+      await set(ref(db, `campeonatos/${campeonatoId}/heroDraft/${heroDraftId}`), estado)
+      await update(ref(db, partRef), {
+        status:     'lobby',
+        heroDraftId,
+        mapaId:     mapaId || null,
+        config:     { numBans, timerBan, timerPick, timerPickD, primeiroTime, globalBans },
+      })
+      onFlash('ok', 'Draft criado! Compartilhe os links com os capitães.')
     } catch (e) {
       onFlash('erro', `Erro: ${e.message}`)
     } finally {
-      setSalvandoVencedor(false)
+      setCriando(false)
     }
   }
 
-  const statusCor  = { configurando: 'var(--text3)', em_draft: 'var(--blue)', encerrada: 'var(--green)' }
-  const statusLabel = { configurando: 'Configurando', em_draft: 'Em andamento', encerrada: 'Encerrada' }
-  const heroDraftUrl = p.heroDraftId
-    ? `${window.location.origin}/campeonatos/${campeonatoId}/hero-draft?sessao=${p.heroDraftId}`
-    : null
-  const heroDraftUrlB = p.heroDraftId
-    ? `${heroDraftUrl}&time=B`
-    : null
-  const heroDraftUrlA = p.heroDraftId
-    ? `${heroDraftUrl}&time=A`
-    : null
+  async function iniciarDraft() {
+    const r = await iniciarComContagem(5)
+    if (!r?.ok) onFlash('erro', `Erro ao iniciar: ${r?.erro}`)
+    else await update(ref(db, partRef), { status: 'em_draft' })
+  }
+
+  async function encerrarPartida() {
+    await update(ref(db, partRef), { status: 'encerrada' })
+  }
+
+  async function registrarVencedor(quem) {
+    setSalvandoVenc(true)
+    try {
+      await update(ref(db, partRef), { vencedor: quem, status: 'encerrada' })
+      onFlash('ok', `${quem === 'A' ? sessao.timeA?.nome : sessao.timeB?.nome} venceu a partida ${num}!`)
+    } catch (e) { onFlash('erro', `Erro: ${e.message}`) }
+    finally { setSalvandoVenc(false) }
+  }
+
+  const statusCor   = { configurando: 'var(--text3)', lobby: 'var(--gold)', em_draft: 'var(--blue)', encerrada: 'var(--green)' }
+  const statusLabel = { configurando: 'Configurando', lobby: 'Aguardando capitães', em_draft: 'Em andamento', encerrada: 'Encerrada' }
+  const heroisFiltrados = HEROES.filter(h => !buscaBan || h.nome.toLowerCase().includes(buscaBan.toLowerCase()))
 
   return (
-    <div style={{
-      background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 8, padding: '12px 16px',
-      display: 'flex', flexDirection: 'column', gap: 10,
-    }}>
-      {/* Header da partida */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 15 }}>
-          Partida {num}
-        </span>
-        {p.mapaId && (
-          <span style={{ fontSize: 11, color: 'var(--gold)', fontFamily: "'Barlow Condensed', sans-serif" }}>
-            🗺 {p.mapaId}
-          </span>
-        )}
+    <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 8, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 15 }}>Partida {num}</span>
+        {mapaId && <span style={{ fontSize: 11, color: 'var(--gold)', fontFamily: "'Barlow Condensed', sans-serif" }}>🗺 {mapaId}</span>}
         <span style={{ fontSize: 11, fontFamily: "'Barlow Condensed', sans-serif", color: statusCor[p.status] ?? 'var(--text3)', fontWeight: 700, letterSpacing: '0.06em' }}>
           {statusLabel[p.status] ?? p.status}
         </span>
         {p.vencedor && (
-          <span style={{ fontSize: 12, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700,
-            color: p.vencedor === 'A' ? sessao.timeA?.cor : sessao.timeB?.cor }}>
+          <span style={{ fontSize: 12, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, color: p.vencedor === 'A' ? sessao.timeA?.cor : sessao.timeB?.cor }}>
             ✓ {p.vencedor === 'A' ? sessao.timeA?.nome : sessao.timeB?.nome} venceu
           </span>
         )}
       </div>
 
-      {/* Links do hero draft */}
-      {heroDraftUrl && p.status !== 'encerrada' && (
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <a href={heroDraftUrlA} target="_blank" rel="noreferrer"
-            style={{ fontSize: 11, padding: '4px 10px', borderRadius: 4, border: `1px solid ${sessao.timeA?.cor ?? 'var(--border)'}44`, color: sessao.timeA?.cor ?? 'var(--text)', fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, textDecoration: 'none', background: (sessao.timeA?.cor ?? '#4a9eda') + '14' }}>
-            Link {sessao.timeA?.nome} ↗
-          </a>
-          <a href={heroDraftUrlB} target="_blank" rel="noreferrer"
-            style={{ fontSize: 11, padding: '4px 10px', borderRadius: 4, border: `1px solid ${sessao.timeB?.cor ?? 'var(--border)'}44`, color: sessao.timeB?.cor ?? 'var(--text)', fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, textDecoration: 'none', background: (sessao.timeB?.cor ?? '#e05555') + '14' }}>
-            Link {sessao.timeB?.nome} ↗
-          </a>
+      {/* ── FASE: CONFIGURANDO ──────────────────────────────────────────────── */}
+      {p.status === 'configurando' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            {/* Mapa */}
+            <div>
+              <label style={labelStyle}>Mapa</label>
+              <select value={mapaId} onChange={e => setMapaId(e.target.value)} style={inputStyle}>
+                <option value="">— Nenhum —</option>
+                {MAPAS.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
+              </select>
+            </div>
+            {/* Quem começa */}
+            <div>
+              <label style={labelStyle}>Quem começa os picks</label>
+              <select value={primeiroTime} onChange={e => setPrimeiroTime(e.target.value)} style={inputStyle}>
+                <option value="A">{sessao.timeA?.nome} (Time A)</option>
+                <option value="B">{sessao.timeB?.nome} (Time B)</option>
+              </select>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8 }}>
+            <div>
+              <label style={labelStyle}>Bans por time</label>
+              <select value={numBans} onChange={e => setNumBans(Number(e.target.value))} style={inputStyle}>
+                <option value={0}>0 bans</option>
+                <option value={2}>2 bans</option>
+                <option value={3}>3 bans</option>
+              </select>
+            </div>
+            <div>
+              <label style={labelStyle}>Timer ban (s)</label>
+              <input type="number" min={0} max={120} value={timerBan} onChange={e => setTimerBan(e.target.value)} style={inputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle}>Timer pick (s)</label>
+              <input type="number" min={0} max={120} value={timerPick} onChange={e => setTimerPick(e.target.value)} style={inputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle}>Pick duplo (s)</label>
+              <input type="number" min={0} max={120} value={timerPickD} onChange={e => setTimerPickD(e.target.value)} style={inputStyle} />
+            </div>
+          </div>
+
+          {/* Bans globais */}
+          <div>
+            <label style={labelStyle}>Bans globais ({globalBans.length} heróis)</label>
+            <input value={buscaBan} onChange={e => setBuscaBan(e.target.value)} placeholder="Buscar herói..." style={{ ...inputStyle, marginBottom: 8 }} />
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, maxHeight: 120, overflowY: 'auto' }}>
+              {heroisFiltrados.map(h => (
+                <button key={h.id} onClick={() => toggleBan(h.id)}
+                  style={{
+                    padding: '3px 8px', borderRadius: 4, fontSize: 11, cursor: 'pointer',
+                    fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600,
+                    background: globalBans.includes(h.id) ? 'rgba(224,85,85,0.18)' : 'var(--bg2)',
+                    border: `1px solid ${globalBans.includes(h.id) ? 'rgba(224,85,85,0.5)' : 'var(--border)'}`,
+                    color: globalBans.includes(h.id) ? 'var(--red)' : 'var(--text2)',
+                  }}
+                >
+                  {globalBans.includes(h.id) ? '✕ ' : ''}{h.nome}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <button className="btn primary" style={{ fontSize: 13, padding: '8px 20px', alignSelf: 'flex-start' }}
+            disabled={criando} onClick={criarDraft}>
+            {criando ? 'Criando...' : '⚔ Criar draft e gerar links'}
+          </button>
         </div>
       )}
 
-      {/* Ações: configurar e registrar resultado */}
+      {/* ── FASE: LOBBY ─────────────────────────────────────────────────────── */}
+      {(p.status === 'lobby' || p.status === 'em_draft') && urlA && urlB && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {/* Links pra cada time */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            {[{ url: urlA, time: sessao.timeA, key: 'A' }, { url: urlB, time: sessao.timeB, key: 'B' }].map(({ url, time, key }) => (
+              <div key={key} style={{ background: 'var(--bg2)', border: `1px solid ${time?.cor ?? 'var(--border)'}33`, borderRadius: 6, padding: 10 }}>
+                <div style={{ fontSize: 11, color: time?.cor ?? 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, marginBottom: 6 }}>
+                  ⚑ {time?.nome} (Time {key})
+                  {p.status === 'lobby' && (
+                    <span style={{ marginLeft: 8, fontSize: 10, color: (key === 'A' ? confA : confB) ? 'var(--green)' : (key === 'A' ? presA : presB) ? 'var(--gold)' : 'var(--text3)' }}>
+                      {(key === 'A' ? confA : confB) ? '✓ Pronto' : (key === 'A' ? presA : presB) ? '● Online' : '○ Aguardando'}
+                    </span>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <input readOnly value={url} style={{ ...inputStyle, fontSize: 10, flex: 1, padding: '4px 8px', color: 'var(--text3)' }} onFocus={e => e.target.select()} />
+                  <button className="btn" onClick={() => copiar(url, key)}
+                    style={{ fontSize: 11, padding: '4px 10px', flexShrink: 0, color: copiado === key ? 'var(--green)' : 'var(--text2)', borderColor: copiado === key ? 'var(--green)' : 'var(--border)' }}>
+                    {copiado === key ? '✓' : '⎘'}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Botão Iniciar (lobby) */}
+          {p.status === 'lobby' && (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <button className="btn primary" style={{ fontSize: 13, padding: '7px 18px' }} onClick={iniciarDraft}>
+                ▶ Iniciar draft
+              </button>
+              <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: "'Barlow Condensed', sans-serif" }}>
+                {(!confA || !confB) && '— aguardando confirmação dos capitães'}
+              </span>
+            </div>
+          )}
+
+          {/* Em draft: link pra gerenciar */}
+          {p.status === 'em_draft' && (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <a href={`${urlBase}?sessao=${p.heroDraftId}&time=admin`} target="_blank" rel="noreferrer"
+                className="btn" style={{ fontSize: 12, padding: '6px 14px', textDecoration: 'none', color: 'var(--blue)', borderColor: 'rgba(74,158,218,0.4)' }}>
+                ⚡ Abrir painel do draft ↗
+              </a>
+              <button className="btn" style={{ fontSize: 12, padding: '6px 12px', color: 'var(--text3)' }}
+                onClick={encerrarPartida}>
+                Encerrar partida
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── FASE: ENCERRADA sem vencedor ────────────────────────────────────── */}
       {p.status === 'encerrada' && !p.vencedor && (
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <span style={{ fontSize: 12, color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif" }}>Quem venceu?</span>
-          <button className="btn" style={{ fontSize: 12, padding: '4px 12px', borderColor: sessao.timeA?.cor + '55', color: sessao.timeA?.cor }}
-            disabled={salvandoVencedor} onClick={() => registrarVencedor('A')}>
-            {sessao.timeA?.nome}
-          </button>
-          <button className="btn" style={{ fontSize: 12, padding: '4px 12px', borderColor: sessao.timeB?.cor + '55', color: sessao.timeB?.cor }}
-            disabled={salvandoVencedor} onClick={() => registrarVencedor('B')}>
-            {sessao.timeB?.nome}
-          </button>
+          {[{ key: 'A', time: sessao.timeA }, { key: 'B', time: sessao.timeB }].map(({ key, time }) => (
+            <button key={key} className="btn" disabled={salvandoVenc}
+              style={{ fontSize: 12, padding: '4px 12px', borderColor: (time?.cor ?? 'var(--border)') + '55', color: time?.cor }}
+              onClick={() => registrarVencedor(key)}>
+              {time?.nome}
+            </button>
+          ))}
         </div>
       )}
     </div>
   )
+}
+
+const labelStyle = {
+  fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
+  color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif",
+  display: 'block', marginBottom: 4,
+}
+
+const inputStyle = {
+  background: 'var(--bg)', border: '1px solid var(--border2)', borderRadius: 6,
+  padding: '7px 10px', color: 'var(--text)', fontFamily: "'Barlow', sans-serif",
+  fontSize: 13, outline: 'none', width: '100%', boxSizing: 'border-box',
 }
