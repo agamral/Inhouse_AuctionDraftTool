@@ -26,8 +26,16 @@ function gerarSessaoId() {
 const SCRIM_PATH = (uid) => `scrims/${uid}`  // /scrims/{criadorUid}/{sessaoId}
 
 export default function ShowmatchCapitaoHost() {
-  const { user, capitao, isAdmin } = useAuth()
+  const { user, capitao, isAdmin, loading: authLoading } = useAuth()
   const { idPublico } = useCampeonato()
+
+  // PIN session — capitão logado via link personalizado (?cap=ID&pin=PIN)
+  const pinSession = (() => {
+    try { return JSON.parse(sessionStorage.getItem('captainSession')) } catch { return null }
+  })()
+  // Conta @copa.inhouse = criada pelo admin, é capitão mesmo que ainda carregando
+  const isContaCapitao = !!(user?.email?.endsWith('@copa.inhouse'))
+  const temAcesso = isAdmin || !!capitao || !!pinSession?.captainId || isContaCapitao
 
   const [teams,    setTeams]    = useState({})
   const [sessoes,  setSessoes]  = useState({})
@@ -138,7 +146,9 @@ export default function ShowmatchCapitaoHost() {
   }
 
   // Guard
-  if (!isAdmin && !capitao) {
+  // Aguarda auth resolver antes de bloquear (evita flash de "acesso restrito")
+  if (authLoading) return <main className="page"><p style={{ color: 'var(--text2)' }}>Carregando...</p></main>
+  if (!temAcesso) {
     return <PaginaInativa icone="⚔️" titulo="Acesso restrito" descricao="Esta área é exclusiva para capitães de times." />
   }
 
