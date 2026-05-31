@@ -603,23 +603,12 @@ function PartidaCard({ num, partida: p, sessao, sessaoId, scrimPath, campeonatoI
       {/* ── FASE: CONFIGURANDO ──────────────────────────────────────────────── */}
       {p.status === 'configurando' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            {/* Mapa */}
-            <div>
-              <label style={labelStyle}>Mapa</label>
-              <select value={mapaId} onChange={e => setMapaId(e.target.value)} style={inputStyle}>
-                <option value="">— Nenhum —</option>
-                {MAPAS.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
-              </select>
-            </div>
-            {/* Quem começa */}
-            <div>
-              <label style={labelStyle}>Quem começa os picks</label>
-              <select value={primeiroTime} onChange={e => setPrimeiroTime(e.target.value)} style={inputStyle}>
-                <option value="A">{sessao.timeA?.nome} (Time A)</option>
-                <option value="B">{sessao.timeB?.nome} (Time B)</option>
-              </select>
-            </div>
+          <div>
+            <label style={labelStyle}>Quem começa os picks</label>
+            <select value={primeiroTime} onChange={e => setPrimeiroTime(e.target.value)} style={{ ...inputStyle, maxWidth: 260 }}>
+              <option value="A">{sessao.timeA?.nome} (Time A)</option>
+              <option value="B">{sessao.timeB?.nome} (Time B)</option>
+            </select>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8 }}>
@@ -645,22 +634,52 @@ function PartidaCard({ num, partida: p, sessao, sessaoId, scrimPath, campeonatoI
             </div>
           </div>
 
-          {/* Bans globais */}
+          {/* Mapa — grid visual */}
+          <div>
+            <label style={labelStyle}>Mapa</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              <button onClick={() => setMapaId('')}
+                style={{ padding: '4px 10px', borderRadius: 4, fontSize: 11, cursor: 'pointer', fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600,
+                  border: `1px solid ${!mapaId ? 'var(--blue)' : 'var(--border)'}`,
+                  background: !mapaId ? 'rgba(74,158,218,0.12)' : 'var(--bg2)',
+                  color: !mapaId ? 'var(--blue)' : 'var(--text2)' }}>
+                — Nenhum
+              </button>
+              {MAPAS.map(m => (
+                <button key={m.id} onClick={() => setMapaId(m.id)}
+                  style={{ padding: 0, borderRadius: 4, cursor: 'pointer', overflow: 'hidden', width: 90,
+                    border: `2px solid ${mapaId === m.id ? 'var(--gold)' : 'var(--border)'}`,
+                    background: 'var(--bg3)',
+                    boxShadow: mapaId === m.id ? '0 0 8px rgba(201,168,76,0.4)' : 'none' }}>
+                  <img src={m.splashUrl} alt={m.nome} onError={e => { e.target.style.display = 'none' }}
+                    style={{ width: '100%', height: 46, objectFit: 'cover', display: 'block' }} />
+                  <div style={{ padding: '2px 4px', fontSize: 9, textAlign: 'center', fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700,
+                    color: mapaId === m.id ? 'var(--gold)' : 'var(--text2)', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {m.nome}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Bans globais — botões com ícone */}
           <div>
             <label style={labelStyle}>Bans globais ({globalBans.length} heróis)</label>
             <input value={buscaBan} onChange={e => setBuscaBan(e.target.value)} placeholder="Buscar herói..." style={{ ...inputStyle, marginBottom: 8 }} />
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, maxHeight: 120, overflowY: 'auto' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, maxHeight: 160, overflowY: 'auto', padding: 8, background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 6 }}>
               {heroisFiltrados.map(h => (
                 <button key={h.id} onClick={() => toggleBan(h.id)}
                   style={{
+                    display: 'flex', alignItems: 'center', gap: 4,
                     padding: '3px 8px', borderRadius: 4, fontSize: 11, cursor: 'pointer',
                     fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600,
-                    background: globalBans.includes(h.id) ? 'rgba(224,85,85,0.18)' : 'var(--bg2)',
+                    background: globalBans.includes(h.id) ? 'rgba(224,85,85,0.18)' : 'var(--bg3)',
                     border: `1px solid ${globalBans.includes(h.id) ? 'rgba(224,85,85,0.5)' : 'var(--border)'}`,
                     color: globalBans.includes(h.id) ? 'var(--red)' : 'var(--text2)',
                   }}
                 >
-                  {globalBans.includes(h.id) ? '✕ ' : ''}{h.nome}
+                  <img src={h.iconeUrl} alt="" style={{ width: 16, height: 16, borderRadius: 2, objectFit: 'cover' }} onError={e => { e.target.style.display = 'none' }} />
+                  {h.nome}{globalBans.includes(h.id) ? ' ✕' : ''}
                 </button>
               ))}
             </div>
@@ -705,21 +724,36 @@ function PartidaCard({ num, partida: p, sessao, sessaoId, scrimPath, campeonatoI
               <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 13, color: 'var(--gold2)', marginBottom: 2 }}>
                 Editar configuração (draft será recriado)
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <div>
-                  <label style={labelStyle}>Mapa</label>
-                  <select value={mapaId} onChange={e => setMapaId(e.target.value)} style={inputStyle}>
-                    <option value="">— Nenhum —</option>
-                    {MAPAS.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
-                  </select>
+              <div>
+                <label style={labelStyle}>Mapa</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                  <button onClick={() => setMapaId('')}
+                    style={{ padding: '3px 9px', borderRadius: 4, fontSize: 10, cursor: 'pointer', fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600,
+                      border: `1px solid ${!mapaId ? 'var(--blue)' : 'var(--border)'}`,
+                      background: !mapaId ? 'rgba(74,158,218,0.12)' : 'var(--bg3)',
+                      color: !mapaId ? 'var(--blue)' : 'var(--text2)' }}>— Nenhum
+                  </button>
+                  {MAPAS.map(m => (
+                    <button key={m.id} onClick={() => setMapaId(m.id)}
+                      style={{ padding: 0, borderRadius: 3, cursor: 'pointer', overflow: 'hidden', width: 72,
+                        border: `2px solid ${mapaId === m.id ? 'var(--gold)' : 'var(--border)'}`,
+                        background: 'var(--bg3)' }}>
+                      <img src={m.splashUrl} alt={m.nome} onError={e => { e.target.style.display = 'none' }}
+                        style={{ width: '100%', height: 36, objectFit: 'cover', display: 'block' }} />
+                      <div style={{ padding: '1px 3px', fontSize: 8, textAlign: 'center', fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700,
+                        color: mapaId === m.id ? 'var(--gold)' : 'var(--text2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {m.nome}
+                      </div>
+                    </button>
+                  ))}
                 </div>
-                <div>
-                  <label style={labelStyle}>Quem começa</label>
-                  <select value={primeiroTime} onChange={e => setPrimeiroTime(e.target.value)} style={inputStyle}>
-                    <option value="A">{sessao.timeA?.nome}</option>
-                    <option value="B">{sessao.timeB?.nome}</option>
-                  </select>
-                </div>
+              </div>
+              <div>
+                <label style={labelStyle}>Quem começa</label>
+                <select value={primeiroTime} onChange={e => setPrimeiroTime(e.target.value)} style={{ ...inputStyle, maxWidth: 240 }}>
+                  <option value="A">{sessao.timeA?.nome}</option>
+                  <option value="B">{sessao.timeB?.nome}</option>
+                </select>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8 }}>
                 <div><label style={labelStyle}>Bans</label>
@@ -740,14 +774,15 @@ function PartidaCard({ num, partida: p, sessao, sessaoId, scrimPath, campeonatoI
               <div>
                 <label style={labelStyle}>Bans globais ({globalBans.length})</label>
                 <input value={buscaBan} onChange={e => setBuscaBan(e.target.value)} placeholder="Buscar herói..." style={{ ...inputStyle, marginBottom: 6 }} />
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, maxHeight: 100, overflowY: 'auto' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, maxHeight: 120, overflowY: 'auto', padding: 6, background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 5 }}>
                   {heroisFiltrados.map(h => (
                     <button key={h.id} onClick={() => toggleBan(h.id)}
-                      style={{ padding: '2px 7px', borderRadius: 3, fontSize: 10, cursor: 'pointer', fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600,
-                        background: globalBans.includes(h.id) ? 'rgba(224,85,85,0.18)' : 'var(--bg3)',
+                      style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '2px 7px', borderRadius: 3, fontSize: 10, cursor: 'pointer', fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600,
+                        background: globalBans.includes(h.id) ? 'rgba(224,85,85,0.18)' : 'var(--bg2)',
                         border: `1px solid ${globalBans.includes(h.id) ? 'rgba(224,85,85,0.5)' : 'var(--border)'}`,
                         color: globalBans.includes(h.id) ? 'var(--red)' : 'var(--text2)' }}>
-                      {globalBans.includes(h.id) ? '✕ ' : ''}{h.nome}
+                      <img src={h.iconeUrl} alt="" style={{ width: 14, height: 14, borderRadius: 2, objectFit: 'cover' }} onError={e => { e.target.style.display = 'none' }} />
+                      {h.nome}{globalBans.includes(h.id) ? ' ✕' : ''}
                     </button>
                   ))}
                 </div>
