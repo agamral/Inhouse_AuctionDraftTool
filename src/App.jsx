@@ -33,7 +33,6 @@ import Historico           from './pages/Historico.jsx'
 import HistoricoDetalhe    from './pages/HistoricoDetalhe.jsx'
 import { useCampeonato } from './contexts/CampeonatoContext.jsx'
 import { ViewAsProvider } from './contexts/ViewAsContext.jsx'
-import ViewAsBar from './components/ViewAsBar.jsx'
 
 function LoginCapitaoRedirect() {
   const { idPublico, loading } = useCampeonato()
@@ -46,7 +45,6 @@ export default function App() {
     <CampeonatoProvider>
     <ViewAsProvider>
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <ViewAsBar />
       <Navbar />
       <Routes>
         {/* Master home */}
