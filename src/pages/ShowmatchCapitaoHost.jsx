@@ -15,7 +15,7 @@ import { teamPath } from '../utils/campeonatoPaths'
 import PaginaInativa from '../components/PaginaInativa'
 import { MAPAS } from '../utils/mapPool'
 import { HEROES } from '../utils/heroPool'
-import { criarEstadoInicial, SEQUENCIA_PADRAO, DEFAULT_TIMER_CONFIG } from '../utils/heroDraft'
+import { criarEstadoInicial, SEQUENCIA_PADRAO, DEFAULT_TIMER_CONFIG, STATUS_DRAFT } from '../utils/heroDraft'
 import { useHeroDraft } from '../hooks/useHeroDraft'
 import { useServerTimeOffset } from '../hooks/useServerTimeOffset'
 
@@ -407,6 +407,33 @@ function PartidaCard({ num, partida: p, sessao, sessaoId, scrimPath, campeonatoI
   const urlA    = p.heroDraftId ? `${urlBase}?sessao=${p.heroDraftId}&time=A` : null
   const urlB    = p.heroDraftId ? `${urlBase}?sessao=${p.heroDraftId}&time=B` : null
 
+  // Bloco 3: detecta quando o draft encerrou e salva resumo na partida
+  const jaFinalizouRef = { current: false }
+  useEffect(() => {
+    if (p.status !== 'em_draft') return
+    if (draftEstado?.status !== STATUS_DRAFT.ENCERRADO) return
+    if (jaFinalizouRef.current) return
+    jaFinalizouRef.current = true
+
+    // Extrai resumo leve de picks/bans do historico do draft
+    const historico  = draftEstado.historico ?? []
+    const bansA      = draftEstado.timeA?.bans ?? []
+    const bansB      = draftEstado.timeB?.bans ?? []
+    const picksA     = draftEstado.timeA?.picks ?? []
+    const picksB     = draftEstado.timeB?.picks ?? []
+    const globalBansFinal = draftEstado.globalBans ?? []
+
+    update(ref(db, partRef), {
+      status: 'encerrada',
+      draft: {
+        bansA, bansB, picksA, picksB,
+        globalBans: globalBansFinal,
+        mapaId:  draftEstado.mapaId ?? null,
+        passos:  historico.length,
+      },
+    }).catch(() => {})
+  }, [draftEstado?.status]) // eslint-disable-line
+
   // Presença dos capitães no lobby
   const presA = draftEstado?.presence?.A?.onlineEm
   const presB = draftEstado?.presence?.B?.onlineEm
@@ -638,6 +665,111 @@ function PartidaCard({ num, partida: p, sessao, sessaoId, scrimPath, campeonatoI
               {time?.nome}
             </button>
           ))}
+        </div>
+      )}
+
+      {/* ── BLOCO 4: Resumo de picks/bans (encerrada com draft gravado) ─────── */}
+      {p.status === 'encerrada' && p.draft && (
+        <DraftResumo draft={p.draft} sessao={sessao} />
+      )}
+    </div>
+  )
+}
+
+// ── Resumo visual de picks/bans de uma partida ────────────────────────────────
+function DraftResumo({ draft, sessao }) {
+  const [expandido, setExpandido] = useState(false)
+  const heroNome = (id) => HEROES.find(h => h.id === id)?.nome ?? id
+
+  const totalBans  = (draft.bansA?.length ?? 0) + (draft.bansB?.length ?? 0) + (draft.globalBans?.length ?? 0)
+  const totalPicks = (draft.picksA?.length ?? 0) + (draft.picksB?.length ?? 0)
+  if (!totalBans && !totalPicks) return null
+
+  return (
+    <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10 }}>
+      <button
+        onClick={() => setExpandido(v => !v)}
+        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 11, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 6 }}>
+        {expandido ? '▾' : '▸'} Resumo do draft ({totalPicks} picks · {totalBans} bans)
+      </button>
+
+      {expandido && (
+        <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          {/* Time A */}
+          <div>
+            <div style={{ fontSize: 11, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, color: sessao.timeA?.cor ?? 'var(--text2)', marginBottom: 6 }}>
+              {sessao.timeA?.nome}
+            </div>
+            {draft.bansA?.length > 0 && (
+              <div style={{ marginBottom: 6 }}>
+                <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 3 }}>Bans</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                  {draft.bansA.map((id, i) => (
+                    <span key={i} style={{ fontSize: 10, padding: '2px 7px', borderRadius: 3, background: 'rgba(224,85,85,0.12)', border: '1px solid rgba(224,85,85,0.3)', color: 'var(--red)', fontFamily: "'Barlow Condensed', sans-serif" }}>
+                      {heroNome(id)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {draft.picksA?.length > 0 && (
+              <div>
+                <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 3 }}>Picks</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                  {draft.picksA.map((id, i) => (
+                    <span key={i} style={{ fontSize: 10, padding: '2px 7px', borderRadius: 3, background: (sessao.timeA?.cor ?? '#4a9eda') + '18', border: `1px solid ${sessao.timeA?.cor ?? '#4a9eda'}44`, color: sessao.timeA?.cor ?? 'var(--text)', fontFamily: "'Barlow Condensed', sans-serif" }}>
+                      {heroNome(id)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Time B */}
+          <div>
+            <div style={{ fontSize: 11, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, color: sessao.timeB?.cor ?? 'var(--text2)', marginBottom: 6 }}>
+              {sessao.timeB?.nome}
+            </div>
+            {draft.bansB?.length > 0 && (
+              <div style={{ marginBottom: 6 }}>
+                <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 3 }}>Bans</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                  {draft.bansB.map((id, i) => (
+                    <span key={i} style={{ fontSize: 10, padding: '2px 7px', borderRadius: 3, background: 'rgba(224,85,85,0.12)', border: '1px solid rgba(224,85,85,0.3)', color: 'var(--red)', fontFamily: "'Barlow Condensed', sans-serif" }}>
+                      {heroNome(id)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {draft.picksB?.length > 0 && (
+              <div>
+                <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 3 }}>Picks</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                  {draft.picksB.map((id, i) => (
+                    <span key={i} style={{ fontSize: 10, padding: '2px 7px', borderRadius: 3, background: (sessao.timeB?.cor ?? '#e05555') + '18', border: `1px solid ${sessao.timeB?.cor ?? '#e05555'}44`, color: sessao.timeB?.cor ?? 'var(--text)', fontFamily: "'Barlow Condensed', sans-serif" }}>
+                      {heroNome(id)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Bans globais */}
+          {draft.globalBans?.length > 0 && (
+            <div style={{ gridColumn: '1 / -1' }}>
+              <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 3 }}>Bans Globais</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                {draft.globalBans.map((id, i) => (
+                  <span key={i} style={{ fontSize: 10, padding: '2px 7px', borderRadius: 3, background: 'rgba(62,60,58,0.5)', border: '1px solid var(--border)', color: 'var(--text3)', fontFamily: "'Barlow Condensed', sans-serif" }}>
+                    {heroNome(id)}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
