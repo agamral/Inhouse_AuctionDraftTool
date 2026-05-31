@@ -1,7 +1,13 @@
 import { NavLink, useNavigate, useMatch, Link, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useEffect, useState } from 'react'
-import { useAuth } from '../hooks/useAuth'
+import { useEffectiveAuth as useAuth } from '../hooks/useEffectiveAuth'
+import { useState as useStateVA, useEffect as useEffectVA } from 'react'
+import { ref as refVA, onValue as onValueVA } from 'firebase/database'
+import { db as dbVA } from '../firebase/database'
+import { useViewAs } from '../contexts/ViewAsContext'
+import { useAuth as useRealAuth } from '../hooks/useAuth'
+import { useCampeonato as useCampeonatoCtx } from '../contexts/CampeonatoContext'
 import { useModules, useConteudo } from '../hooks/useConfig'
 import { logout } from '../firebase/auth'
 import './Navbar.css'
@@ -12,9 +18,135 @@ const LANGUAGES = [
   { code: 'en', label: 'EN' },
 ]
 
+// ── ViewAsMenu — dropdown de perspectiva (só visível pra admins reais) ────────
+function ViewAsMenu() {
+  const { viewAs, ativar, sair } = useViewAs()
+  const { isAdmin: isRealAdmin } = useRealAuth()
+  const { idPublico: campeonatoId } = useCampeonatoCtx()  // URL atual, não o admin selector
+  const [teams, setTeams] = useStateVA({})
+  const [open,  setOpen]  = useStateVA(false)
+
+  useEffectVA(() => {
+    if (!campeonatoId) return
+    const unsub = onValueVA(refVA(dbVA, `campeonatos/${campeonatoId}/teams`), snap => setTeams(snap.val() ?? {}))
+    return () => unsub()
+  }, [campeonatoId])
+
+  // Não mostrar fora de contexto de campeonato ou pra não-admin real
+  if (!isRealAdmin || !campeonatoId) return null
+
+  const timesArr = Object.entries(teams).sort(([, a], [, b]) => a.nome.localeCompare(b.nome))
+  const modoAtivo = viewAs !== null
+  const corAtivo  = viewAs?.modo === 'capitao' ? 'var(--purple)' : viewAs?.modo === 'publico' ? 'var(--blue)' : 'var(--text2)'
+  const labelAtivo = viewAs?.modo === 'capitao'
+    ? `⚑ ${viewAs.teamData?.capitaoNome ?? viewAs.teamData?.nome ?? 'Capitão'}`
+    : viewAs?.modo === 'publico' ? '🌐 Público' : '👁 Ver como'
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <button
+        onClick={() => setOpen(v => !v)}
+        title="Simular perspectiva de outro usuário"
+        style={{
+          fontSize: 11, padding: '3px 9px', borderRadius: 4, cursor: 'pointer',
+          fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700,
+          letterSpacing: '0.06em', whiteSpace: 'nowrap',
+          background: modoAtivo ? corAtivo + '18' : 'transparent',
+          border: `1px solid ${modoAtivo ? corAtivo + '55' : 'var(--border)'}`,
+          color: modoAtivo ? corAtivo : 'var(--text3)',
+        }}
+      >
+        {labelAtivo} ▾
+      </button>
+
+      {open && (
+        <>
+          {/* Overlay pra fechar ao clicar fora */}
+          <div style={{ position: 'fixed', inset: 0, zIndex: 998 }} onClick={() => setOpen(false)} />
+          <div style={{
+            position: 'absolute', right: 0, top: 'calc(100% + 6px)', zIndex: 999,
+            background: 'var(--bg2)', border: '1px solid var(--border2)',
+            borderRadius: 8, padding: 6, minWidth: 180,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+            display: 'flex', flexDirection: 'column', gap: 2,
+          }}>
+            <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.12em', textTransform: 'uppercase', padding: '4px 8px 2px' }}>
+              Visualizando como
+            </div>
+
+            {/* Admin (real) */}
+            <MenuItem label="⚙ Admin (real)" active={!modoAtivo} onClick={() => { sair(); setOpen(false) }} />
+
+            {/* Público */}
+            <MenuItem label="🌐 Público (sem login)" active={viewAs?.modo === 'publico'}
+              color="var(--blue)"
+              onClick={() => { ativar('publico'); setOpen(false) }} />
+
+            {/* Separador */}
+            {timesArr.length > 0 && (
+              <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.12em', textTransform: 'uppercase', padding: '6px 8px 2px', borderTop: '1px solid var(--border)', marginTop: 2 }}>
+                Capitão de time
+              </div>
+            )}
+
+            {timesArr.map(([id, t]) => (
+              <MenuItem
+                key={id}
+                label={`⚑ ${t.nome}${t.capitaoNome ? ` (${t.capitaoNome})` : ''}`}
+                active={viewAs?.modo === 'capitao' && viewAs?.teamId === id}
+                color={t.cor}
+                onClick={() => {
+                  ativar('capitao', { teamId: id, teamData: { teamId: id, nome: t.nome, cor: t.cor, capitaoNome: t.capitaoNome ?? t.nome, campeonatoId, ...t } })
+                  setOpen(false)
+                }}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+function MenuItem({ label, active, color, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        display: 'block', width: '100%', textAlign: 'left',
+        padding: '6px 10px', borderRadius: 5, cursor: 'pointer', border: 'none',
+        background: active ? (color ? color + '18' : 'rgba(201,168,76,0.12)') : 'transparent',
+        color: active ? (color ?? 'var(--gold2)') : 'var(--text2)',
+        fontFamily: "'Barlow Condensed', sans-serif", fontSize: 12, fontWeight: active ? 700 : 400,
+      }}
+    >
+      {label}
+      {active && <span style={{ float: 'right', opacity: 0.7 }}>✓</span>}
+    </button>
+  )
+}
+
 export default function Navbar() {
   const { t, i18n } = useTranslation()
   const { user, isAdmin, isSuperAdmin, adminCampeonatoIds, capitao } = useAuth()
+  // realAuth usado direto pra não depender do ciclo async do useEffectiveAuth
+  const { capitao: realCapitao, isAdmin: realIsAdmin } = useRealAuth()
+
+  // Capitão via PIN session (link ?cap=ID&pin=PIN) — não usa Firebase Auth
+  const pinSession = (() => {
+    try { return JSON.parse(sessionStorage.getItem('captainSession')) } catch { return null }
+  })()
+  // Três formas de ser capitão:
+  //   1. capitao/realCapitao: Firebase Auth + time vinculado no DB
+  //   2. pinSession: link personalizado (sessionStorage)
+  //   3. email @copa.inhouse: conta criada pelo admin, ainda buscando time no DB
+  const isCapitao = !!(
+    capitao ||
+    realCapitao ||
+    pinSession?.captainId ||
+    (user && user.email?.endsWith('@copa.inhouse'))
+  )
+  const { viewAs } = useViewAs()
   const modules = useModules()
   const conteudo = useConteudo()
   const navigate = useNavigate()
@@ -32,7 +164,8 @@ export default function Navbar() {
 
   async function handleLogout() {
     await logout()
-    navigate('/')
+    // Volta pro campeonato atual se estiver dentro de um, senão vai pra home
+    navigate(base || '/')
   }
 
   // Páginas de transmissão/overlay não devem mostrar navbar (precisamos do espaço todo)
@@ -114,6 +247,11 @@ export default function Navbar() {
                 {t('nav.agenda')}
               </NavLink>
             )}
+            {(isAdmin || isCapitao) && (
+              <NavLink to={`${base}/scrim`} className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                Scrims
+              </NavLink>
+            )}
             {modules.espectadorAtivo && (
               <NavLink to={`${base}/espectador`} className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
                 {t('nav.espectador')}
@@ -145,8 +283,10 @@ export default function Navbar() {
           ))}
         </div>
 
-        {isAdmin ? (
+        {realIsAdmin ? (
           <div className="navbar-admin-area">
+            {/* Ver como — dropdown de perspectiva pra admin */}
+            <ViewAsMenu />
             <NavLink
               to={isSuperAdmin ? '/admin' : inCampeonato ? `${base}/admin` : `/campeonatos/${adminCampeonatoIds?.[0]}/admin`}
               className={({ isActive }) => `nav-link admin-link ${isActive ? 'active' : ''}`}

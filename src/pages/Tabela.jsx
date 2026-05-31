@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { ref, onValue, set, remove } from 'firebase/database'
 import { db } from '../firebase/database'
-import { useAuth } from '../hooks/useAuth'
+import { useEffectiveAuth as useAuth } from '../hooks/useEffectiveAuth'
 import { useModules } from '../hooks/useConfig'
 import { useCampeonato } from '../contexts/CampeonatoContext'
 import PaginaInativa from '../components/PaginaInativa'

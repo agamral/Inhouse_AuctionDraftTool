@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { ref, onValue, set, update } from 'firebase/database'
 import { db } from '../firebase/database'
-import { useAuth } from '../hooks/useAuth'
+import { useEffectiveAuth as useAuth } from '../hooks/useEffectiveAuth'
 import { useConteudo, useModules } from '../hooks/useConfig'
 import PaginaInativa from '../components/PaginaInativa'
 import { useCampeonato } from '../contexts/CampeonatoContext'
@@ -590,7 +590,7 @@ export default function Agendamento() {
 
       {!user && !capitaoEfetivo && (
         <div className="ag-aviso" style={{ marginTop: '0.5rem', fontSize: 13 }}>
-          <a href="/login-capitao" style={{ color: 'var(--blue)' }}>Faça login como capitão</a> para marcar sua disponibilidade.
+          <a href={idPublico ? `/campeonatos/${idPublico}/login-capitao` : '/login-capitao'} style={{ color: 'var(--blue)' }}>Faça login como capitão</a> para marcar sua disponibilidade.
         </div>
       )}
     </div>

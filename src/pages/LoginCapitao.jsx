@@ -189,12 +189,15 @@ export default function LoginCapitao() {
   const [etapa,        setEtapa]        = useState('login')   // 'login' | 'completar' | 'concluido'
   const [chaveSintetica, setChaveSintetica] = useState(null)
 
+  // Usa o campeonato do time do capitão se disponível, senão usa o da URL
+  const destCampeonato = capitao?.campeonatoId || idPublico
+
   // Redireciona se já estava logado ao abrir a página
   useEffect(() => {
     if (loading) return
-    if (isAdmin)  { navigate('/admin',       { replace: true }); return }
-    if (capitao && etapa === 'login') navigate(idPublico ? `/campeonatos/${idPublico}/agendamento` : '/', { replace: true })
-  }, [loading, isAdmin, capitao, etapa, navigate])
+    if (isAdmin) { navigate('/admin', { replace: true }); return }
+    if (capitao && etapa === 'login') navigate(destCampeonato ? `/campeonatos/${destCampeonato}/agendamento` : '/', { replace: true })
+  }, [loading, isAdmin, capitao, etapa, navigate, destCampeonato])
 
   function handleSintetico(chave) {
     setChaveSintetica(chave)
@@ -203,8 +206,7 @@ export default function LoginCapitao() {
 
   function handleConcluido() {
     setEtapa('concluido')
-    // Redireciona direto após um breve delay para mostrar o feedback
-    setTimeout(() => navigate(idPublico ? `/campeonatos/${idPublico}/agendamento` : '/', { replace: true }), 1200)
+    setTimeout(() => navigate(destCampeonato ? `/campeonatos/${destCampeonato}/agendamento` : '/', { replace: true }), 1200)
   }
 
   if (loading) return null

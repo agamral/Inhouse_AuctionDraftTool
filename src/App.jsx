@@ -25,12 +25,14 @@ import Regras from './pages/Regras.jsx'
 import Perfil from './pages/Perfil.jsx'
 import CampeonatoWizard from './pages/CampeonatoWizard.jsx'
 import ProtectedRoute, { CampeonatoAdminRoute } from './components/ProtectedRoute.jsx'
-import ShowmatchAdmin      from './pages/ShowmatchAdmin.jsx'
+import ShowmatchAdmin          from './pages/ShowmatchAdmin.jsx'
+import ShowmatchCapitaoHost   from './pages/ShowmatchCapitaoHost.jsx'
 import ShowmatchCapitao    from './pages/ShowmatchCapitao.jsx'
 import ShowmatchEspectador from './pages/ShowmatchEspectador.jsx'
 import Historico           from './pages/Historico.jsx'
 import HistoricoDetalhe    from './pages/HistoricoDetalhe.jsx'
 import { useCampeonato } from './contexts/CampeonatoContext.jsx'
+import { ViewAsProvider } from './contexts/ViewAsContext.jsx'
 
 function LoginCapitaoRedirect() {
   const { idPublico, loading } = useCampeonato()
@@ -41,6 +43,7 @@ function LoginCapitaoRedirect() {
 export default function App() {
   return (
     <CampeonatoProvider>
+    <ViewAsProvider>
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <Navbar />
       <Routes>
@@ -66,6 +69,7 @@ export default function App() {
           <Route path="login-capitao"         element={<LoginCapitao />} />
           <Route path="login"               element={<LoginAdmin />} />
           <Route path="admin"               element={<CampeonatoAdminRoute><Admin /></CampeonatoAdminRoute>} />
+          <Route path="scrim"               element={<ShowmatchCapitaoHost />} />
         </Route>
 
         {/* Histórico */}
@@ -100,6 +104,7 @@ export default function App() {
       </Routes>
       <Footer />
     </BrowserRouter>
+    </ViewAsProvider>
     </CampeonatoProvider>
   )
 }

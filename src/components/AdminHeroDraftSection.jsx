@@ -675,10 +675,10 @@ export default function AdminHeroDraftSection() {
                     Links da sessão
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    <LinkBtn href={`/hero-draft?sessao=${sessaoId}&time=A`} cor={estado.timeA?.cor ?? 'var(--blue)'}   label={`Capitão A — ${estado.timeA?.nome ?? ''}`} />
-                    <LinkBtn href={`/hero-draft?sessao=${sessaoId}&time=B`} cor={estado.timeB?.cor ?? 'var(--red)'}    label={`Capitão B — ${estado.timeB?.nome ?? ''}`} />
-                    <LinkBtn href={`/hero-draft/espectador?sessao=${sessaoId}`} cor="var(--text2)"  label="Espectador" />
-                    <LinkBtn href={`/hero-draft/overlay?sessao=${sessaoId}`}    cor="var(--purple)" label="Overlay OBS" />
+                    <LinkBtn href={`/campeonatos/${campeonatoId}/hero-draft?sessao=${sessaoId}&time=A`} cor={estado.timeA?.cor ?? 'var(--blue)'}   label={`Capitão A — ${estado.timeA?.nome ?? ''}`} />
+                    <LinkBtn href={`/campeonatos/${campeonatoId}/hero-draft?sessao=${sessaoId}&time=B`} cor={estado.timeB?.cor ?? 'var(--red)'}    label={`Capitão B — ${estado.timeB?.nome ?? ''}`} />
+                    <LinkBtn href={`/campeonatos/${campeonatoId}/hero-draft/espectador?sessao=${sessaoId}`} cor="var(--text2)"  label="Espectador" />
+                    <LinkBtn href={`/campeonatos/${campeonatoId}/hero-draft/overlay?sessao=${sessaoId}`}    cor="var(--purple)" label="Overlay OBS" />
                   </div>
                 </div>
               </div>

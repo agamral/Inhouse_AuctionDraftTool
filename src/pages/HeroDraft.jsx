@@ -33,7 +33,7 @@ export default function HeroDraft() {
         : SHOWMATCH_DRAFT_PATH_LEGACY)
     : (idPublico ? `${heroDraftPath(idPublico)}/${sessaoId}` : null)
 
-  const { estado, loading, erro, ehMinhaTez, agir } = useHeroDraft(
+  const { estado, loading, erro, ehMinhaTez, agir, iniciar } = useHeroDraft(
     isShowmatch ? null : sessaoId, timeLocal, pathOverride
   )
 
@@ -117,9 +117,27 @@ export default function HeroDraft() {
   // Mantém ref em sincronia com estado (evita closure stale no setTimeout)
   useEffect(() => { confirmandoRef.current = confirmando }, [confirmando])
 
-  // Ref com snapshot sempre fresco — usada pelo visibilitychange
+  // Ref com snapshot sempre fresco — usada pelo visibilitychange e auto-transição
   const liveRef = useRef({})
-  liveRef.current = { estado, ehMinhaTez, agir, timeOffset }
+  liveRef.current = { estado, ehMinhaTez, agir, timeOffset, iniciar }
+
+  // Auto-transição countdown → rodando quando timeLocal === 'admin'.
+  // Garante que o draft inicia mesmo se o ShowmatchAdmin / AdminHeroDraftSection
+  // não estiver aberto (ex: scrims onde o host abre ?time=admin diretamente).
+  useEffect(() => {
+    if (timeLocal !== 'admin') return
+    if (estado?.status !== STATUS_DRAFT.COUNTDOWN) return
+    const endsAt = estado.countdownStartedAt && estado.countdownSecs
+      ? estado.countdownStartedAt + estado.countdownSecs * 1000
+      : estado.countdownEndsAt
+    if (!endsAt) return
+    const remaining = Math.max(0, endsAt - (Date.now() + timeOffset))
+    const t = setTimeout(() => {
+      if (liveRef.current.estado?.status !== STATUS_DRAFT.COUNTDOWN) return
+      liveRef.current.iniciar()
+    }, remaining + 100)
+    return () => clearTimeout(t)
+  }, [timeLocal, estado?.status, estado?.countdownEndsAt, estado?.countdownStartedAt, estado?.countdownSecs, timeOffset]) // eslint-disable-line
 
   // Display: setInterval atualiza o contador visual
   // serverNow = Date.now() + timeOffset corrige clock drift entre clientes
@@ -283,6 +301,25 @@ export default function HeroDraft() {
 
   if (!estado) return <div className="hd-loading">{t('hero_draft.not_found')}</div>
 
+  // Admin vendo draft encerrado — tela simples com resumo e botão pra fechar
+  if (timeLocal === 'admin' && estado.status === STATUS_DRAFT.ENCERRADO) {
+    return (
+      <main className="hero-draft-page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#050612', flexDirection: 'column', gap: 20 }}>
+        <div style={{ fontSize: 40 }}>🏁</div>
+        <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 28, color: 'var(--gold2)' }}>
+          Draft encerrado
+        </div>
+        <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 14, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.1em' }}>
+          {estado.timeA?.nome} × {estado.timeB?.nome}
+        </div>
+        <button onClick={() => window.close()}
+          style={{ marginTop: 8, padding: '10px 28px', borderRadius: 6, fontSize: 14, cursor: 'pointer', fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, letterSpacing: '0.08em', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff' }}>
+          Fechar aba
+        </button>
+      </main>
+    )
+  }
+
   // ── Overlay de countdown ──────────────────────────────────────────────────
   if (estado.status === STATUS_DRAFT.COUNTDOWN && countdown !== null) {
     return (
@@ -440,7 +477,7 @@ function TurnStrip({ estado, passo, tempoRestante, mapa }) {
   if (estado.status === STATUS_DRAFT.AGUARDANDO) {
     return (
       <div className="hd-turn-strip hd-turn-strip--aguardando">
-        {mapa && <span className="hd-turn-mapa">{mapa.nome}</span>}
+        {mapa && <span className="hd-turn-mapa">{mapa.splashUrl && <img src={mapa.splashUrl} alt={mapa.nome} onError={e=>{e.target.style.display='none'}} />}{mapa.nome}</span>}
         <span>Em breve</span>
       </div>
     )
@@ -448,7 +485,7 @@ function TurnStrip({ estado, passo, tempoRestante, mapa }) {
   if (estado.status === STATUS_DRAFT.ENCERRADO || !passo) {
     return (
       <div className="hd-turn-strip hd-turn-strip--fim">
-        {mapa && <span className="hd-turn-mapa">{mapa.nome}</span>}
+        {mapa && <span className="hd-turn-mapa">{mapa.splashUrl && <img src={mapa.splashUrl} alt={mapa.nome} onError={e=>{e.target.style.display='none'}} />}{mapa.nome}</span>}
         <span>FIM</span>
       </div>
     )
