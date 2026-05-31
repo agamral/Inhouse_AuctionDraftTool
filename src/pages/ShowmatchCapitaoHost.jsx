@@ -6,7 +6,7 @@
  * gerenciar as partidas (lobby → hero draft → resultado) e ver o
  * histórico de sessões passadas. Não afeta dados do campeonato real.
  */
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { ref, onValue, set, update, remove } from 'firebase/database'
 import { db } from '../firebase/database'
 import { useEffectiveAuth as useAuth } from '../hooks/useEffectiveAuth'
