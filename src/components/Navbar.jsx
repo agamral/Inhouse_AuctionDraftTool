@@ -164,7 +164,8 @@ export default function Navbar() {
 
   async function handleLogout() {
     await logout()
-    navigate('/')
+    // Volta pro campeonato atual se estiver dentro de um, senão vai pra home
+    navigate(base || '/')
   }
 
   // Páginas de transmissão/overlay não devem mostrar navbar (precisamos do espaço todo)

@@ -1,18 +1,20 @@
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useMatch } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { logout } from '../firebase/auth'
 
 export default function Perfil() {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const inCampeonato = useMatch('/campeonatos/:campeonatoId/*')
+  const base = inCampeonato ? `/campeonatos/${inCampeonato.params.campeonatoId}` : ''
 
   async function handleLogout() {
     await logout()
-    navigate('/')
+    navigate(base || '/')
   }
 
   if (!user) {
-    navigate('/')
+    navigate(base || '/')
     return null
   }
 
