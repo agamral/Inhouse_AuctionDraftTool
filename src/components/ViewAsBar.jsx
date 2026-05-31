@@ -63,7 +63,7 @@ export default function ViewAsBar() {
       background: bgCor,
       backdropFilter: 'blur(8px)',
       borderBottom: '1px solid rgba(255,255,255,0.1)',
-      padding: '8px 16px',
+      height: 40, padding: '0 16px',
       display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
       fontFamily: "'Barlow Condensed', sans-serif",
       boxShadow: '0 2px 12px rgba(0,0,0,0.4)',

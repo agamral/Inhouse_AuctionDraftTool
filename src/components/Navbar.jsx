@@ -2,6 +2,7 @@ import { NavLink, useNavigate, useMatch, Link, useLocation } from 'react-router-
 import { useTranslation } from 'react-i18next'
 import { useEffect, useState } from 'react'
 import { useEffectiveAuth as useAuth } from '../hooks/useEffectiveAuth'
+import { useViewAs } from '../contexts/ViewAsContext'
 import { useModules, useConteudo } from '../hooks/useConfig'
 import { logout } from '../firebase/auth'
 import './Navbar.css'
@@ -15,6 +16,7 @@ const LANGUAGES = [
 export default function Navbar() {
   const { t, i18n } = useTranslation()
   const { user, isAdmin, isSuperAdmin, adminCampeonatoIds, capitao } = useAuth()
+  const { viewAs } = useViewAs()
   const modules = useModules()
   const conteudo = useConteudo()
   const navigate = useNavigate()
@@ -42,8 +44,11 @@ export default function Navbar() {
     || location.pathname.endsWith('/showmatch/espectador')
   if (isFullscreenView) return null
 
+  // Quando ViewAsBar está ativa no topo, empurra o navbar pra baixo
+  const viewAsBarHeight = viewAs !== null ? 40 : 0
+
   return (
-    <header className="navbar">
+    <header className="navbar" style={viewAsBarHeight ? { top: viewAsBarHeight } : undefined}>
       <button
         className="navbar-hamburger"
         onClick={() => setMenuOpen(o => !o)}
