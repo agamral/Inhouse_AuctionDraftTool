@@ -25,7 +25,8 @@ import Regras from './pages/Regras.jsx'
 import Perfil from './pages/Perfil.jsx'
 import CampeonatoWizard from './pages/CampeonatoWizard.jsx'
 import ProtectedRoute, { CampeonatoAdminRoute } from './components/ProtectedRoute.jsx'
-import ShowmatchAdmin      from './pages/ShowmatchAdmin.jsx'
+import ShowmatchAdmin          from './pages/ShowmatchAdmin.jsx'
+import ShowmatchCapitaoHost   from './pages/ShowmatchCapitaoHost.jsx'
 import ShowmatchCapitao    from './pages/ShowmatchCapitao.jsx'
 import ShowmatchEspectador from './pages/ShowmatchEspectador.jsx'
 import Historico           from './pages/Historico.jsx'
@@ -66,6 +67,7 @@ export default function App() {
           <Route path="login-capitao"         element={<LoginCapitao />} />
           <Route path="login"               element={<LoginAdmin />} />
           <Route path="admin"               element={<CampeonatoAdminRoute><Admin /></CampeonatoAdminRoute>} />
+          <Route path="scrim"               element={<ShowmatchCapitaoHost />} />
         </Route>
 
         {/* Histórico */}
