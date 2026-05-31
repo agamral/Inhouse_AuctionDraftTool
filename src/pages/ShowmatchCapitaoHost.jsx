@@ -400,7 +400,26 @@ function PartidaCard({ num, partida: p, sessao, sessaoId, scrimPath, campeonatoI
   const { estado: draftEstado, iniciar, iniciarComContagem } = useHeroDraft(
     null, 'admin', heroDraftPath
   )
-  const liveDraftRef = { current: { draftEstado, iniciar } }
+  // liveRef pra auto-transition (padrão dos outros admins — vide AdminHeroDraftSection)
+  const liveDraftRef = useRef({})
+  liveDraftRef.current = { draftEstado, iniciar }
+
+  // Auto-transição countdown → rodando: PartidaCard foi quem chamou iniciarComContagem,
+  // então ele mesmo é responsável por chamar iniciar() quando o countdown acabar.
+  // Sem isso o draft fica travado em "!" até alguém abrir a aba ?time=admin.
+  useEffect(() => {
+    if (draftEstado?.status !== STATUS_DRAFT.COUNTDOWN) return
+    const endsAt = draftEstado.countdownStartedAt && draftEstado.countdownSecs
+      ? draftEstado.countdownStartedAt + draftEstado.countdownSecs * 1000
+      : draftEstado.countdownEndsAt
+    if (!endsAt) return
+    const remaining = Math.max(0, endsAt - (Date.now() + timeOffset))
+    const t = setTimeout(() => {
+      if (liveDraftRef.current.draftEstado?.status !== STATUS_DRAFT.COUNTDOWN) return
+      liveDraftRef.current.iniciar()
+    }, remaining + 100)
+    return () => clearTimeout(t)
+  }, [draftEstado?.status, draftEstado?.countdownEndsAt, draftEstado?.countdownStartedAt, draftEstado?.countdownSecs, timeOffset]) // eslint-disable-line
 
   const partRef = `${scrimPath}/${sessaoId}/partidas/${num}`
   const urlBase = `${window.location.origin}/campeonatos/${campeonatoId}/hero-draft`
