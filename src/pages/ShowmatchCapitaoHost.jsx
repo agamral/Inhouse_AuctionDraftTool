@@ -7,7 +7,7 @@
  * histórico de sessões passadas. Não afeta dados do campeonato real.
  */
 import { useState, useEffect, useRef } from 'react'
-import { ref, onValue, set, update, remove } from 'firebase/database'
+import { ref, onValue, set, update, remove, serverTimestamp } from 'firebase/database'
 import { db } from '../firebase/database'
 import { useEffectiveAuth as useAuth } from '../hooks/useEffectiveAuth'
 import { useCampeonato } from '../contexts/CampeonatoContext'
@@ -31,6 +31,7 @@ export default function ShowmatchCapitaoHost() {
 
   const [teams,    setTeams]    = useState({})
   const [sessoes,  setSessoes]  = useState({})
+  const [historico, setHistorico] = useState({})  // sessões onde fui convidado
   const [view,     setView]     = useState('lista')   // 'lista' | 'criar' | 'sessao'
   const [sessaoSel, setSessaoSel] = useState(null)    // id da sessão em foco
   const [feedback, setFeedback] = useState(null)
@@ -53,6 +54,12 @@ export default function ShowmatchCapitaoHost() {
   useEffect(() => {
     if (!uid) return
     return onValue(ref(db, SCRIM_PATH(uid)), snap => setSessoes(snap.val() ?? {}))
+  }, [uid])
+
+  // Sessões onde fui convidado (histórico read-only)
+  useEffect(() => {
+    if (!uid) return
+    return onValue(ref(db, `scrims/${uid}/historico`), snap => setHistorico(snap.val() ?? {}))
   }, [uid])
 
   // Pré-seleciona o time do capitão como Time A
@@ -80,6 +87,9 @@ export default function ShowmatchCapitaoHost() {
     setSalvando(true)
     try {
       const sessaoId = gerarSessaoId()
+      // Capitão convidado (Time B) — pra criar histórico no lado dele
+      const timeBUid = tB?.capitaoUid ?? null
+
       await set(ref(db, `${SCRIM_PATH(uid)}/${sessaoId}`), {
         nome:        formNome.trim(),
         campeonatoId: idPublico,
@@ -87,10 +97,24 @@ export default function ShowmatchCapitaoHost() {
         criadorNome: capitao?.capitaoNome ?? capitao?.nome ?? '',
         timeA: { teamId: formTimeA, nome: tA?.nome ?? 'Time A', cor: tA?.cor ?? '#4a9eda' },
         timeB: { teamId: formTimeB, nome: tB?.nome ?? 'Time B', cor: tB?.cor ?? '#e05555' },
+        timeBUid,    // pra propagar partidas finalizadas pro histórico do Time B
         status:    'ativa',
-        criadoEm:  Date.now(),
+        criadoEm:  serverTimestamp(),
         partidas:  {},
       })
+
+      // Cria registro histórico no lado do Time B (se ele tiver conta vinculada)
+      if (timeBUid) {
+        await set(ref(db, `scrims/${timeBUid}/historico/${sessaoId}`), {
+          sessaoNome:  formNome.trim(),
+          campeonatoId: idPublico,
+          dono:        { uid, nome: capitao?.capitaoNome ?? '' },
+          meuTime:     { nome: tB?.nome ?? 'Time B', cor: tB?.cor ?? '#e05555' },
+          adversario:  { nome: tA?.nome ?? 'Time A', cor: tA?.cor ?? '#4a9eda' },
+          criadoEm:    serverTimestamp(),
+          partidas:    {},
+        })
+      }
       setSessaoSel(sessaoId)
       setView('sessao')
       setFormNome('')
@@ -269,6 +293,54 @@ export default function ShowmatchCapitaoHost() {
               </div>
             )
           })}
+
+          {/* ── Sessões que participei (Time B convidado) ───────────────────── */}
+          {Object.keys(historico).length > 0 && (
+            <div style={{ marginTop: 8 }}>
+              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 8, paddingTop: 8, borderTop: '1px solid var(--border)' }}>
+                Sessões que participei
+              </div>
+              {Object.entries(historico)
+                .sort(([, a], [, b]) => (b.criadoEm ?? 0) - (a.criadoEm ?? 0))
+                .map(([id, h]) => {
+                  const pArr = Object.entries(h.partidas ?? {}).sort(([a], [b]) => Number(a) - Number(b))
+                  const meuV  = pArr.filter(([, p]) => p.vencedor === 'B').length
+                  const advV  = pArr.filter(([, p]) => p.vencedor === 'A').length
+                  const total = pArr.filter(([, p]) => p.vencedor).length
+                  return (
+                    <div key={id} style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 8, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 8 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 14, color: 'var(--text2)' }}>
+                          {h.sessaoNome}
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: "'Barlow Condensed', sans-serif", marginTop: 3, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                          <span>vs <span style={{ color: h.adversario?.cor }}>{h.adversario?.nome}</span></span>
+                          {total > 0 && (
+                            <span>· <strong style={{ color: h.meuTime?.cor }}>{meuV}</strong>–<strong style={{ color: h.adversario?.cor }}>{advV}</strong> ({total} partida{total > 1 ? 's' : ''})</span>
+                          )}
+                          {h.criadoEm && <span>· {new Date(h.criadoEm).toLocaleDateString('pt-BR')}</span>}
+                          <span style={{ opacity: 0.6 }}>· organizado por {h.dono?.nome}</span>
+                        </div>
+                      </div>
+                      {/* Partidas resumidas */}
+                      {pArr.length > 0 && (
+                        <div style={{ display: 'flex', gap: 4 }}>
+                          {pArr.map(([num, p]) => (
+                            <div key={num} title={`Partida ${num}${p.mapaId ? ' · ' + p.mapaId : ''}${p.vencedor ? ' · ' + (p.vencedor === 'B' ? h.meuTime?.nome : h.adversario?.nome) + ' venceu' : ''}`}
+                              style={{ width: 28, height: 28, borderRadius: 4, border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700,
+                                background: p.vencedor === 'B' ? 'rgba(76,175,125,0.15)' : p.vencedor === 'A' ? 'rgba(224,85,85,0.12)' : 'var(--bg2)',
+                                color: p.vencedor === 'B' ? 'var(--green)' : p.vencedor === 'A' ? 'var(--red)' : 'var(--text3)' }}>
+                              {p.vencedor === 'B' ? 'V' : p.vencedor === 'A' ? 'D' : num}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })
+              }
+            </div>
+          )}
         </div>
       )}
 
@@ -445,15 +517,28 @@ function PartidaCard({ num, partida: p, sessao, sessaoId, scrimPath, campeonatoI
     const picksB     = draftEstado.timeB?.picks ?? []
     const globalBansFinal = draftEstado.globalBans ?? []
 
+    const draftSnapshot = {
+      bansA, bansB, picksA, picksB,
+      globalBans: globalBansFinal,
+      mapaId: draftEstado.mapaId ?? null,
+      passos: historico.length,
+    }
+
     update(ref(db, partRef), {
       status: 'encerrada',
-      draft: {
-        bansA, bansB, picksA, picksB,
-        globalBans: globalBansFinal,
-        mapaId:  draftEstado.mapaId ?? null,
-        passos:  historico.length,
-      },
+      draft:  draftSnapshot,
     }).catch(() => {})
+
+    // Propaga snapshot pro histórico do Time B imediatamente
+    // (vencedor ainda não foi definido — será atualizado em registrarVencedor)
+    const timeBUid = sessao.timeBUid
+    if (timeBUid) {
+      update(ref(db, `scrims/${timeBUid}/historico/${sessaoId}/partidas/${num}`), {
+        mapaId:      draftEstado.mapaId ?? null,
+        draft:       draftSnapshot,
+        encerradaEm: serverTimestamp(),
+      }).catch(() => {})
+    }
   }, [draftEstado?.status]) // eslint-disable-line
 
   // Presença dos capitães no lobby
@@ -548,10 +633,25 @@ function PartidaCard({ num, partida: p, sessao, sessaoId, scrimPath, campeonatoI
     await update(ref(db, partRef), { status: 'encerrada' })
   }
 
+  // Propaga snapshot da partida finalizada pro histórico do Time B (se existir)
+  function propagarHistoricoB(vencedor, draftData) {
+    const timeBUid = sessao.timeBUid
+    if (!timeBUid) return
+    const snapshot = {
+      vencedor:   vencedor ?? null,
+      mapaId:     p.mapaId ?? draftData?.mapaId ?? null,
+      draft:      draftData ?? p.draft ?? null,
+      encerradaEm: serverTimestamp(),
+    }
+    update(ref(db, `scrims/${timeBUid}/historico/${sessaoId}/partidas/${num}`), snapshot)
+      .catch(() => {})  // silencia — não crítico
+  }
+
   async function registrarVencedor(quem) {
     setSalvandoVenc(true)
     try {
       await update(ref(db, partRef), { vencedor: quem, status: 'encerrada' })
+      propagarHistoricoB(quem, p.draft)
       onFlash('ok', `${quem === 'A' ? sessao.timeA?.nome : sessao.timeB?.nome} venceu a partida ${num}!`)
     } catch (e) { onFlash('erro', `Erro: ${e.message}`) }
     finally { setSalvandoVenc(false) }

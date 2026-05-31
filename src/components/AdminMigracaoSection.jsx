@@ -534,7 +534,10 @@ export default function AdminMigracaoSection() {
 "scrims": {
   "$uid": {
     ".read":  "auth.uid === $uid || root.child('superAdmins/'+auth.uid).val()===true || root.child('config/superAdmins/'+auth.uid).val()===true",
-    ".write": "auth.uid === $uid"
+    ".write": "auth.uid === $uid",
+    "historico": {
+      ".write": "auth != null"
+    }
   }
 },
 "showmatch": {
