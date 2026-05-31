@@ -129,6 +129,7 @@ function MenuItem({ label, active, color, onClick }) {
 export default function Navbar() {
   const { t, i18n } = useTranslation()
   const { user, isAdmin, isSuperAdmin, adminCampeonatoIds, capitao } = useAuth()
+  const { isAdmin: realIsAdmin } = useRealAuth()  // pra manter admin area visível no modo viewAs
   const { viewAs } = useViewAs()
   const modules = useModules()
   const conteudo = useConteudo()
@@ -260,7 +261,7 @@ export default function Navbar() {
           ))}
         </div>
 
-        {isAdmin ? (
+        {realIsAdmin ? (
           <div className="navbar-admin-area">
             {/* Ver como — dropdown de perspectiva pra admin */}
             <ViewAsMenu />
