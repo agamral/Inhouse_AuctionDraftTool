@@ -515,7 +515,7 @@ export default function AdminMigracaoSection() {
     "rodadas":         { ".read": true },
     "confrontos":      { ".read": true, ".write": "auth != null" },
     "disponibilidade": { ".read": true, ".write": "auth != null" },
-    "heroDraft":       { ".read": true },
+    "heroDraft":       { ".read": true, ".write": "auth != null" },
     "draftSession":    { ".read": true, ".write": true },
     "playerOverrides": { ".read": true, ".write": "root.child('config/admins/'+auth.uid).val()===true||root.child('config/superAdmins/'+auth.uid).val()===true" },
     "players": {
@@ -530,6 +530,20 @@ export default function AdminMigracaoSection() {
 "system": {
   ".read": true,
   ".write": "root.child('config/superAdmins/'+auth.uid).val()===true"
+},
+"scrims": {
+  "$uid": {
+    ".read":  "auth.uid === $uid || root.child('superAdmins/'+auth.uid).val()===true || root.child('config/superAdmins/'+auth.uid).val()===true",
+    ".write": "auth.uid === $uid"
+  }
+},
+"showmatch": {
+  ".read": true,
+  "sessions": {
+    "$sessaoId": {
+      ".write": "auth != null"
+    }
+  }
 }`}
             </div>
           </details>
