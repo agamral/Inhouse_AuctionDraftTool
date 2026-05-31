@@ -22,7 +22,7 @@ const LANGUAGES = [
 function ViewAsMenu() {
   const { viewAs, ativar, sair } = useViewAs()
   const { isAdmin: isRealAdmin } = useRealAuth()
-  const { campeonatoId } = useCampeonatoCtx()
+  const { idPublico: campeonatoId } = useCampeonatoCtx()  // URL atual, não o admin selector
   const [teams, setTeams] = useStateVA({})
   const [open,  setOpen]  = useStateVA(false)
 
