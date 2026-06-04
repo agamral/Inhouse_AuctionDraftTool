@@ -101,38 +101,17 @@ export default function Regras() {
 
           {/* ── Conteúdo ── */}
           {abaAtual && (
-            <div style={{ padding: '4px 0 32px 36px', minHeight: 300 }}>
+            <div style={{ padding: '4px 0 32px 36px', minHeight: 300, maxWidth: 700 }}>
               <h2 style={{
                 fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 24,
                 color: 'var(--gold2)', marginTop: 6, marginBottom: 24,
               }}>
                 {abaAtual.titulo}
               </h2>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 680 }}>
-                {abaAtual.conteudo.split('\n').filter(l => l.trim()).map((linha, i) => {
-                  const ehItem = linha.trim().startsWith('-') || linha.trim().startsWith('•')
-                  return (
-                    <div key={i} style={{
-                      display: 'flex', gap: 10, alignItems: 'flex-start',
-                    }}>
-                      {ehItem && (
-                        <span style={{
-                          color: 'var(--gold)', fontWeight: 700, fontSize: 16,
-                          flexShrink: 0, marginTop: 1, lineHeight: 1.6,
-                        }}>›</span>
-                      )}
-                      <p style={{
-                        margin: 0, fontSize: 15, lineHeight: 1.75,
-                        color: ehItem ? 'var(--text)' : 'var(--text)',
-                        fontFamily: "'Barlow', sans-serif",
-                        fontWeight: ehItem ? 400 : 400,
-                      }}>
-                        {ehItem ? linha.replace(/^[-•]\s*/, '') : linha}
-                      </p>
-                    </div>
-                  )
-                })}
-              </div>
+              <div
+                className="rich-content"
+                dangerouslySetInnerHTML={{ __html: abaAtual.conteudo }}
+              />
             </div>
           )}
 

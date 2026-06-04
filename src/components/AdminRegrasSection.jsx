@@ -4,6 +4,8 @@ import { db } from '../firebase/database'
 import { useCampeonato } from '../contexts/CampeonatoContext'
 import { regrasPath } from '../utils/campeonatoPaths'
 import { REGRAS } from '../data/regras'
+import RichTextEditor from './RichTextEditor'
+import '../pages/Regras.css'
 
 const inputStyle = {
   background: 'var(--bg)', border: '1px solid var(--border2)', borderRadius: 6,
@@ -11,13 +13,35 @@ const inputStyle = {
   fontSize: 13, outline: 'none', width: '100%', boxSizing: 'border-box',
 }
 
+// Converte texto puro com \n em HTML para o TipTap
+function textoParaHtml(texto) {
+  if (!texto) return ''
+  return texto.split('\n')
+    .filter(l => l.trim())
+    .map(l => {
+      if (l.trim().startsWith('-') || l.trim().startsWith('•')) {
+        return `<li>${l.replace(/^[-•]\s*/, '')}</li>`
+      }
+      return `<p>${l}</p>`
+    })
+    .reduce((acc, cur) => {
+      if (cur.startsWith('<li>') && acc.endsWith('</li>')) return acc.slice(0, -5) + '</li>' + cur
+      if (cur.startsWith('<li>') && !acc.endsWith('</li>')) return acc + '<ul>' + cur
+      if (!cur.startsWith('<li>') && acc.endsWith('</li>')) return acc + '</ul>' + cur
+      return acc + cur
+    }, '')
+    .replace(/<\/li>(?!<li>|<\/ul>)/g, '</li></ul>')
+}
+
 // Converte as regras estáticas pra formato editável (fallback de importação)
 function converterRegrasEstaticas() {
   return REGRAS.map((s, idx) => ({
     titulo: s.titulo?.pt ?? s.titulo ?? '',
-    conteudo: s.tipo === 'lista'
-      ? [(s.intro?.pt ?? ''), ...(s.itens?.pt ?? [])].filter(Boolean).join('\n')
-      : (s.texto?.pt ?? ''),
+    conteudo: textoParaHtml(
+      s.tipo === 'lista'
+        ? [(s.intro?.pt ?? ''), ...(s.itens?.pt ?? [])].filter(Boolean).join('\n')
+        : (s.texto?.pt ?? '')
+    ),
     ordem: idx,
   }))
 }
@@ -156,13 +180,11 @@ export default function AdminRegrasSection() {
                 </div>
                 <div>
                   <label style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif", display: 'block', marginBottom: 4 }}>
-                    Conteúdo <span style={{ fontWeight: 400, textTransform: 'none', color: 'var(--text3)' }}>(cada linha vira um parágrafo)</span>
+                    Conteúdo
                   </label>
-                  <textarea
+                  <RichTextEditor
                     value={editForm.conteudo}
-                    onChange={e => setEditForm(f => ({ ...f, conteudo: e.target.value }))}
-                    rows={10}
-                    style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.6 }}
+                    onChange={v => setEditForm(f => ({ ...f, conteudo: v }))}
                   />
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
@@ -236,12 +258,10 @@ export default function AdminRegrasSection() {
               <label style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif", display: 'block', marginBottom: 4 }}>
                 Conteúdo
               </label>
-              <textarea
+              <RichTextEditor
                 value={novoForm.conteudo}
-                onChange={e => setNovoForm(f => ({ ...f, conteudo: e.target.value }))}
-                rows={6}
-                placeholder="Escreva o conteúdo do tópico. Cada linha vira um parágrafo na página pública."
-                style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.6 }}
+                onChange={v => setNovoForm(f => ({ ...f, conteudo: v }))}
+                minHeight={180}
               />
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
