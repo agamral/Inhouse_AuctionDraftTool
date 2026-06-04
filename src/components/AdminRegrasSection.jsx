@@ -13,37 +13,44 @@ const inputStyle = {
   fontSize: 13, outline: 'none', width: '100%', boxSizing: 'border-box',
 }
 
-// Converte texto puro com \n em HTML para o TipTap
-function textoParaHtml(texto) {
-  if (!texto) return ''
-  return texto.split('\n')
-    .filter(l => l.trim())
-    .map(l => {
-      if (l.trim().startsWith('-') || l.trim().startsWith('•')) {
-        return `<li>${l.replace(/^[-•]\s*/, '')}</li>`
-      }
-      return `<p>${l}</p>`
-    })
-    .reduce((acc, cur) => {
-      if (cur.startsWith('<li>') && acc.endsWith('</li>')) return acc.slice(0, -5) + '</li>' + cur
-      if (cur.startsWith('<li>') && !acc.endsWith('</li>')) return acc + '<ul>' + cur
-      if (!cur.startsWith('<li>') && acc.endsWith('</li>')) return acc + '</ul>' + cur
-      return acc + cur
-    }, '')
-    .replace(/<\/li>(?!<li>|<\/ul>)/g, '</li></ul>')
-}
-
-// Converte as regras estáticas pra formato editável (fallback de importação)
+// Converte as regras estáticas pra HTML rico (usado na importação)
+// Preserva a estrutura original: intro em itálico, itens em lista, etc.
 function converterRegrasEstaticas() {
-  return REGRAS.map((s, idx) => ({
-    titulo: s.titulo?.pt ?? s.titulo ?? '',
-    conteudo: textoParaHtml(
-      s.tipo === 'lista'
-        ? [(s.intro?.pt ?? ''), ...(s.itens?.pt ?? [])].filter(Boolean).join('\n')
-        : (s.texto?.pt ?? '')
-    ),
-    ordem: idx,
-  }))
+  const topicos = REGRAS.map((s, idx) => {
+    let html = ''
+
+    if (s.tipo === 'intro') {
+      html = `<p>${s.texto?.pt ?? ''}</p>`
+    } else if (s.tipo === 'lista') {
+      // Parágrafo introdutório em itálico
+      if (s.intro?.pt) {
+        html += `<p><em>${s.intro.pt}</em></p>`
+      }
+      // Itens como lista com marcadores
+      if (s.itens?.pt?.length) {
+        html += '<ul>' + s.itens.pt.map(item => `<li>${item}</li>`).join('') + '</ul>'
+      }
+    }
+
+    return {
+      titulo: s.titulo?.pt ?? s.titulo ?? '',
+      conteudo: html,
+      ordem: idx,
+    }
+  })
+
+  // Inclui aba "Mapas do Campeonato" já preparada pra preencher
+  topicos.push({
+    titulo: 'Mapas do Campeonato',
+    conteudo: [
+      '<p>Os mapas utilizados nesta temporada serão:</p>',
+      '<ul><li>Mapa 1</li><li>Mapa 2</li><li>Mapa 3</li></ul>',
+      '<p><em>A lista será atualizada pela organização antes do início da temporada.</em></p>',
+    ].join(''),
+    ordem: topicos.length,
+  })
+
+  return topicos
 }
 
 export default function AdminRegrasSection() {
