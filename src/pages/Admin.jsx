@@ -16,6 +16,7 @@ import AdminTeamsSection        from '../components/AdminTeamsSection'
 import AdminRodadasSection      from '../components/AdminRodadasSection'
 import AdminBracketSection      from '../components/AdminBracketSection'
 import AdminCapitaoAcesso       from '../components/AdminCapitaoAcesso'
+import AdminRegrasSection       from '../components/AdminRegrasSection'
 import AdminMigracaoSection          from '../components/AdminMigracaoSection'
 import AdminProvisionamentoSection   from '../components/AdminProvisionamentoSection'
 import AdminEncerramentoSection      from '../components/AdminEncerramentoSection'
@@ -431,6 +432,7 @@ export default function Admin() {
           </section>
 
           <SaveBar saving={saving} saved={saved} onSave={handleSave} />
+          <AdminRegrasSection />
         </div>
       )}
 

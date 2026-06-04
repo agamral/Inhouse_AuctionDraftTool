@@ -18,6 +18,7 @@ export const playerOverridesPath = id => c(id, 'playerOverrides')
 export const draftSessionPath    = id => c(id, 'draftSession')
 export const heroDraftPath       = id => c(id, 'heroDraft')
 export const tabelaOverridePath  = id => c(id, 'tabelaOverride')
+export const regrasPath          = id => c(id, 'config/regras')
 
 export const configModulesPath   = id => id ? `/campeonatos/${id}/config/modules`  : '/config/modules'
 export const configDraftPath     = id => id ? `/campeonatos/${id}/config/draft`    : '/config/draft'
