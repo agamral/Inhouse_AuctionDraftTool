@@ -31,10 +31,23 @@ export default function Regras() {
     return onValue(ref(db, regrasPath(idPublico)), snap => setTopicosDB(snap.val() ?? {}))
   }, [idPublico])
 
+  // Normaliza tópico para formato i18n {pt,es,en}
+  function getI18n(v, fallback = '') {
+    if (!v) return { value: fallback, isFallback: false }
+    if (typeof v === 'string') return { value: v, isFallback: false }
+    const val = v[lang]?.trim()
+    if (val) return { value: val, isFallback: false }
+    return { value: v.pt ?? fallback, isFallback: true }
+  }
+
   const topicos = topicosDB && Object.keys(topicosDB).length > 0
     ? Object.entries(topicosDB)
         .sort(([, a], [, b]) => (a.ordem ?? 0) - (b.ordem ?? 0))
-        .map(([id, t]) => ({ id, titulo: t.titulo, conteudo: t.conteudo ?? '' }))
+        .map(([id, t]) => {
+          const titulo   = getI18n(t.titulo)
+          const conteudo = getI18n(t.conteudo)
+          return { id, titulo: titulo.value, conteudo: conteudo.value, semTraducao: titulo.isFallback || conteudo.isFallback }
+        })
     : topicosDB !== null
       ? regrasEstaticasComoAbas(lang)
       : []
@@ -94,6 +107,9 @@ export default function Regras() {
                   }}
                 >
                   {t.titulo}
+                  {t.semTraducao && (
+                    <span style={{ marginLeft: 6, fontSize: 9, color: 'var(--text3)', verticalAlign: 'middle' }}>PT</span>
+                  )}
                 </button>
               )
             })}
@@ -104,10 +120,20 @@ export default function Regras() {
             <div style={{ padding: '4px 0 32px 36px', minHeight: 300, maxWidth: 700 }}>
               <h2 style={{
                 fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 24,
-                color: 'var(--gold2)', marginTop: 6, marginBottom: 24,
+                color: 'var(--gold2)', marginTop: 6, marginBottom: abaAtual.semTraducao ? 10 : 24,
               }}>
                 {abaAtual.titulo}
               </h2>
+              {abaAtual.semTraducao && (
+                <div style={{
+                  fontSize: 12, color: 'var(--text3)', fontFamily: "'Barlow', sans-serif",
+                  fontStyle: 'italic', marginBottom: 20, padding: '6px 12px',
+                  background: 'rgba(255,255,255,0.03)', borderRadius: 4,
+                  border: '1px solid var(--border)',
+                }}>
+                  {{ pt: '', en: 'This section is only available in Portuguese.', es: 'Esta sección solo está disponible en portugués.' }[lang] ?? ''}
+                </div>
+              )}
               <div
                 className="rich-content"
                 dangerouslySetInnerHTML={{ __html: abaAtual.conteudo }}
