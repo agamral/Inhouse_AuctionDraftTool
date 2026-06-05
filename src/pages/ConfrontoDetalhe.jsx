@@ -58,35 +58,83 @@ function BanCard({ heroId }) {
   )
 }
 
-// ── DraftTimeline — sequência completa de picks/bans ─────────────────────────
+// ── DraftTimeline — linha do tempo horizontal ────────────────────────────────
+function HeroStep({ passo: p, corTime, nomeTime, isBan }) {
+  const icone = heroIcone(p.heroiId)
+  const nome  = heroNome(p.heroiId)
+  const cor   = isBan ? 'var(--red)' : 'var(--green)'
+  return (
+    <div className="cd-tl-step" style={{ '--step-cor': cor }}>
+      <div className="cd-tl-circle">
+        <span className="cd-tl-num">{p.passo + 1}</span>
+      </div>
+      <span className="cd-tl-acao" style={{ color: cor }}>{isBan ? 'BAN' : 'PICK'}</span>
+      <div className="cd-tl-hero-wrap">
+        {icone
+          ? <img src={icone} alt={nome} className="cd-tl-hero-img" onError={e => { e.target.style.display = 'none' }} />
+          : <div className="cd-tl-hero-placeholder">{nome[0]}</div>
+        }
+      </div>
+      <span className="cd-tl-hero-nome">{nome}</span>
+      <span className="cd-tl-time-nome" style={{ color: corTime }}>{nomeTime}</span>
+    </div>
+  )
+}
+
 function DraftTimeline({ historico, timeANome, timeBNome, corA, corB }) {
+  const [porTime, setPorTime] = useState(false)
+
   if (!historico?.length) {
     return <div className="cd-timeline-vazio">Sequência de draft não disponível para esta partida.</div>
   }
+
   const passos = [...historico].sort((a, b) => a.passo - b.passo)
+
   return (
-    <div className="cd-timeline">
-      {passos.map((p, i) => {
-        const ehA      = p.time === 'A'
-        const cor      = ehA ? corA : corB
-        const nomeTime = ehA ? timeANome : timeBNome
-        const ehBan    = p.acao === 'ban'
-        const icone    = heroIcone(p.heroiId)
-        const nome     = heroNome(p.heroiId)
-        return (
-          <div key={i} className={`cd-timeline-step cd-timeline-step--${p.acao}`}>
-            <div className="cd-timeline-step-num">{p.passo + 1}</div>
-            <div className="cd-timeline-step-acao" style={{ color: ehBan ? 'var(--red)' : 'var(--green)' }}>
-              {ehBan ? 'BAN' : 'PICK'}
-            </div>
-            <div className="cd-timeline-step-time" style={{ color: cor }}>{nomeTime}</div>
-            <div className="cd-timeline-step-heroi">
-              {icone && <img src={icone} alt={nome} className="cd-timeline-hero-img" onError={e => { e.target.style.display = 'none' }} />}
-              <span>{nome}</span>
-            </div>
-          </div>
-        )
-      })}
+    <div className="cd-tl-container">
+      <div className="cd-tl-header">
+        <span className="cd-tl-titulo">Ordem do Draft</span>
+        <button className="cd-tl-toggle-btn" onClick={() => setPorTime(v => !v)}>
+          ⇄ {porTime ? 'Ver linear' : 'Ver por time'}
+        </button>
+      </div>
+
+      {!porTime ? (
+        /* Vista linear */
+        <div className="cd-tl-track">
+          {passos.map((p, i) => (
+            <HeroStep key={i} passo={p}
+              isBan={p.acao === 'ban'}
+              corTime={p.time === 'A' ? corA : corB}
+              nomeTime={p.time === 'A' ? timeANome : timeBNome}
+            />
+          ))}
+        </div>
+      ) : (
+        /* Vista por time */
+        <div className="cd-tl-byteam">
+          {[
+            { lado: 'A', nome: timeANome, cor: corA },
+            { lado: 'B', nome: timeBNome, cor: corB },
+          ].map(({ lado, nome, cor }) => {
+            const doTime = passos.filter(p => p.time === lado)
+            return (
+              <div key={lado} className="cd-tl-byteam-row">
+                <div className="cd-tl-byteam-label" style={{ color: cor }}>{nome}</div>
+                <div className="cd-tl-track cd-tl-track--compact">
+                  {doTime.map((p, i) => (
+                    <HeroStep key={i} passo={p}
+                      isBan={p.acao === 'ban'}
+                      corTime={cor}
+                      nomeTime={nome}
+                    />
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
@@ -256,11 +304,11 @@ function PartidaCard({ numero, partida: p, tA, tB, corA, corB, timeANome, timeBN
             </div>
           </div>
 
-          {/* Sequência completa */}
+          {/* Linha do tempo */}
           {historico.length > 0 && (
             <div className="cd-timeline-wrap">
               <button className="cd-timeline-btn" onClick={e => { e.stopPropagation(); setTimeline(v => !v) }}>
-                {timeline ? '▲ Fechar sequência completa' : '▼ Ver sequência de picks/bans'}
+                {timeline ? '▲ Fechar sequência de picks/bans' : '▼ Ver sequência de picks/bans'}
               </button>
               {timeline && (
                 <DraftTimeline historico={historico} timeANome={timeANome} timeBNome={timeBNome} corA={corA} corB={corB} />
