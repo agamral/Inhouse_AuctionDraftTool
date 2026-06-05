@@ -5,6 +5,7 @@ import { db } from '../firebase/database'
 import { useHeroDraft } from '../hooks/useHeroDraft'
 import { useServerTimeOffset } from '../hooks/useServerTimeOffset'
 import { criarEstadoInicial, SEQUENCIA_PADRAO, DEFAULT_TIMER_CONFIG } from '../utils/heroDraft'
+import { calcularMadnessBansOficial } from '../utils/draftRules'
 import { MAPAS } from '../utils/mapPool'
 import { HEROES } from '../utils/heroPool'
 import { teamPath, confrontosPath } from '../utils/campeonatoPaths'
@@ -334,12 +335,17 @@ export default function ShowmatchAdmin() {
     const novoId = gerarSessaoId()
     setSessaoId(novoId)
     setDraftCriado(false)
-    setGlobalBans([])
     setMapaId('')
     setPrimeiroTime('A')
-    flash(`Pronto para configurar a Partida ${concluidas + 1}.`)
-    // Garante que a próxima partida também reconecta corretamente em caso de reload
-    // (heroDraftId só é gravado quando admin clicar em Criar Hero Draft)
+
+    // Pré-popula global bans do Madness se ativo no confronto
+    const madness = confrontoCtx?.conf?.madness
+    const bansMadness = madness && madness !== 'desativado'
+      ? calcularMadnessBansOficial(partidas, madness)
+      : []
+    setGlobalBans(bansMadness)
+
+    flash(`Pronto para configurar a Partida ${concluidas + 1}.${bansMadness.length ? ` ⚡ ${bansMadness.length} heróis pré-banidos pelo ${madness === 'convencional' ? 'Madness Convencional' : 'Soft Madness'}.` : ''}`)
   }
 
   async function registrarResultadoFinal() {

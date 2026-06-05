@@ -44,6 +44,7 @@ export function shouldClose(teams, minPlayers = 5) {
  *
  * Retorna array de heroIds sem duplicatas.
  */
+// Scrims: draft.picksA/picksB, vencedor 'A'|'B'
 export function calcularMadnessBans(partidas, tipo) {
   if (!tipo || tipo === 'desativado') return []
 
@@ -62,6 +63,33 @@ export function calcularMadnessBans(partidas, tipo) {
     const acumulado = []
     for (const [, p] of ordenadas) {
       const picks = p.vencedor === 'A' ? (p.draft.picksA ?? []) : (p.draft.picksB ?? [])
+      acumulado.push(...picks)
+    }
+    return [...new Set(acumulado)]
+  }
+
+  return []
+}
+
+// Confrontos oficiais: picks.A/picks.B, vencedor 'timeA'|'timeB'
+export function calcularMadnessBansOficial(partidas, tipo) {
+  if (!tipo || tipo === 'desativado') return []
+
+  const ordenadas = Object.entries(partidas ?? {})
+    .sort(([a], [b]) => Number(a) - Number(b))
+    .filter(([, p]) => p.vencedor && p.picks)
+
+  if (ordenadas.length === 0) return []
+
+  if (tipo === 'convencional') {
+    const [, ultima] = ordenadas[ordenadas.length - 1]
+    return [...new Set([...(ultima.picks.A ?? []), ...(ultima.picks.B ?? [])])]
+  }
+
+  if (tipo === 'soft') {
+    const acumulado = []
+    for (const [, p] of ordenadas) {
+      const picks = p.vencedor === 'timeA' ? (p.picks.A ?? []) : (p.picks.B ?? [])
       acumulado.push(...picks)
     }
     return [...new Set(acumulado)]

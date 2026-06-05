@@ -87,14 +87,14 @@ export default function AdminRodadasSection() {
 
   // ── Criar confronto ──────────────────────────────────────────────────────────
 
-  async function criarConfrontoNaRodada({ timeA, timeB, tipo, formato }) {
+  async function criarConfrontoNaRodada({ timeA, timeB, tipo, formato, madness = 'soft' }) {
     if (!rodadaSel) return
     if (timeA === timeB) return flash('erro', 'Os times precisam ser diferentes.')
     try {
       const id = push(ref(db, confrontosPath(campeonatoId))).key
       await set(ref(db, `${confrontosPath(campeonatoId)}/${id}`), {
         rodadaId: rodadaSel,
-        timeA, timeB, tipo, formato,
+        timeA, timeB, tipo, formato, madness,
         slot: null,
         status: STATUS_CONFRONTO.PENDENTE,
         resultado: null,
@@ -265,6 +265,7 @@ export default function AdminRodadasSection() {
         timeB: orig.timeB,
         tipo: TIPO_CONFRONTO.DESEMPATE,
         formato: FORMATO_SERIE.MD3,
+        madness: orig.madness ?? 'soft',
         slot: null,
         status: STATUS_CONFRONTO.PENDENTE,
         resultado: null,
@@ -531,6 +532,11 @@ function ConfrontoCard({ confrontoId, confronto: c, times, disponibilidade, onRe
         <span style={{ fontSize: 10, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text3)', background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 3, padding: '1px 6px' }}>
           {TIPO_LABEL[c.tipo] ?? c.tipo} · {c.formato}
         </span>
+        {c.madness && c.madness !== 'desativado' && (
+          <span style={{ fontSize: 10, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--gold)', background: 'rgba(201,168,76,0.1)', border: '1px solid rgba(201,168,76,0.3)', borderRadius: 3, padding: '1px 6px' }}>
+            ⚡ {c.madness === 'convencional' ? 'MADNESS' : 'SOFT'}
+          </span>
+        )}
 
         {emDraft && (
           <span style={{ fontSize: 10, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, color: 'var(--purple)', background: 'rgba(155,110,232,0.12)', border: '1px solid rgba(155,110,232,0.35)', borderRadius: 3, padding: '1px 6px' }}>
@@ -791,9 +797,15 @@ function ModalNovaRodada({ onSalvar, onFechar }) {
   )
 }
 
+const MADNESS_OPCOES = [
+  { value: 'desativado',   label: 'Desativado',           desc: 'Sem restrições entre partidas.' },
+  { value: 'convencional', label: 'Madness Convencional',  desc: 'Os 10 heróis da partida anterior ficam banidos na próxima.' },
+  { value: 'soft',         label: 'Soft Madness',          desc: 'Só os heróis do time vencedor são banidos (acumulativo).' },
+]
+
 function ModalNovoConfronto({ times, onSalvar, onFechar }) {
   const timesArr = Object.entries(times)
-  const [form, setForm] = useState({ timeA: '', timeB: '', tipo: TIPO_CONFRONTO.REGULAR, formato: FORMATO_SERIE.MD2 })
+  const [form, setForm] = useState({ timeA: '', timeB: '', tipo: TIPO_CONFRONTO.REGULAR, formato: FORMATO_SERIE.MD2, madness: 'soft' })
 
   return (
     <Modal titulo="Novo Confronto" onFechar={onFechar}>
@@ -809,7 +821,7 @@ function ModalNovoConfronto({ times, onSalvar, onFechar }) {
         <option value="">— selecionar —</option>
         {timesArr.map(([id, t]) => <option key={id} value={id}>{t.nome}</option>)}
       </select>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
         <div>
           <FieldLabel label="Tipo" />
           <select value={form.tipo} onChange={e => setForm(f => ({ ...f, tipo: e.target.value }))}
@@ -824,6 +836,28 @@ function ModalNovoConfronto({ times, onSalvar, onFechar }) {
             {Object.values(FORMATO_SERIE).map(f => <option key={f} value={f}>{f}</option>)}
           </select>
         </div>
+      </div>
+      <FieldLabel label="Modo Madness" />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
+        {MADNESS_OPCOES.map(opt => (
+          <label key={opt.value} style={{
+            display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer',
+            padding: '8px 10px', borderRadius: 6,
+            border: `1px solid ${form.madness === opt.value ? 'var(--gold)' : 'var(--border)'}`,
+            background: form.madness === opt.value ? 'rgba(201,168,76,0.07)' : 'var(--bg)',
+          }}>
+            <input type="radio" name="madness-confronto" value={opt.value}
+              checked={form.madness === opt.value}
+              onChange={() => setForm(f => ({ ...f, madness: opt.value }))}
+              style={{ marginTop: 2, accentColor: 'var(--gold)', flexShrink: 0 }} />
+            <div>
+              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 13, color: form.madness === opt.value ? 'var(--gold2)' : 'var(--text)' }}>
+                {opt.label}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 1 }}>{opt.desc}</div>
+            </div>
+          </label>
+        ))}
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
         <button className="btn primary" style={{ fontSize: 13 }}
