@@ -318,10 +318,9 @@ export default function ShowmatchAdmin() {
   async function marcarVencedorPartida(time) {
     if (!emDraftEntry) return
     const [pNum] = emDraftEntry
-    const picks      = { A: draftEstado?.timeA?.picks ?? [], B: draftEstado?.timeB?.picks ?? [] }
-    const bans       = { A: draftEstado?.timeA?.bans  ?? [], B: draftEstado?.timeB?.bans  ?? [] }
-    const historico  = draftEstado?.historico ?? []
-    const globalBansSnap = draftEstado?.globalBans ?? []
+    const picks     = { A: draftEstado?.timeA?.picks ?? [], B: draftEstado?.timeB?.picks ?? [] }
+    const bans      = { A: draftEstado?.timeA?.bans  ?? [], B: draftEstado?.timeB?.bans  ?? [] }
+    const historico = draftEstado?.historico ?? []
     const updates = {}
     const base = `${confrontosPath(campeonatoId)}/${confrontoId}`
     updates[`${base}/partidas/${pNum}/status`]      = 'concluida'
@@ -329,7 +328,8 @@ export default function ShowmatchAdmin() {
     updates[`${base}/partidas/${pNum}/picks`]       = picks
     updates[`${base}/partidas/${pNum}/bans`]        = bans
     updates[`${base}/partidas/${pNum}/historico`]   = historico
-    updates[`${base}/partidas/${pNum}/globalBans`]  = globalBansSnap
+    updates[`${base}/partidas/${pNum}/globalBans`]  = globalBans   // state local, não draftEstado
+    updates[`${base}/partidas/${pNum}/mapaId`]      = mapaId || null
     updates[`${base}/partidas/${pNum}/encerradoEm`] = Date.now()
     await update(ref(db), updates)
     flash(`Partida ${pNum} encerrada!`)

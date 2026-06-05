@@ -5,6 +5,7 @@ import { db } from '../firebase/database'
 import { useCampeonato } from '../contexts/CampeonatoContext'
 import { teamPath, rodadasPath, confrontosPath, disponibilidadePath } from '../utils/campeonatoPaths'
 import { HEROES } from '../utils/heroPool'
+import { MAPAS } from '../utils/mapPool'
 import {
   SLOTS, SLOT_LABEL, SLOT_DIA, DIA_LABEL,
   STATUS_CONFRONTO, STATUS_LABEL, STATUS_COR,
@@ -510,6 +511,7 @@ function ConfrontoCard({ confrontoId, confronto: c, times, disponibilidade, onRe
   const maxTotal     = c.formato === 'MD5' ? 5 : c.formato === 'MD2' ? 2 : 1
   const [openDraft, setOpenDraft] = useState({})
   const heroNome = useCallback(id => HEROES.find(h => h.id === id)?.nome ?? id, [])
+  const mapaNome = useCallback(id => id ? (MAPAS.find(m => m.id === id)?.nome ?? id) : null, [])
 
   return (
     <div style={{
@@ -631,7 +633,8 @@ function ConfrontoCard({ confrontoId, confronto: c, times, disponibilidade, onRe
               cor   = 'var(--purple)'
             } else if (partida.status === 'concluida') {
               const v = partida.vencedor === 'timeA' ? (tA?.nome ?? 'Time A') : (tB?.nome ?? 'Time B')
-              label = `✓ Finalizado — vitória ${v}`
+              const mapa = mapaNome(partida.mapaId)
+              label = `✓ Finalizado — vitória ${v}${mapa ? ` · ${mapa}` : ''}`
               cor   = 'var(--green)'
             }
             const picksA = partida?.picks?.A ?? []

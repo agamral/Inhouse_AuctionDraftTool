@@ -5,11 +5,13 @@ import { db } from '../firebase/database'
 import { useCampeonato } from '../contexts/CampeonatoContext'
 import { confrontosPath, teamPath } from '../utils/campeonatoPaths'
 import { HEROES } from '../utils/heroPool'
+import { MAPAS } from '../utils/mapPool'
 import { FORMATO_SERIE } from '../utils/scheduling'
 import './ConfrontoDetalhe.css'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const HERO_MAP = Object.fromEntries(HEROES.map(h => [h.id, h]))
+const MAPA_MAP = Object.fromEntries(MAPAS.map(m => [m.id, m]))
 
 function heroNome(id) {
   return HERO_MAP[id]?.nome ?? id
@@ -91,6 +93,7 @@ function PartidaCard({ numero, partida: p, timeANome, timeBNome, corA, corB }) {
   const globalBans = p.globalBans ?? []
   const historico  = p.historico  ?? []
   const vencedor   = p.vencedor === 'timeA' ? timeANome : p.vencedor === 'timeB' ? timeBNome : null
+  const mapaNome   = p.mapaId ? (MAPA_MAP[p.mapaId]?.nome ?? p.mapaId) : null
 
   const temDraftData = concluida && (picksA.length > 0 || picksB.length > 0 || bansA.length > 0 || bansB.length > 0)
 
@@ -99,6 +102,7 @@ function PartidaCard({ numero, partida: p, timeANome, timeBNome, corA, corB }) {
       <div className="cd-partida-header" onClick={() => temDraftData && setAberto(v => !v)} style={{ cursor: temDraftData ? 'pointer' : 'default' }}>
         <div className="cd-partida-header-left">
           <span className="cd-partida-num">Partida {numero}</span>
+          {mapaNome && <span className="cd-partida-mapa">{mapaNome}</span>}
           {concluida && vencedor && (
             <span className="cd-partida-vencedor" style={{ color: p.vencedor === 'timeA' ? corA : corB }}>
               Vitória: {vencedor}

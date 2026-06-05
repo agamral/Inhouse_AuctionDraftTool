@@ -186,6 +186,15 @@
   font-weight: 600;
 }
 
+.cd-partida-mapa {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+  color: var(--text3);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1px 6px;
+}
+
 .cd-partida-status {
   font-family: 'Barlow', sans-serif;
   font-size: 12px;
