@@ -68,10 +68,9 @@ export default function Tabela() {
 
   const rodadasArr = Object.entries(rodadas).sort(([, a], [, b]) => a.numero - b.numero)
 
-  const confrontosArr = Object.values(confrontos).filter(c => {
-    if (rodadaSel === 'todas') return true
-    return c.rodadaId === rodadaSel
-  })
+  const confrontosArr = Object.entries(confrontos)
+    .filter(([, c]) => rodadaSel === 'todas' || c.rodadaId === rodadaSel)
+    .map(([id, c]) => ({ ...c, confrontoId: id }))
 
   // Para a tabela geral, usamos todos os confrontos realizados (independente da rodada selecionada)
   const todosConfrontos = Object.values(confrontos)
@@ -299,9 +298,14 @@ export default function Tabela() {
               const tA = times[c.timeA]
               const tB = times[c.timeB]
               const realizado = c.status === STATUS_CONFRONTO.REALIZADO || c.status === STATUS_CONFRONTO.EMPATE_PENDENTE
+              const detalheUrl = c.confrontoId ? `/campeonatos/${idPublico}/confronto/${c.confrontoId}` : null
 
               return (
-                <div key={i} className={`tab-partida${realizado ? ' tab-partida--realizada' : ''}`}>
+                <div key={i}
+                  className={`tab-partida${realizado ? ' tab-partida--realizada' : ''}${detalheUrl ? ' tab-partida--clicavel' : ''}`}
+                  onClick={detalheUrl ? () => window.open(detalheUrl, '_blank') : undefined}
+                  title={detalheUrl ? 'Ver detalhes da partida' : undefined}
+                >
                   <div className="tab-partida-time tab-partida-time--a">
                     <span className="tab-partida-dot" style={{ background: tA?.cor }} />
                     <span style={{ color: tA?.cor ?? 'var(--text)' }}>{tA?.nome ?? c.timeA}</span>

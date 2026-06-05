@@ -105,9 +105,10 @@ export default function Chave() {
 
   // ── Agrupa por tipo ──────────────────────────────────────────────────────────
   const porTipo = {}
-  Object.values(confrontos).forEach(c => {
-    if (!porTipo[c.tipo]) porTipo[c.tipo] = []
-    porTipo[c.tipo].push(c)
+  Object.entries(confrontos).forEach(([id, c]) => {
+    const m = { ...c, confrontoId: id }
+    if (!porTipo[m.tipo]) porTipo[m.tipo] = []
+    porTipo[m.tipo].push(m)
   })
   Object.keys(porTipo).forEach(t =>
     porTipo[t].sort((a, b) => (a.criadoEm ?? 0) - (b.criadoEm ?? 0))
@@ -116,12 +117,13 @@ export default function Chave() {
   // ── Fase regular — agrupa por rodada ─────────────────────────────────────────
   const regularPorRodada = {}
   const tiposRegular = [TIPO_CONFRONTO.REGULAR, TIPO_CONFRONTO.DESEMPATE]
-  Object.values(confrontos)
-    .filter(c => tiposRegular.includes(c.tipo))
-    .forEach(c => {
-      const rid = c.rodadaId ?? 'sem-rodada'
+  Object.entries(confrontos)
+    .filter(([, c]) => tiposRegular.includes(c.tipo))
+    .forEach(([id, c]) => {
+      const m = { ...c, confrontoId: id }
+      const rid = m.rodadaId ?? 'sem-rodada'
       if (!regularPorRodada[rid]) regularPorRodada[rid] = []
-      regularPorRodada[rid].push(c)
+      regularPorRodada[rid].push(m)
     })
 
   const rodadasRegulares = Object.entries(regularPorRodada)
@@ -343,6 +345,7 @@ function BracketSide({ rounds, labels, times, timeSel }) {
 // ── Match Card ─────────────────────────────────────────────────────────────────
 function MatchCard({ match: m, times, destaque = false, small = false, timeSel = '' }) {
   if (!m) return null
+  const { idPublico } = useCampeonato()
   const tA = times[m.timeA]
   const tB = times[m.timeB]
   const highlighted = timeSel && (m.timeA === timeSel || m.timeB === timeSel)
@@ -357,13 +360,19 @@ function MatchCard({ match: m, times, destaque = false, small = false, timeSel =
   const tipoRes = m.resultado?.tipo
 
   const highlightCor = highlighted ? (times[timeSel]?.cor ?? 'var(--blue)') : undefined
+  const detalheUrl   = m.confrontoId && idPublico
+    ? `/campeonatos/${idPublico}/confronto/${m.confrontoId}`
+    : null
   return (
-    <div className={['match-card', destaque ? 'match-card--destaque' : '', realizado ? 'match-card--realizado' : '', small ? 'match-card--small' : ''].filter(Boolean).join(' ')}
+    <div className={['match-card', destaque ? 'match-card--destaque' : '', realizado ? 'match-card--realizado' : '', small ? 'match-card--small' : '', detalheUrl ? 'match-card--clicavel' : ''].filter(Boolean).join(' ')}
       style={{
         ...(small ? {} : { height: CARD_H }),
         ...(highlighted ? { outline: `2px solid ${highlightCor}`, borderColor: highlightCor } : {}),
         ...(dimmed ? { opacity: 0.35 } : {}),
-      }}>
+      }}
+      onClick={detalheUrl ? () => window.open(detalheUrl, '_blank') : undefined}
+      title={detalheUrl ? 'Ver detalhes do confronto' : undefined}
+    >
       <TeamSlot time={tA} placar={realizado ? m.resultado?.timeA : null}
         venceu={vencedorId === m.timeA} perdeu={vencedorId !== null && vencedorId !== m.timeA}
         tipoRes={tipoRes} lado="A" small={small} />

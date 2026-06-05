@@ -181,6 +181,15 @@
   border-color: var(--border2);
 }
 
+.tab-partida--clicavel {
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.tab-partida--clicavel:hover {
+  border-color: rgba(201,168,76,0.35);
+  background: rgba(201,168,76,0.04);
+}
+
 .tab-partida-time {
   display: flex;
   align-items: center;

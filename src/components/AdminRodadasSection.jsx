@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ref, onValue, set, update, remove, push } from 'firebase/database'
 import { db } from '../firebase/database'
 import { useCampeonato } from '../contexts/CampeonatoContext'
 import { teamPath, rodadasPath, confrontosPath, disponibilidadePath } from '../utils/campeonatoPaths'
+import { HEROES } from '../utils/heroPool'
 import {
   SLOTS, SLOT_LABEL, SLOT_DIA, DIA_LABEL,
   STATUS_CONFRONTO, STATUS_LABEL, STATUS_COR,
@@ -498,15 +499,17 @@ function ConfrontoCard({ confrontoId, confronto: c, times, disponibilidade, onRe
   const temAlerta = c.alertas?.semOverlap || c.alertas?.prazoAusente?.timeA || c.alertas?.prazoAusente?.timeB
 
   // Placar e estado das partidas
-  const partidasObj = c.partidas ?? {}
-  const partidasArr = Object.values(partidasObj)
-  const winsA       = partidasArr.filter(p => p.vencedor === 'timeA').length
-  const winsB       = partidasArr.filter(p => p.vencedor === 'timeB').length
-  const concluidas  = partidasArr.filter(p => p.status === 'concluida').length
-  const temPartidas = partidasArr.length > 0
-  const emDraftPart = Object.values(partidasObj).find(p => p.status === 'em_draft')
-  const emDraft     = !!emDraftPart
-  const maxTotal    = c.formato === 'MD5' ? 5 : c.formato === 'MD2' ? 2 : 1
+  const partidasObj  = c.partidas ?? {}
+  const partidasArr  = Object.values(partidasObj)
+  const winsA        = partidasArr.filter(p => p.vencedor === 'timeA').length
+  const winsB        = partidasArr.filter(p => p.vencedor === 'timeB').length
+  const concluidas   = partidasArr.filter(p => p.status === 'concluida').length
+  const temPartidas  = partidasArr.length > 0
+  const emDraftPart  = Object.values(partidasObj).find(p => p.status === 'em_draft')
+  const emDraft      = !!emDraftPart
+  const maxTotal     = c.formato === 'MD5' ? 5 : c.formato === 'MD2' ? 2 : 1
+  const [openDraft, setOpenDraft] = useState({})
+  const heroNome = useCallback(id => HEROES.find(h => h.id === id)?.nome ?? id, [])
 
   return (
     <div style={{
@@ -615,9 +618,10 @@ function ConfrontoCard({ confrontoId, confronto: c, times, disponibilidade, onRe
             Partidas: {concluidas}/{maxTotal}
           </div>
           {Array.from({ length: maxTotal }, (_, i) => {
-            const n       = String(i + 1)
-            const partida = partidasObj[n]
+            const n        = String(i + 1)
+            const partida  = partidasObj[n]
             const prevDone = i === 0 || partidasObj[String(i)]?.status === 'concluida'
+            const isOpen   = !!openDraft[n]
             let label, cor
             if (!partida) {
               label = prevDone ? 'Aguardando início do draft' : `Aguardando término da Partida ${i}`
@@ -630,10 +634,57 @@ function ConfrontoCard({ confrontoId, confronto: c, times, disponibilidade, onRe
               label = `✓ Finalizado — vitória ${v}`
               cor   = 'var(--green)'
             }
+            const picksA = partida?.picks?.A ?? []
+            const picksB = partida?.picks?.B ?? []
+            const bansA  = partida?.bans?.A  ?? []
+            const bansB  = partida?.bans?.B  ?? []
+            const temDraft = partida?.status === 'concluida' && (picksA.length > 0 || picksB.length > 0)
             return (
-              <div key={n} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontFamily: "'Barlow Condensed', sans-serif", color: cor, padding: '1px 0' }}>
-                <span style={{ color: 'var(--text3)', minWidth: 52 }}>Partida {n}:</span>
-                <span>{label}</span>
+              <div key={n}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 0' }}>
+                  <span style={{ fontSize: 11, fontFamily: "'Barlow Condensed', sans-serif", color: 'var(--text3)', minWidth: 52 }}>Partida {n}:</span>
+                  <span style={{ fontSize: 11, fontFamily: "'Barlow Condensed', sans-serif", color: cor, flex: 1 }}>{label}</span>
+                  {temDraft && (
+                    <button
+                      style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 4, padding: '1px 7px', fontSize: 10, color: 'var(--text2)', cursor: 'pointer', fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.05em' }}
+                      onClick={() => setOpenDraft(prev => ({ ...prev, [n]: !prev[n] }))}
+                    >
+                      {isOpen ? '▲' : '▼ picks'}
+                    </button>
+                  )}
+                </div>
+                {isOpen && temDraft && (
+                  <div style={{ marginTop: 6, padding: '8px 10px', background: 'var(--bg)', borderRadius: 6, border: '1px solid var(--border)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    {[
+                      { nome: tA?.nome ?? 'Time A', cor: tA?.cor, picks: picksA, bans: bansA },
+                      { nome: tB?.nome ?? 'Time B', cor: tB?.cor, picks: picksB, bans: bansB },
+                    ].map(({ nome, cor: corTime, picks, bans }) => (
+                      <div key={nome}>
+                        <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 10, fontWeight: 700, color: corTime ?? 'var(--text2)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>{nome}</div>
+                        {picks.length > 0 && (
+                          <div style={{ marginBottom: 3 }}>
+                            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 9, color: 'var(--text3)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 2 }}>Picks</div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                              {picks.map(id => (
+                                <span key={id} style={{ fontFamily: "'Barlow', sans-serif", fontSize: 10, background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 3, padding: '1px 5px', color: 'var(--text)' }}>{heroNome(id)}</span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {bans.length > 0 && (
+                          <div>
+                            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 9, color: 'var(--text3)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 2 }}>Bans</div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                              {bans.map(id => (
+                                <span key={id} style={{ fontFamily: "'Barlow', sans-serif", fontSize: 10, background: 'rgba(224,85,85,0.06)', border: '1px solid rgba(224,85,85,0.18)', borderRadius: 3, padding: '1px 5px', color: 'var(--text2)', textDecoration: 'line-through' }}>{heroNome(id)}</span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )
           })}

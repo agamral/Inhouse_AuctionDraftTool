@@ -77,6 +77,9 @@
 
 .match-card--realizado { border-color: var(--border); }
 
+.match-card--clicavel { cursor: pointer; }
+.match-card--clicavel:hover { border-color: rgba(201,168,76,0.4); background: rgba(201,168,76,0.04); }
+
 .match-card--destaque {
   border-color: var(--gold);
   box-shadow: 0 0 18px rgba(201,168,76,0.18);

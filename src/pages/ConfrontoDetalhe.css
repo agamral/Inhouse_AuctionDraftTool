@@ -1,0 +1,431 @@
+.cd-root {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 32px 24px 80px;
+}
+
+.cd-loading, .cd-erro {
+  text-align: center;
+  padding: 80px 0;
+  color: var(--text2);
+  font-family: 'Barlow', sans-serif;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────────── */
+.cd-header {
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+  padding: 28px 32px 20px;
+  margin-bottom: 32px;
+}
+
+.cd-header-times {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.cd-header-time {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+.cd-header-time--b {
+  justify-content: flex-end;
+}
+
+.cd-header-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.cd-header-nome {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.cd-header-placar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.cd-placar-num {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 38px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1;
+  min-width: 28px;
+  text-align: center;
+}
+
+.cd-placar-sep {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 24px;
+  color: var(--text3);
+}
+
+.cd-placar-vs {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 16px;
+  color: var(--text3);
+  letter-spacing: 0.12em;
+}
+
+.cd-header-meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+/* ── Badges ──────────────────────────────────────────────────────────────────── */
+.cd-badge {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border2);
+  color: var(--text2);
+}
+
+.cd-badge--formato {
+  color: var(--gold);
+  border-color: rgba(201,168,76,0.35);
+}
+
+.cd-badge--data {
+  color: var(--text3);
+  border-color: var(--border);
+  text-transform: none;
+  font-weight: 400;
+  font-size: 11px;
+}
+
+/* ── Seção de partidas ───────────────────────────────────────────────────────── */
+.cd-secao-titulo {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text3);
+  margin: 0 0 12px;
+}
+
+.cd-partidas {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cd-sem-partidas {
+  color: var(--text3);
+  font-family: 'Barlow', sans-serif;
+  font-size: 14px;
+  padding: 32px;
+  text-align: center;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+/* ── PartidaCard ─────────────────────────────────────────────────────────────── */
+.cd-partida {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+
+.cd-partida--concluida {
+  border-color: var(--border2);
+}
+
+.cd-partida-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  gap: 12px;
+}
+
+.cd-partida-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.cd-partida-num {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text2);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.cd-partida-vencedor {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.cd-partida-status {
+  font-family: 'Barlow', sans-serif;
+  font-size: 12px;
+  color: var(--text3);
+}
+
+.cd-partida-toggle {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+  color: var(--gold);
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.cd-partida-body {
+  padding: 4px 16px 16px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ── Dois times side-by-side ─────────────────────────────────────────────────── */
+.cd-dois-times {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 580px) {
+  .cd-dois-times {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cd-time-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cd-time-col-titulo {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ── Section labels ──────────────────────────────────────────────────────────── */
+.cd-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cd-section-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text3);
+}
+
+.cd-section-label--madness {
+  color: var(--purple);
+}
+
+.cd-hero-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* ── HeroChip ────────────────────────────────────────────────────────────────── */
+.cd-hero-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 7px 3px 3px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--bg3);
+  font-family: 'Barlow', sans-serif;
+  font-size: 11px;
+  color: var(--text);
+}
+
+.cd-hero-chip--ban {
+  opacity: 0.7;
+  border-color: rgba(224,85,85,0.25);
+  background: rgba(224,85,85,0.07);
+  color: var(--text2);
+}
+
+.cd-hero-chip--ban .cd-hero-chip-nome {
+  text-decoration: line-through;
+}
+
+.cd-hero-chip-img {
+  width: 22px;
+  height: 22px;
+  border-radius: 3px;
+  object-fit: cover;
+}
+
+.cd-hero-chip-inicial {
+  width: 22px;
+  height: 22px;
+  border-radius: 3px;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--text2);
+}
+
+.cd-hero-chip-nome {
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+/* ── Timeline ────────────────────────────────────────────────────────────────── */
+.cd-timeline-wrap {
+  margin-top: 4px;
+}
+
+.cd-timeline-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text2);
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.cd-timeline-btn:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+.cd-timeline-vazio {
+  color: var(--text3);
+  font-family: 'Barlow', sans-serif;
+  font-size: 12px;
+  padding: 8px 0;
+}
+
+.cd-timeline {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cd-timeline-step {
+  display: grid;
+  grid-template-columns: 28px 40px 120px 1fr;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--bg3);
+  font-family: 'Barlow', sans-serif;
+  font-size: 12px;
+}
+
+.cd-timeline-step--ban {
+  background: rgba(224,85,85,0.05);
+  border-color: rgba(224,85,85,0.15);
+}
+
+.cd-timeline-step--pick {
+  background: rgba(76,175,125,0.04);
+  border-color: rgba(76,175,125,0.12);
+}
+
+.cd-timeline-step-num {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text3);
+  text-align: center;
+}
+
+.cd-timeline-step-acao {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.cd-timeline-step-time {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cd-timeline-step-heroi {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text);
+  font-size: 12px;
+}
+
+.cd-timeline-hero-img {
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+@media (max-width: 480px) {
+  .cd-header {
+    padding: 20px 16px 16px;
+  }
+  .cd-header-nome {
+    font-size: 16px;
+  }
+  .cd-placar-num {
+    font-size: 28px;
+  }
+  .cd-timeline-step {
+    grid-template-columns: 24px 36px 90px 1fr;
+    font-size: 11px;
+  }
+}

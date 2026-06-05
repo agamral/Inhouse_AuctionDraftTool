@@ -31,6 +31,7 @@ import ShowmatchCapitao    from './pages/ShowmatchCapitao.jsx'
 import ShowmatchEspectador from './pages/ShowmatchEspectador.jsx'
 import Historico           from './pages/Historico.jsx'
 import HistoricoDetalhe    from './pages/HistoricoDetalhe.jsx'
+import ConfrontoDetalhe    from './pages/ConfrontoDetalhe.jsx'
 import { useCampeonato } from './contexts/CampeonatoContext.jsx'
 import { ViewAsProvider } from './contexts/ViewAsContext.jsx'
 
@@ -70,6 +71,7 @@ export default function App() {
           <Route path="login"               element={<LoginAdmin />} />
           <Route path="admin"               element={<CampeonatoAdminRoute><Admin /></CampeonatoAdminRoute>} />
           <Route path="scrim"               element={<ShowmatchCapitaoHost />} />
+          <Route path="confronto/:confrontoId" element={<ConfrontoDetalhe />} />
         </Route>
 
         {/* Histórico */}
