@@ -37,6 +37,40 @@ export function shouldClose(teams, minPlayers = 5) {
 }
 
 /**
+ * Calcula os heróis a banir globalmente na próxima partida, baseado nas partidas já encerradas.
+ *
+ * tipo 'convencional': bane todos os 10 picks da partida imediatamente anterior
+ * tipo 'soft': bane os picks do time vencedor de cada partida anterior (acumulativo)
+ *
+ * Retorna array de heroIds sem duplicatas.
+ */
+export function calcularMadnessBans(partidas, tipo) {
+  if (!tipo || tipo === 'desativado') return []
+
+  const ordenadas = Object.entries(partidas ?? {})
+    .sort(([a], [b]) => Number(a) - Number(b))
+    .filter(([, p]) => p.vencedor && p.draft)
+
+  if (ordenadas.length === 0) return []
+
+  if (tipo === 'convencional') {
+    const [, ultima] = ordenadas[ordenadas.length - 1]
+    return [...new Set([...(ultima.draft.picksA ?? []), ...(ultima.draft.picksB ?? [])])]
+  }
+
+  if (tipo === 'soft') {
+    const acumulado = []
+    for (const [, p] of ordenadas) {
+      const picks = p.vencedor === 'A' ? (p.draft.picksA ?? []) : (p.draft.picksB ?? [])
+      acumulado.push(...picks)
+    }
+    return [...new Set(acumulado)]
+  }
+
+  return []
+}
+
+/**
  * Calcula o próximo turno baseado na seed reversa (NBA Draft style).
  * Seed menor = melhor = escolhe por último.
  */

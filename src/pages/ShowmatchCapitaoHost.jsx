@@ -16,6 +16,7 @@ import PaginaInativa from '../components/PaginaInativa'
 import { MAPAS } from '../utils/mapPool'
 import { HEROES } from '../utils/heroPool'
 import { criarEstadoInicial, SEQUENCIA_PADRAO, DEFAULT_TIMER_CONFIG, STATUS_DRAFT } from '../utils/heroDraft'
+import { calcularMadnessBans } from '../utils/draftRules'
 import { useHeroDraft } from '../hooks/useHeroDraft'
 import { useServerTimeOffset } from '../hooks/useServerTimeOffset'
 
@@ -56,9 +57,10 @@ export default function ShowmatchCapitaoHost() {
   const [salvando, setSalvando] = useState(false)
 
   // Formulário de nova sessão
-  const [formNome,  setFormNome]  = useState('')
-  const [formTimeA, setFormTimeA] = useState('')  // teamId do meu time (A)
-  const [formTimeB, setFormTimeB] = useState('')  // teamId do adversário (B)
+  const [formNome,    setFormNome]    = useState('')
+  const [formTimeA,   setFormTimeA]   = useState('')  // teamId do meu time (A)
+  const [formTimeB,   setFormTimeB]   = useState('')  // teamId do adversário (B)
+  const [formMadness, setFormMadness] = useState('')  // 'desativado' | 'convencional' | 'soft' — obrigatório escolher
 
   const uid = user?.uid
 
@@ -98,6 +100,7 @@ export default function ShowmatchCapitaoHost() {
     if (!formNome.trim()) return flash('erro', 'Dê um nome pra sessão.')
     if (!formTimeA || !formTimeB) return flash('erro', 'Selecione os dois times.')
     if (formTimeA === formTimeB) return flash('erro', 'Os dois times precisam ser diferentes.')
+    if (!formMadness) return flash('erro', 'Escolha o modo Madness antes de continuar.')
 
     const tA = teams[formTimeA]
     const tB = teams[formTimeB]
@@ -116,6 +119,7 @@ export default function ShowmatchCapitaoHost() {
         timeA: { teamId: formTimeA, nome: tA?.nome ?? 'Time A', cor: tA?.cor ?? '#4a9eda' },
         timeB: { teamId: formTimeB, nome: tB?.nome ?? 'Time B', cor: tB?.cor ?? '#e05555' },
         timeBUid,    // pra propagar partidas finalizadas pro histórico do Time B
+        madness:   formMadness,
         status:    'ativa',
         criadoEm:  serverTimestamp(),
         partidas:  {},
@@ -136,6 +140,7 @@ export default function ShowmatchCapitaoHost() {
       setSessaoSel(sessaoId)
       setView('sessao')
       setFormNome('')
+      setFormMadness('')
       flash('ok', `Sessão "${formNome.trim()}" criada!`)
     } catch (e) {
       flash('erro', `Erro: ${e.message}`)
@@ -241,9 +246,45 @@ export default function ShowmatchCapitaoHost() {
             </div>
           </div>
 
+          {/* Modo Madness — obrigatório */}
+          <div>
+            <label style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif", display: 'block', marginBottom: 8 }}>
+              Modo Madness <span style={{ color: 'var(--red)', fontWeight: 400 }}>*</span>
+            </label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {[
+                { value: 'desativado',   label: 'Desativado',          desc: 'Sem restrições entre partidas — draft normal em todas.' },
+                { value: 'convencional', label: 'Madness Convencional', desc: 'Os 10 heróis usados na partida anterior ficam banidos na próxima.' },
+                { value: 'soft',         label: 'Soft Madness',         desc: 'Só os heróis do time vencedor são banidos na próxima (acumulativo).' },
+              ].map(opt => (
+                <label key={opt.value} style={{
+                  display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer',
+                  padding: '10px 12px', borderRadius: 6,
+                  border: `1px solid ${formMadness === opt.value ? 'var(--gold)' : 'var(--border)'}`,
+                  background: formMadness === opt.value ? 'rgba(201,168,76,0.07)' : 'var(--bg2)',
+                }}>
+                  <input
+                    type="radio" name="madness" value={opt.value}
+                    checked={formMadness === opt.value}
+                    onChange={() => setFormMadness(opt.value)}
+                    style={{ marginTop: 2, accentColor: 'var(--gold)', flexShrink: 0 }}
+                  />
+                  <div>
+                    <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 13, color: formMadness === opt.value ? 'var(--gold2)' : 'var(--text)' }}>
+                      {opt.label}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: "'Barlow', sans-serif", marginTop: 2 }}>
+                      {opt.desc}
+                    </div>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+
           <div style={{ display: 'flex', gap: 8 }}>
             <button className="btn primary" style={{ fontSize: 13, padding: '8px 20px' }}
-              onClick={criarSessao} disabled={salvando}>
+              onClick={criarSessao} disabled={salvando || !formMadness}>
               {salvando ? 'Criando...' : 'Criar sessão'}
             </button>
             <button className="btn" style={{ fontSize: 13, padding: '8px 14px' }}
@@ -400,6 +441,11 @@ function SessaoDetalhe({ sessaoId, sessao, uid, campeonatoId, teams, scrimPath, 
 
   const proximoNum = (Math.max(0, ...partidasArr.map(([n]) => Number(n))) + 1)
 
+  // Bans pré-calculados pelo Madness para a próxima partida
+  const madnessBansProxima = sessao.madness && sessao.madness !== 'desativado'
+    ? calcularMadnessBans(sessao.partidas ?? {}, sessao.madness)
+    : []
+
   async function criarPartida() {
     setCriandoPartida(true)
     try {
@@ -425,7 +471,7 @@ function SessaoDetalhe({ sessaoId, sessao, uid, campeonatoId, teams, scrimPath, 
         <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 18, marginBottom: 4 }}>
           {sessao.nome}
         </div>
-        <div style={{ display: 'flex', gap: 16, fontSize: 13, fontFamily: "'Barlow Condensed', sans-serif', color: 'var(--text2)'" }}>
+        <div style={{ display: 'flex', gap: 16, fontSize: 13, fontFamily: "'Barlow Condensed', sans-serif", color: 'var(--text2)', flexWrap: 'wrap', alignItems: 'center' }}>
           <span style={{ color: sessao.timeA?.cor }}>{sessao.timeA?.nome}</span>
           <span style={{ color: 'var(--text3)' }}>vs</span>
           <span style={{ color: sessao.timeB?.cor }}>{sessao.timeB?.nome}</span>
@@ -435,15 +481,27 @@ function SessaoDetalhe({ sessaoId, sessao, uid, campeonatoId, teams, scrimPath, 
             if (!vA && !vB) return null
             return <span style={{ color: 'var(--text2)' }}>— <strong style={{ color: sessao.timeA?.cor }}>{vA}</strong>×<strong style={{ color: sessao.timeB?.cor }}>{vB}</strong></span>
           })()}
+          {sessao.madness && sessao.madness !== 'desativado' && (
+            <span style={{ fontSize: 10, fontWeight: 700, fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.08em', padding: '2px 7px', borderRadius: 4, background: 'rgba(201,168,76,0.1)', border: '1px solid rgba(201,168,76,0.3)', color: 'var(--gold)' }}>
+              ⚡ {sessao.madness === 'convencional' ? 'MADNESS' : 'SOFT MADNESS'}
+            </span>
+          )}
         </div>
       </div>
 
       {/* Partidas existentes */}
       {partidasArr.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {partidasArr.map(([num, p]) => (
-            <PartidaCard key={num} num={num} partida={p} sessao={sessao} sessaoId={sessaoId} scrimPath={scrimPath} campeonatoId={campeonatoId} onFlash={onFlash} />
-          ))}
+          {partidasArr.map(([num, p]) => {
+            const ehProxima = Number(num) === proximoNum - 1 && p.status === 'configurando'
+            return (
+              <PartidaCard
+                key={num} num={num} partida={p} sessao={sessao} sessaoId={sessaoId}
+                scrimPath={scrimPath} campeonatoId={campeonatoId} onFlash={onFlash}
+                madnessBansInicial={ehProxima ? madnessBansProxima : []}
+              />
+            )
+          })}
         </div>
       )}
 
@@ -539,7 +597,7 @@ function HistoricoDetalhe({ entry: h }) {
 }
 
 // ── Card de partida individual ────────────────────────────────────────────────
-function PartidaCard({ num, partida: p, sessao, sessaoId, scrimPath, campeonatoId, onFlash }) {
+function PartidaCard({ num, partida: p, sessao, sessaoId, scrimPath, campeonatoId, onFlash, madnessBansInicial = [] }) {
   const timeOffset = useServerTimeOffset()
 
   // ── Config da partida (fase 'configurando') ───────────────────────────────
@@ -549,7 +607,7 @@ function PartidaCard({ num, partida: p, sessao, sessaoId, scrimPath, campeonatoI
   const [timerPick,    setTimerPick]    = useState(p.config?.timerPick    ?? DEFAULT_TIMER_CONFIG.pick)
   const [timerPickD,   setTimerPickD]   = useState(p.config?.timerPickD   ?? DEFAULT_TIMER_CONFIG.pickDuplo)
   const [primeiroTime, setPrimeiroTime] = useState(p.config?.primeiroTime ?? 'A')
-  const [globalBans,   setGlobalBans]   = useState(p.config?.globalBans   ?? [])
+  const [globalBans,   setGlobalBans]   = useState(p.config?.globalBans?.length ? p.config.globalBans : madnessBansInicial)
   const [buscaBan,     setBuscaBan]     = useState('')
   const [criando,      setCriando]      = useState(false)
   const [salvandoVenc, setSalvandoVenc] = useState(false)
@@ -853,6 +911,11 @@ function PartidaCard({ num, partida: p, sessao, sessaoId, scrimPath, campeonatoI
           {/* Bans globais — botões com ícone */}
           <div>
             <label style={labelStyle}>Bans globais ({globalBans.length} heróis)</label>
+            {madnessBansInicial.length > 0 && (
+              <div style={{ fontSize: 11, color: 'var(--gold)', fontFamily: "'Barlow Condensed', sans-serif", marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                ⚡ {madnessBansInicial.length} heróis pré-banidos pelo {sessao.madness === 'convencional' ? 'Madness Convencional' : 'Soft Madness'} — você pode ajustar abaixo.
+              </div>
+            )}
             <input value={buscaBan} onChange={e => setBuscaBan(e.target.value)} placeholder="Buscar herói..." style={{ ...inputStyle, marginBottom: 8 }} />
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, maxHeight: 160, overflowY: 'auto', padding: 8, background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 6 }}>
               {heroisFiltrados.map(h => (
