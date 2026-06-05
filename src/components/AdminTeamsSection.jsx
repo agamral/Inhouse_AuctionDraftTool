@@ -4,6 +4,7 @@ import { db } from '../firebase/database'
 import { FUSOS, FUSO_PADRAO } from '../utils/scheduling'
 import { useCampeonato } from '../contexts/CampeonatoContext'
 import { teamPath, draftSessionPath } from '../utils/campeonatoPaths'
+import TeamIcon from './TeamIcon'
 
 // Alinhado com src/pages/Inscricao.jsx — set canônico de roles do app
 const ROLES_LISTA = ['Tank', 'Offlane', 'DPS', 'Healer', 'Flex']
@@ -190,9 +191,10 @@ export default function AdminTeamsSection() {
   function iniciarEdicao(id, time) {
     setEditando(id)
     setEditForm({
-      nome:      time.nome ?? '',
-      cor:       time.cor  ?? '#4a9eda',
-      fuso:      time.fuso ?? FUSO_PADRAO,
+      nome:      time.nome     ?? '',
+      cor:       time.cor      ?? '#4a9eda',
+      fuso:      time.fuso     ?? FUSO_PADRAO,
+      iconUrl:   time.iconUrl  ?? '',
       jogadores: (time.jogadores ?? []).map(j => ({ ...j })),
     })
     setConfirmDelete(null)
@@ -225,6 +227,7 @@ export default function AdminTeamsSection() {
         nome:      editForm.nome.trim(),
         cor:       editForm.cor,
         fuso:      editForm.fuso,
+        iconUrl:   editForm.iconUrl?.trim() || null,
         jogadores: editForm.jogadores.map(j => ({
           nome: j.nome.trim(),
           role: j.role,
@@ -632,6 +635,28 @@ export default function AdminTeamsSection() {
                   </div>
                 </div>
 
+                {/* Ícone */}
+                <div>
+                  <FieldLabel label="Ícone do time" hint="cole o link direto da imagem (Postimages, Discord CDN...)" />
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                    <input
+                      value={editForm.iconUrl ?? ''}
+                      onChange={e => setEditForm(f => ({ ...f, iconUrl: e.target.value }))}
+                      placeholder="https://i.postimg.cc/..."
+                      style={{ ...inputStyle, flex: 1 }}
+                    />
+                    <TeamIcon
+                      time={{ nome: editForm.nome, cor: editForm.cor, iconUrl: editForm.iconUrl?.trim() || null }}
+                      size={48}
+                    />
+                  </div>
+                  {editForm.iconUrl?.trim() && (
+                    <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: "'Barlow', sans-serif", marginTop: 4 }}>
+                      Preview ao lado — se aparecer a inicial, a URL não está carregando.
+                    </div>
+                  )}
+                </div>
+
                 {/* Fuso */}
                 <div>
                   <FieldLabel label="Fuso horário" />
@@ -927,6 +952,7 @@ function TeamCard({ id, time, confirmando, onEditar, onDeletar, onConfirmar, onC
       borderRadius: 6, padding: '10px 14px',
       display: 'flex', alignItems: 'flex-start', gap: 12,
     }}>
+      <TeamIcon time={time} size={40} style={{ marginTop: 2 }} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 15, color: time.cor }}>
