@@ -372,7 +372,7 @@ function fmtNum(n) {
 // ── XpLeadChart ───────────────────────────────────────────────────────────────
 
 function XpLeadChart({ xpTimeline, corA, corB, timeANome, timeBNome }) {
-  if (!xpTimeline?.length) {
+  if (!xpTimeline?.length || !Array.isArray(xpTimeline)) {
     return (
       <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text3)', fontFamily: "'Barlow Condensed', sans-serif", fontSize: 13 }}>
         Dados de XP não disponíveis — faça um novo upload do replay.
@@ -508,7 +508,11 @@ function ReplayStatsSection({ replayGame, corA, corB, timeANome, timeBNome }) {
     { players: team2, result: replayGame.teams?.team2?.result, tds: replayGame.teams?.team2?.takedowns, nome: timeBNome, cor: corB, key: 'team2', lv: teamLevel(team2), maxStats: calcMaxStats(team2) },
   ]
 
-  const hasChart = (replayGame.xpTimeline?.length ?? 0) > 0
+  // Firebase converte arrays em objetos {0:{...}, 1:{...}} — normalizar
+  const xpArr = Array.isArray(replayGame.xpTimeline)
+    ? replayGame.xpTimeline
+    : Object.values(replayGame.xpTimeline ?? {}).sort((a, b) => a.t - b.t)
+  const hasChart = xpArr.length > 0
 
   return (
     <div className="cd-replay-section">
@@ -534,7 +538,7 @@ function ReplayStatsSection({ replayGame, corA, corB, timeANome, timeBNome }) {
 
       {view === 'chart' && (
         <XpLeadChart
-          xpTimeline={replayGame.xpTimeline}
+          xpTimeline={xpArr}
           corA={corA} corB={corB}
           timeANome={timeANome} timeBNome={timeBNome}
         />
