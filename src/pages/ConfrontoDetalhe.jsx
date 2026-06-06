@@ -393,26 +393,31 @@ function XpLeadChart({ xpTimeline, corA, corB, timeANome, timeBNome }) {
     )
   }
 
-  const data = xpTimeline.map(p => {
+  // Ponto sintético no t=0 para o gráfico sempre começar na origem
+  const origin = { t: 0, tMin: 0, label: '0:00', team1Xp: 0, team2Xp: 0,
+                   team1Level: 1, team2Level: 1, xpLead: 0, posLead: 0, negLead: 0 }
+
+  const data = [origin, ...xpTimeline.map(p => {
     const lead = p.team1Xp - p.team2Xp
     return {
       ...p,
       tMin:     +(p.t / 60).toFixed(1),
       label:    `${Math.floor(p.t / 60)}:${String(p.t % 60).padStart(2, '0')}`,
       xpLead:   lead,
-      posLead:  Math.max(0, lead),   // área Time A (acima do zero)
-      negLead:  Math.min(0, lead),   // área Time B (abaixo do zero)
+      posLead:  Math.max(0, lead),
+      negLead:  Math.min(0, lead),
     }
-  })
+  })]
 
-  // Domínio Y baseado nos dados reais — sempre inclui 0, sem simetria forçada
-  const minLead   = Math.min(...data.map(p => p.xpLead), 0)
-  const maxLead   = Math.max(...data.map(p => p.xpLead), 0)
-  const leadSpan  = Math.max(maxLead - minLead, 200)
-  const pad       = Math.ceil(leadSpan * 0.12 / 100) * 100
-  const yMin      = Math.floor((minLead - pad) / 100) * 100
-  const yMax      = Math.ceil((maxLead  + pad) / 100) * 100
-  const maxLevel  = Math.max(...data.map(p => Math.max(p.team1Level, p.team2Level)))
+  // Domínio simétrico: pico máximo da diferença define teto e chão igualmente.
+  // Isso garante que o zero fique no centro e o gráfico mostre o lead relativo,
+  // não o XP absoluto acumulado dos times.
+  const maxAbsLead = Math.max(...data.map(p => Math.abs(p.xpLead)), 200)
+  const yRange     = Math.ceil(maxAbsLead * 1.2 / 100) * 100
+  const yMin       = -yRange
+  const yMax       = yRange
+  const maxLead    = Math.max(...data.map(p => p.xpLead), 0)
+  const minLead    = Math.min(...data.map(p => p.xpLead), 0)
 
   const fmtLead = v => {
     const abs = Math.abs(v)
@@ -456,7 +461,7 @@ function XpLeadChart({ xpTimeline, corA, corB, timeANome, timeBNome }) {
   return (
     <div style={{ marginTop: 8 }}>
       <ResponsiveContainer width="100%" height={220}>
-        <ComposedChart data={data} margin={{ top: 8, right: 24, left: 0, bottom: 0 }}>
+        <ComposedChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
           <ReferenceLine
             yAxisId="xp" y={0}
@@ -495,16 +500,6 @@ function XpLeadChart({ xpTimeline, corA, corB, timeANome, timeBNome }) {
             tickLine={false}
             width={48}
           />
-          <YAxis
-            yAxisId="lv"
-            orientation="right"
-            domain={[0, Math.ceil(maxLevel * 1.2)]}
-            tickCount={6}
-            tick={{ fill: 'var(--text3)', fontSize: 10, fontFamily: 'Barlow Condensed' }}
-            axisLine={false}
-            tickLine={false}
-            width={24}
-          />
           <Tooltip content={<CustomTooltip />} />
 
           {/* Área Time A — acima do zero */}
@@ -517,25 +512,13 @@ function XpLeadChart({ xpTimeline, corA, corB, timeANome, timeBNome }) {
           <Line yAxisId="xp" type="linear" dataKey="xpLead"
             stroke="rgba(255,255,255,0.2)" strokeWidth={1} dot={false} legendType="none" />
 
-          {/* Linhas de nível */}
-          <Line yAxisId="lv" type="stepAfter" dataKey="team1Level"
-            stroke={corA} strokeWidth={1.5} dot={false} strokeDasharray="4 2" legendType="none" />
-          <Line yAxisId="lv" type="stepAfter" dataKey="team2Level"
-            stroke={corB} strokeWidth={1.5} dot={false} strokeDasharray="4 2" legendType="none" />
-
           <Legend
             content={() => (
-              <div style={{ display: 'flex', justifyContent: 'center', gap: 20, paddingTop: 8, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 20, paddingTop: 8 }}>
                 {[{ cor: corA, label: timeANome }, { cor: corB, label: timeBNome }].map(({ cor, label }) => (
-                  <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <div style={{ width: 12, height: 8, background: cor, opacity: 0.55, borderRadius: 2 }} />
-                      <span style={{ fontSize: 11, fontFamily: 'Barlow Condensed', color: cor, fontWeight: 700 }}>{label} Lead</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <div style={{ width: 14, height: 2, background: cor, borderRadius: 1, opacity: 0.7 }} />
-                      <span style={{ fontSize: 11, fontFamily: 'Barlow Condensed', color: 'var(--text3)' }}>Nível</span>
-                    </div>
+                  <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ width: 12, height: 8, background: cor, opacity: 0.55, borderRadius: 2 }} />
+                    <span style={{ fontSize: 11, fontFamily: 'Barlow Condensed', color: cor, fontWeight: 700 }}>{label} Lead</span>
                   </div>
                 ))}
               </div>
