@@ -982,6 +982,12 @@
   text-align: center;
 }
 
+.cd-replay-stat--best {
+  color: var(--gold2) !important;
+  text-shadow: 0 0 8px rgba(240, 204, 110, 0.7), 0 0 16px rgba(240, 204, 110, 0.35);
+  font-weight: 700;
+}
+
 .cd-replay-num {
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 12px;
