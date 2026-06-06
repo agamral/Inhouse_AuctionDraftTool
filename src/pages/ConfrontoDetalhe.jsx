@@ -485,7 +485,8 @@ function XpLeadChart({ xpTimeline, corA, corB, timeANome, timeBNome }) {
             dataKey="tMin"
             type="number"
             domain={[0, 'dataMax']}
-            tickFormatter={fmtMin}
+            ticks={Array.from({ length: Math.ceil(Math.max(...data.map(p => p.tMin))) + 1 }, (_, i) => i)}
+            tickFormatter={v => `${v}`}
             tick={{ fill: 'var(--text3)', fontSize: 10, fontFamily: 'Barlow Condensed' }}
             axisLine={{ stroke: 'var(--border)' }}
             tickLine={false}
