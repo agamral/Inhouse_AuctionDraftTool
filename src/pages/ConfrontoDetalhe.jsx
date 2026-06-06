@@ -405,9 +405,14 @@ function XpLeadChart({ xpTimeline, corA, corB, timeANome, timeBNome }) {
     }
   })
 
-  const maxAbsLead = Math.max(...data.map(p => Math.abs(p.xpLead)), 200)
-  const yRange     = Math.ceil(maxAbsLead * 1.15 / 100) * 100
-  const maxLevel   = Math.max(...data.map(p => Math.max(p.team1Level, p.team2Level)))
+  // Domínio Y baseado nos dados reais — sempre inclui 0, sem simetria forçada
+  const minLead   = Math.min(...data.map(p => p.xpLead), 0)
+  const maxLead   = Math.max(...data.map(p => p.xpLead), 0)
+  const leadSpan  = Math.max(maxLead - minLead, 200)
+  const pad       = Math.ceil(leadSpan * 0.12 / 100) * 100
+  const yMin      = Math.floor((minLead - pad) / 100) * 100
+  const yMax      = Math.ceil((maxLead  + pad) / 100) * 100
+  const maxLevel  = Math.max(...data.map(p => Math.max(p.team1Level, p.team2Level)))
 
   const fmtLead = v => {
     const abs = Math.abs(v)
@@ -453,7 +458,24 @@ function XpLeadChart({ xpTimeline, corA, corB, timeANome, timeBNome }) {
       <ResponsiveContainer width="100%" height={220}>
         <ComposedChart data={data} margin={{ top: 8, right: 24, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-          <ReferenceLine yAxisId="xp" y={0} stroke="rgba(255,255,255,0.18)" strokeWidth={1} />
+          <ReferenceLine
+            yAxisId="xp" y={0}
+            stroke="rgba(255,255,255,0.25)" strokeWidth={1.5}
+            label={{ value: '0', position: 'insideLeft', fontSize: 9, fill: 'rgba(255,255,255,0.3)', fontFamily: 'Barlow Condensed' }}
+          />
+          {/* Labels de quem está na frente — aparecem se houver dados no lado */}
+          {maxLead > 50 && (
+            <ReferenceLine yAxisId="xp" y={maxLead * 0.6}
+              stroke="none"
+              label={{ value: `▲ ${timeANome}`, position: 'insideTopRight', fontSize: 9, fill: corA, fontFamily: 'Barlow Condensed', opacity: 0.6 }}
+            />
+          )}
+          {minLead < -50 && (
+            <ReferenceLine yAxisId="xp" y={minLead * 0.6}
+              stroke="none"
+              label={{ value: `▼ ${timeBNome}`, position: 'insideBottomRight', fontSize: 9, fill: corB, fontFamily: 'Barlow Condensed', opacity: 0.6 }}
+            />
+          )}
           <XAxis
             dataKey="tMin"
             type="number"
@@ -466,12 +488,12 @@ function XpLeadChart({ xpTimeline, corA, corB, timeANome, timeBNome }) {
           <YAxis
             yAxisId="xp"
             orientation="left"
-            domain={[-yRange, yRange]}
+            domain={[yMin, yMax]}
             tickFormatter={fmtAxis}
             tick={{ fill: 'var(--text3)', fontSize: 10, fontFamily: 'Barlow Condensed' }}
             axisLine={false}
             tickLine={false}
-            width={44}
+            width={48}
           />
           <YAxis
             yAxisId="lv"
