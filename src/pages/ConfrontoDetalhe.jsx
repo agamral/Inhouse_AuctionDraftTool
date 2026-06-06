@@ -1,4 +1,4 @@
-import { useState, useEffect, Fragment } from 'react'
+import { useState, useEffect, Fragment, useMemo } from 'react'
 import {
   ComposedChart, Area, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -503,27 +503,76 @@ function XpLeadChart({ xpTimeline, corA, corB, timeANome, timeBNome }) {
   )
 }
 
-// ── EventTimeline ─────────────────────────────────────────────────────────────
+// ── Helpers compartilhados ────────────────────────────────────────────────────
 
-function HeroPortraitSmall({ hero, cor, victim }) {
+function normalizeArr(val) {
+  if (!val) return []
+  if (Array.isArray(val)) return val
+  if (typeof val === 'object') return Object.values(val)
+  return []
+}
+
+function fmtTime(t) {
+  return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`
+}
+
+// Portrait inline reutilizável (tamanho configurável)
+function HeroPortrait({ hero, cor, victim, size = 28 }) {
   const [err, setErr] = useState(false)
   const icone = heroIconeByName(hero)
   return (
     <div
       className={`cd-ev-portrait${victim ? ' cd-ev-portrait--victim' : ''}`}
-      style={{ '--cor': cor }}
+      style={{ '--cor': cor, width: size, height: size, flexShrink: 0 }}
       title={hero || '?'}
     >
       {icone && !err
         ? <img src={icone} alt={hero} className="cd-ev-portrait-img" onError={() => setErr(true)} />
-        : <span className="cd-ev-portrait-fb">{((hero || '?')[0]).toUpperCase()}</span>
+        : <span className="cd-ev-portrait-fb" style={{ fontSize: Math.max(8, size * 0.38) }}>
+            {((hero || '?')[0]).toUpperCase()}
+          </span>
       }
     </div>
   )
 }
 
+// ── EventTimeline — eixo horizontal com Time A acima e Time B abaixo ──────────
+
+const CAMP_LABEL = { 'Siege Camp': 'Cerco', 'Bruiser Camp': 'Bruiser', 'Boss Camp': 'Boss' }
+
 function EventTimeline({ eventTimeline, corA, corB, timeANome, timeBNome }) {
-  if (!Array.isArray(eventTimeline) || eventTimeline.length === 0) {
+  const [tooltip, setTooltip] = useState(null)   // { idx, isTop }
+
+  const events = useMemo(() => {
+    if (!Array.isArray(eventTimeline) || !eventTimeline.length) return []
+
+    const maxT = Math.max(...eventTimeline.map(e => e.t)) + 60
+
+    // Kill events go on the killer's team side; others on their own team's side
+    function side(ev) {
+      if (ev.type === 'kill') {
+        const killers = normalizeArr(ev.killers)
+        return killers[0]?.team ?? (ev.victim?.team === 1 ? 2 : 1)
+      }
+      return ev.team
+    }
+
+    // Assign vertical stack level to avoid overlapping icons
+    const OVERLAP = 0.044   // fraction of total width
+    const used1 = [], used2 = []
+
+    return eventTimeline.map(ev => {
+      const team = side(ev)
+      const xPct = ev.t / maxT
+      const used = team === 1 ? used1 : used2
+      let level = 0
+      while (used.some(u => u.level === level && Math.abs(u.xPct - xPct) < OVERLAP)) level++
+      used.push({ xPct, level })
+      return { ...ev, _team: team, _xPct: xPct, _level: level, _maxT: maxT }
+    })
+  }, [eventTimeline])
+
+  if (!events.length) {
     return (
       <div className="cd-ev-empty">
         Dados de eventos não disponíveis neste replay.<br />
@@ -532,83 +581,119 @@ function EventTimeline({ eventTimeline, corA, corB, timeANome, timeBNome }) {
     )
   }
 
-  function fmtTime(t) {
-    return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`
-  }
+  const maxT     = events[0]._maxT
+  const maxLv1   = Math.max(0, ...events.filter(e => e._team === 1).map(e => e._level))
+  const maxLv2   = Math.max(0, ...events.filter(e => e._team === 2).map(e => e._level))
+  const ICON     = 28
+  const GAP      = 4
+  const AXIS_H   = 22
+  const SIDE1_H  = Math.max(56, (maxLv1 + 1) * (ICON + GAP) + 10)
+  const SIDE2_H  = Math.max(56, (maxLv2 + 1) * (ICON + GAP) + 10)
+  const TOTAL_H  = SIDE1_H + AXIS_H + SIDE2_H
+
+  const tickStep = maxT <= 600 ? 60 : maxT <= 1200 ? 120 : 180
+  const ticks    = Array.from({ length: Math.floor(maxT / tickStep) + 1 }, (_, i) => i * tickStep)
 
   function teamCor(team)  { return team === 1 ? corA : corB }
   function teamNome(team) { return team === 1 ? timeANome : timeBNome }
 
-  function normalizeArr(val) {
-    if (!val) return []
-    if (Array.isArray(val)) return val
-    if (typeof val === 'object') return Object.values(val)
-    return []
-  }
-
-  const CAMP_LABEL = {
-    'Siege Camp':   'Cerco',
-    'Bruiser Camp': 'Bruiser',
-    'Boss Camp':    'Boss',
+  function TooltipContent({ ev }) {
+    const killers = normalizeArr(ev.killers)
+    if (ev.type === 'kill') return (
+      <div className="cd-htl-tooltip-inner">
+        <div className="cd-htl-tooltip-time">{fmtTime(ev.t)}</div>
+        <div className="cd-htl-tooltip-row">
+          <HeroPortrait hero={ev.victim?.hero} cor={teamCor(ev.victim?.team)} victim size={20} />
+          <span className="cd-htl-tooltip-sep">←</span>
+          {killers.slice(0, 3).map((k, ki) => (
+            <HeroPortrait key={ki} hero={k.hero} cor={teamCor(k.team)} size={20} />
+          ))}
+          {killers.length > 3 && <span style={{ fontSize: 10, color: 'var(--text3)' }}>+{killers.length - 3}</span>}
+        </div>
+        <div className="cd-htl-tooltip-label" style={{ color: teamCor(ev._team) }}>
+          {teamNome(ev._team)} abateu {ev.victim?.hero}
+        </div>
+      </div>
+    )
+    if (ev.type === 'camp') return (
+      <div className="cd-htl-tooltip-inner">
+        <div className="cd-htl-tooltip-time">{fmtTime(ev.t)}</div>
+        <div className="cd-htl-tooltip-label" style={{ color: teamCor(ev._team) }}>
+          {teamNome(ev._team)} capturou {CAMP_LABEL[ev.campType] ?? ev.campType}
+        </div>
+      </div>
+    )
+    if (ev.type === 'objective') return (
+      <div className="cd-htl-tooltip-inner">
+        <div className="cd-htl-tooltip-time">{fmtTime(ev.t)}</div>
+        <div className="cd-htl-tooltip-label" style={{ color: teamCor(ev._team) }}>
+          {teamNome(ev._team)} venceu {ev.name}
+        </div>
+      </div>
+    )
+    return null
   }
 
   return (
-    <div className="cd-event-timeline">
-      {eventTimeline.map((ev, i) => {
-        const cor  = teamCor(ev.team)
-        const nome = teamNome(ev.team)
+    <div className="cd-htl-wrap">
+      {/* Team labels flanking the axis */}
+      <div className="cd-htl-side-labels">
+        <span className="cd-htl-side-label" style={{ color: corA }}>{timeANome}</span>
+        <span className="cd-htl-side-label" style={{ color: corB }}>{timeBNome}</span>
+      </div>
 
-        if (ev.type === 'kill') {
-          const killers = normalizeArr(ev.killers)
+      {/* Track */}
+      <div className="cd-htl-track" style={{ height: TOTAL_H }}>
+        {/* Axis line */}
+        <div className="cd-htl-axis" style={{ top: SIDE1_H }} />
+
+        {/* Time ticks */}
+        {ticks.map(t => (
+          <div key={t} className="cd-htl-tick" style={{ left: `${(t / maxT) * 100}%`, top: SIDE1_H }}>
+            <div className="cd-htl-tick-line" />
+            <span className="cd-htl-tick-label">{fmtTime(t)}</span>
+          </div>
+        ))}
+
+        {/* Events */}
+        {events.map((ev, i) => {
+          const isTop  = ev._team === 1
+          const cor    = teamCor(ev._team)
+          const yOff   = ev._level * (ICON + GAP)
+          const top    = isTop
+            ? SIDE1_H - ICON - yOff - 4    // above axis, grow upward
+            : SIDE1_H + AXIS_H + yOff + 4  // below axis, grow downward
+
+          const showTip = tooltip?.idx === i
+
+          let victimHero = null
+          let icon       = null
+
+          if (ev.type === 'kill')      victimHero = ev.victim?.hero
+          else if (ev.type === 'camp') icon = '🛡'
+          else if (ev.type === 'objective') icon = '⭐'
+
           return (
-            <div key={i} className="cd-event-row cd-event-row--kill">
-              <span className="cd-ev-time">{fmtTime(ev.t)}</span>
-              <span className="cd-ev-type-icon">☠</span>
-              <div className="cd-ev-kill-chain">
-                {ev.victim && (
-                  <HeroPortraitSmall
-                    hero={ev.victim.hero}
-                    cor={teamCor(ev.victim.team)}
-                    victim
-                  />
-                )}
-                {killers.length > 0 && <span className="cd-ev-arrow">←</span>}
-                {killers.slice(0, 3).map((k, ki) => (
-                  <HeroPortraitSmall key={ki} hero={k.hero} cor={teamCor(k.team)} />
-                ))}
-                {killers.length > 3 && (
-                  <span className="cd-ev-extra">+{killers.length - 3}</span>
-                )}
-              </div>
+            <div
+              key={i}
+              className={`cd-htl-event${showTip ? ' cd-htl-event--active' : ''}`}
+              style={{ left: `${ev._xPct * 100}%`, top, width: ICON, height: ICON }}
+              onMouseEnter={() => setTooltip({ idx: i, isTop })}
+              onMouseLeave={() => setTooltip(null)}
+            >
+              {victimHero
+                ? <HeroPortrait hero={victimHero} cor={cor} victim size={ICON} />
+                : <div className="cd-htl-event-ico" style={{ '--cor': cor }}>{icon}</div>
+              }
+              {showTip && (
+                <div className={`cd-htl-tooltip cd-htl-tooltip--${isTop ? 'top' : 'bottom'}`}>
+                  <TooltipContent ev={ev} />
+                </div>
+              )}
             </div>
           )
-        }
-
-        if (ev.type === 'camp') {
-          const label = CAMP_LABEL[ev.campType] ?? ev.campType ?? 'Acampamento'
-          return (
-            <div key={i} className="cd-event-row cd-event-row--camp">
-              <span className="cd-ev-time">{fmtTime(ev.t)}</span>
-              <span className="cd-ev-type-icon">🛡</span>
-              <span className="cd-ev-team-label" style={{ color: cor }}>{nome}</span>
-              <span className="cd-ev-detail">capturou {label}</span>
-            </div>
-          )
-        }
-
-        if (ev.type === 'objective') {
-          return (
-            <div key={i} className="cd-event-row cd-event-row--objective">
-              <span className="cd-ev-time">{fmtTime(ev.t)}</span>
-              <span className="cd-ev-type-icon">⭐</span>
-              <span className="cd-ev-team-label" style={{ color: cor }}>{nome}</span>
-              <span className="cd-ev-detail">{ev.name}</span>
-            </div>
-          )
-        }
-
-        return null
-      })}
+        })}
+      </div>
     </div>
   )
 }
