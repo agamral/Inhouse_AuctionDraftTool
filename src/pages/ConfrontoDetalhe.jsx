@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Fragment } from 'react'
 import { useParams } from 'react-router-dom'
 import { ref, onValue } from 'firebase/database'
 import { db } from '../firebase/database'
@@ -140,7 +140,7 @@ function DraftTimeline({ historico, timeANome, timeBNome, corA, corB }) {
 }
 
 // ── PartidaCard ───────────────────────────────────────────────────────────────
-function PartidaCard({ numero, partida: p, tA, tB, corA, corB, timeANome, timeBNome }) {
+function PartidaCard({ numero, partida: p, tA, tB, corA, corB, timeANome, timeBNome, replayGame }) {
   const temDraftData = p?.status === 'concluida' &&
     ((p.picks?.A?.length ?? 0) + (p.picks?.B?.length ?? 0)) > 0
 
@@ -277,23 +277,49 @@ function PartidaCard({ numero, partida: p, tA, tB, corA, corB, timeANome, timeBN
               )}
             </div>
 
-            {/* Resumo — placeholder */}
+            {/* Resumo */}
             <div className="cd-info-panel cd-info-panel--resumo">
               <div className="cd-info-panel-label">Resumo da Partida</div>
-              <div className="cd-resumo-grid">
-                {[
-                  { label: 'Duração',     val: '--:--' },
-                  { label: 'Nível Final', val: '-- × --' },
-                  { label: 'Abates',      val: '-- × --' },
-                  { label: 'Torres',      val: '-- × --' },
-                ].map(({ label, val }) => (
-                  <div key={label} className="cd-resumo-item">
-                    <div className="cd-resumo-label">{label}</div>
-                    <div className="cd-resumo-val">{val}</div>
+              {replayGame?.match ? (
+                <div className="cd-resumo-grid">
+                  {[
+                    { label: 'Duração',    val: replayGame.match.duration ?? '--:--' },
+                    { label: 'Nível Máx',  val: (() => {
+                      const ps = replayGame.players ? Object.values(replayGame.players) : []
+                      const lvA = Math.max(0, ...ps.filter(x => x.team === 1).map(x => x.level || 0))
+                      const lvB = Math.max(0, ...ps.filter(x => x.team === 2).map(x => x.level || 0))
+                      return lvA && lvB ? `${lvA} × ${lvB}` : '--'
+                    })() },
+                    { label: 'Takedowns',  val: (() => {
+                      const t1 = replayGame.teams?.team1?.takedowns ?? '--'
+                      const t2 = replayGame.teams?.team2?.takedowns ?? '--'
+                      return `${t1} × ${t2}`
+                    })() },
+                    { label: 'Modo',       val: replayGame.match.game_mode ?? '?' },
+                  ].map(({ label, val }) => (
+                    <div key={label} className="cd-resumo-item">
+                      <div className="cd-resumo-label">{label}</div>
+                      <div className="cd-resumo-val" style={{ fontSize: label === 'Modo' ? 12 : undefined }}>{val}</div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <>
+                  <div className="cd-resumo-grid">
+                    {[
+                      { label: 'Duração', val: '--:--' },
+                      { label: 'Nível Final', val: '-- × --' },
+                      { label: 'Abates', val: '-- × --' },
+                    ].map(({ label, val }) => (
+                      <div key={label} className="cd-resumo-item">
+                        <div className="cd-resumo-label">{label}</div>
+                        <div className="cd-resumo-val">{val}</div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-              <div className="cd-resumo-hint">Em breve via replay</div>
+                  <div className="cd-resumo-hint">Em breve via replay</div>
+                </>
+              )}
             </div>
 
             {/* VOD — placeholder */}
@@ -315,8 +341,129 @@ function PartidaCard({ numero, partida: p, tA, tB, corA, corB, timeANome, timeBN
               )}
             </div>
           )}
+
+          {/* Stats de replay */}
+          {replayGame?.players && (
+            <ReplayStatsSection
+              replayGame={replayGame}
+              corA={corA}
+              corB={corB}
+              timeANome={timeANome}
+              timeBNome={timeBNome}
+            />
+          )}
         </div>
       )}
+    </div>
+  )
+}
+
+// ── Helpers de stats ─────────────────────────────────────────────────────────
+
+function fmtNum(n) {
+  if (!n) return '0'
+  if (n >= 1000) return `${Math.round(n / 1000)}k`
+  return String(n)
+}
+
+// ── ReplayStatsSection ────────────────────────────────────────────────────────
+
+function ReplayStatsSection({ replayGame, corA, corB, timeANome, timeBNome }) {
+  const [talentsOpen, setTalentsOpen] = useState({})
+
+  const players = replayGame.players ? Object.values(replayGame.players)
+    .sort((a, b) => (a.slot ?? 0) - (b.slot ?? 0)) : []
+
+  const team1 = players.filter(p => p.team === 1)
+  const team2 = players.filter(p => p.team === 2)
+
+  const teamCfg = [
+    { players: team1, result: replayGame.teams?.team1?.result, tds: replayGame.teams?.team1?.takedowns, nome: timeANome, cor: corA, key: 'team1' },
+    { players: team2, result: replayGame.teams?.team2?.result, tds: replayGame.teams?.team2?.takedowns, nome: timeBNome, cor: corB, key: 'team2' },
+  ]
+
+  return (
+    <div className="cd-replay-section">
+      <div className="cd-replay-section-title">Estatísticas do Replay</div>
+
+      {teamCfg.map(({ players: tp, result, tds, nome, cor, key }) => (
+        <div key={key} className="cd-replay-team-block">
+          <div className="cd-replay-team-header">
+            <span className="cd-replay-team-nome" style={{ color: cor }}>{nome}</span>
+            <span className={`cd-replay-result-badge ${result === 'win' ? 'cd-replay-result-badge--win' : 'cd-replay-result-badge--loss'}`}>
+              {result === 'win' ? 'VITÓRIA' : result === 'loss' ? 'DERROTA' : '?'}
+            </span>
+            <span className="cd-replay-td-total">{tds ?? 0} TD</span>
+          </div>
+
+          <div className="cd-replay-table-wrap">
+            <table className="cd-replay-table">
+              <thead>
+                <tr>
+                  <th>Herói</th>
+                  <th>Jogador</th>
+                  <th>K/D/A</th>
+                  <th>TD</th>
+                  <th>Dano</th>
+                  <th>Cura</th>
+                  <th>Nível</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {tp.map((p, idx) => {
+                  const slotKey  = `${key}_${p.slot ?? idx}`
+                  const open     = !!talentsOpen[slotKey]
+                  const hasTalents = (p.talents?.length ?? 0) > 0
+                  return (
+                    <Fragment key={slotKey}>
+                      <tr className="cd-replay-row">
+                        <td className="cd-replay-hero">{p.hero}</td>
+                        <td className="cd-replay-btag">{p.battletag}</td>
+                        <td className="cd-replay-kda">
+                          <span style={{ color: 'var(--green)' }}>{p.kills ?? 0}</span>
+                          <span style={{ color: 'var(--text3)' }}>/</span>
+                          <span style={{ color: 'var(--red)' }}>{p.deaths ?? 0}</span>
+                          <span style={{ color: 'var(--text3)' }}>/</span>
+                          <span style={{ color: 'var(--blue)' }}>{p.assists ?? 0}</span>
+                        </td>
+                        <td className="cd-replay-td-cell">{p.takedowns ?? 0}</td>
+                        <td className="cd-replay-num">{fmtNum(p.hero_damage)}</td>
+                        <td className="cd-replay-num">{fmtNum((p.healing || 0) + (p.self_healing || 0))}</td>
+                        <td className="cd-replay-num">{p.level ?? '—'}</td>
+                        <td>
+                          {hasTalents && (
+                            <button
+                              className="cd-replay-expand-btn"
+                              onClick={() => setTalentsOpen(prev => ({ ...prev, [slotKey]: !prev[slotKey] }))}
+                            >
+                              {open ? '▲' : '▼ build'}
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                      {open && hasTalents && (
+                        <tr className="cd-replay-talents-row">
+                          <td colSpan={8}>
+                            <div className="cd-replay-talents">
+                              {p.talents.map((t, ti) => (
+                                <div key={ti} className="cd-replay-talent-badge">
+                                  <span className="cd-replay-talent-level">Lv{t.level}</span>
+                                  <span className="cd-replay-talent-name">{t.name ?? `idx ${t.absolute_index}`}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
@@ -358,6 +505,7 @@ export default function ConfrontoDetalhe() {
 
   const partidasArr = Object.entries(confronto.partidas ?? {})
     .sort(([a], [b]) => Number(a) - Number(b))
+  const replayData  = confronto.replays ?? {}
 
   const winsA = partidasArr.filter(([, p]) => p.vencedor === 'timeA').length
   const winsB = partidasArr.filter(([, p]) => p.vencedor === 'timeB').length
@@ -435,6 +583,7 @@ export default function ConfrontoDetalhe() {
               corB={corB}
               timeANome={nomeA}
               timeBNome={nomeB}
+              replayGame={replayData[`game${n}`] ?? null}
             />
           ))}
         </div>

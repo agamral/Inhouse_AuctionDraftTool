@@ -1,0 +1,11 @@
+# Replay Parser API — dependências
+# Instale com:  pip install -r requirements.txt
+
+# Parser de arquivos .StormReplay
+mpyq>=0.2.5
+heroprotocol>=2.0.0
+
+# Servidor web
+flask>=3.0.0
+flask-cors>=4.0.0
+gunicorn>=21.0.0
