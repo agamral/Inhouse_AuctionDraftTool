@@ -406,7 +406,7 @@ function ReplayStatsSection({ replayGame, corA, corB, timeANome, timeBNome }) {
                   <th>Jogador</th>
                   <th>K/D/A</th>
                   <th style={{ textAlign: 'center' }}>TD</th>
-                  <th style={{ textAlign: 'right' }}>Herói</th>
+                  <th style={{ textAlign: 'right' }}>Hero Dmg</th>
                   <th style={{ textAlign: 'right' }}>Siege</th>
                   <th style={{ textAlign: 'right' }}>Cura</th>
                   <th></th>
