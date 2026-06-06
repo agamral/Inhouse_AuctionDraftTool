@@ -1,6 +1,6 @@
 import { useState, useEffect, Fragment, useMemo } from 'react'
 import {
-  ComposedChart, Area, Line,
+  ComposedChart, Area, Line, ReferenceLine,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
 import { useParams } from 'react-router-dom'
@@ -393,45 +393,56 @@ function XpLeadChart({ xpTimeline, corA, corB, timeANome, timeBNome }) {
     )
   }
 
-  const data = xpTimeline.map(p => ({
-    ...p,
-    tMin: +(p.t / 60).toFixed(1),
-    label: `${Math.floor(p.t / 60)}:${String(p.t % 60).padStart(2, '0')}`,
-  }))
+  const data = xpTimeline.map(p => {
+    const lead = p.team1Xp - p.team2Xp
+    return {
+      ...p,
+      tMin:     +(p.t / 60).toFixed(1),
+      label:    `${Math.floor(p.t / 60)}:${String(p.t % 60).padStart(2, '0')}`,
+      xpLead:   lead,
+      posLead:  Math.max(0, lead),   // área Time A (acima do zero)
+      negLead:  Math.min(0, lead),   // área Time B (abaixo do zero)
+    }
+  })
 
-  const maxXp    = Math.max(...data.map(p => Math.max(p.team1Xp, p.team2Xp)))
-  const maxLevel = Math.max(...data.map(p => Math.max(p.team1Level, p.team2Level)))
+  const maxAbsLead = Math.max(...data.map(p => Math.abs(p.xpLead)), 200)
+  const yRange     = Math.ceil(maxAbsLead * 1.15 / 100) * 100
+  const maxLevel   = Math.max(...data.map(p => Math.max(p.team1Level, p.team2Level)))
 
-  const fmtXp  = v => v >= 1000 ? `${Math.round(v / 1000)}k` : v
-  const fmtMin = v => {
-    const m = Math.floor(v)
-    return `${m}:00`
+  const fmtLead = v => {
+    const abs = Math.abs(v)
+    return abs >= 1000 ? `${(abs / 1000).toFixed(1)}k` : String(abs)
   }
+  const fmtAxis = v => {
+    if (v === 0) return '0'
+    return v > 0 ? `+${fmtLead(v)}` : `-${fmtLead(v)}`
+  }
+  const fmtMin = v => `${Math.floor(v)}:00`
 
-  const CustomTooltip = ({ active, payload, label }) => {
+  const CustomTooltip = ({ active, payload }) => {
     if (!active || !payload?.length) return null
     const d = payload[0]?.payload
     if (!d) return null
+    const lead    = d.xpLead
+    const leadCor = lead > 0 ? corA : lead < 0 ? corB : 'var(--text2)'
+    const leadNom = lead > 0 ? timeANome : timeBNome
     return (
       <div style={{
         background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 6,
         padding: '10px 14px', fontFamily: "'Barlow Condensed', sans-serif", fontSize: 12,
         color: 'var(--text)',
       }}>
-        <div style={{ marginBottom: 6, color: 'var(--text2)', fontSize: 11 }}>{d.label}</div>
-        <div style={{ color: corA }}>
-          {timeANome}: <b>{fmtXp(d.team1Xp)} XP</b> · Lv {d.team1Level}
-        </div>
-        <div style={{ color: corB }}>
-          {timeBNome}: <b>{fmtXp(d.team2Xp)} XP</b> · Lv {d.team2Level}
-        </div>
-        <div style={{ color: 'var(--text3)', marginTop: 4, fontSize: 11 }}>
-          Lead: {d.team1Xp > d.team2Xp
-            ? <span style={{ color: corA }}>+{fmtXp(d.team1Xp - d.team2Xp)} {timeANome}</span>
-            : d.team2Xp > d.team1Xp
-              ? <span style={{ color: corB }}>+{fmtXp(d.team2Xp - d.team1Xp)} {timeBNome}</span>
-              : 'Empate'
-          }
+        <div style={{ marginBottom: 5, color: 'var(--text2)', fontSize: 11 }}>{d.label}</div>
+        {lead !== 0
+          ? <div style={{ color: leadCor, fontWeight: 700, fontSize: 13 }}>
+              {leadNom} +{fmtLead(lead)} XP
+            </div>
+          : <div style={{ color: 'var(--text2)' }}>Empate</div>
+        }
+        <div style={{ color: 'var(--text3)', marginTop: 5, fontSize: 11 }}>
+          <span style={{ color: corA }}>Lv {d.team1Level}</span>
+          {' · '}
+          <span style={{ color: corB }}>Lv {d.team2Level}</span>
         </div>
       </div>
     )
@@ -440,8 +451,9 @@ function XpLeadChart({ xpTimeline, corA, corB, timeANome, timeBNome }) {
   return (
     <div style={{ marginTop: 8 }}>
       <ResponsiveContainer width="100%" height={220}>
-        <ComposedChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+        <ComposedChart data={data} margin={{ top: 8, right: 24, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+          <ReferenceLine yAxisId="xp" y={0} stroke="rgba(255,255,255,0.18)" strokeWidth={1} />
           <XAxis
             dataKey="tMin"
             type="number"
@@ -454,12 +466,12 @@ function XpLeadChart({ xpTimeline, corA, corB, timeANome, timeBNome }) {
           <YAxis
             yAxisId="xp"
             orientation="left"
-            domain={[0, Math.ceil(maxXp * 1.1 / 1000) * 1000]}
-            tickFormatter={fmtXp}
+            domain={[-yRange, yRange]}
+            tickFormatter={fmtAxis}
             tick={{ fill: 'var(--text3)', fontSize: 10, fontFamily: 'Barlow Condensed' }}
             axisLine={false}
             tickLine={false}
-            width={36}
+            width={44}
           />
           <YAxis
             yAxisId="lv"
@@ -472,20 +484,34 @@ function XpLeadChart({ xpTimeline, corA, corB, timeANome, timeBNome }) {
             width={24}
           />
           <Tooltip content={<CustomTooltip />} />
+
+          {/* Área Time A — acima do zero */}
+          <Area yAxisId="xp" type="linear" dataKey="posLead"
+            fill={corA} fillOpacity={0.38} stroke="none" dot={false} legendType="none" baseValue={0} />
+          {/* Área Time B — abaixo do zero */}
+          <Area yAxisId="xp" type="linear" dataKey="negLead"
+            fill={corB} fillOpacity={0.38} stroke="none" dot={false} legendType="none" baseValue={0} />
+          {/* Linha de lead */}
+          <Line yAxisId="xp" type="linear" dataKey="xpLead"
+            stroke="rgba(255,255,255,0.2)" strokeWidth={1} dot={false} legendType="none" />
+
+          {/* Linhas de nível */}
+          <Line yAxisId="lv" type="stepAfter" dataKey="team1Level"
+            stroke={corA} strokeWidth={1.5} dot={false} strokeDasharray="4 2" legendType="none" />
+          <Line yAxisId="lv" type="stepAfter" dataKey="team2Level"
+            stroke={corB} strokeWidth={1.5} dot={false} strokeDasharray="4 2" legendType="none" />
+
           <Legend
             content={() => (
               <div style={{ display: 'flex', justifyContent: 'center', gap: 20, paddingTop: 8, flexWrap: 'wrap' }}>
-                {[
-                  { cor: corA, label: timeANome, xp: true },
-                  { cor: corB, label: timeBNome, xp: true },
-                ].map(({ cor, label }) => (
+                {[{ cor: corA, label: timeANome }, { cor: corB, label: timeBNome }].map(({ cor, label }) => (
                   <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <div style={{ width: 12, height: 8, background: cor, opacity: 0.5, borderRadius: 2 }} />
-                      <span style={{ fontSize: 11, fontFamily: 'Barlow Condensed', color: cor, fontWeight: 700 }}>{label} XP</span>
+                      <div style={{ width: 12, height: 8, background: cor, opacity: 0.55, borderRadius: 2 }} />
+                      <span style={{ fontSize: 11, fontFamily: 'Barlow Condensed', color: cor, fontWeight: 700 }}>{label} Lead</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <div style={{ width: 14, height: 2, background: cor, borderRadius: 1 }} />
+                      <div style={{ width: 14, height: 2, background: cor, borderRadius: 1, opacity: 0.7 }} />
                       <span style={{ fontSize: 11, fontFamily: 'Barlow Condensed', color: 'var(--text3)' }}>Nível</span>
                     </div>
                   </div>
@@ -493,10 +519,6 @@ function XpLeadChart({ xpTimeline, corA, corB, timeANome, timeBNome }) {
               </div>
             )}
           />
-          <Area yAxisId="xp" type="monotone" dataKey="team1Xp" name={`${timeANome} XP`} stroke={corA} fill={corA} fillOpacity={0.18} strokeWidth={2} dot={false} />
-          <Area yAxisId="xp" type="monotone" dataKey="team2Xp" name={`${timeBNome} XP`} stroke={corB} fill={corB} fillOpacity={0.18} strokeWidth={2} dot={false} />
-          <Line yAxisId="lv" type="stepAfter" dataKey="team1Level" name={`${timeANome} Lv`} stroke={corA} strokeWidth={1.5} dot={false} strokeDasharray="4 2" />
-          <Line yAxisId="lv" type="stepAfter" dataKey="team2Level" name={`${timeBNome} Lv`} stroke={corB} strokeWidth={1.5} dot={false} strokeDasharray="4 2" />
         </ComposedChart>
       </ResponsiveContainer>
     </div>
