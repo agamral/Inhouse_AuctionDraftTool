@@ -780,6 +780,7 @@ function ConfrontoCard({ confrontoId, confronto: c, campeonatoId, times, disponi
         confrontoId={confrontoId}
         confronto={c}
         campeonatoId={campeonatoId}
+        times={times}
       />
     </div>
   )

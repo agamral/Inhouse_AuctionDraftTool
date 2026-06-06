@@ -101,6 +101,7 @@ export default function AdminDraftSimulator() {
       updates[`${draftSessionPath(campeonatoId)}/captains/${actingAs}/roster/${player.id}`] = { discord: player.discord, preco, isCaptain: false }
       updates[`${draftSessionPath(campeonatoId)}/playerState/${player.id}/preco`]           = preco + 1
       updates[`${draftSessionPath(campeonatoId)}/playerState/${player.id}/ownedBy`]         = actingAs
+      updates[`${draftSessionPath(campeonatoId)}/playerState/${player.id}/tipoPosse`]       = 'compra'
       updates[`${draftSessionPath(campeonatoId)}/captains/${actingAs}/moedas`]              = myCap.moedas - preco
       updates[`${draftSessionPath(campeonatoId)}/state/lastAction`] = {
         type: 'buy', playerDiscord: player.discord,
@@ -163,6 +164,7 @@ export default function AdminDraftSimulator() {
       updates[`${draftSessionPath(campeonatoId)}/captains/${actingAs}/roster/${player.id}`] = { discord: player.discord, preco, isCaptain: false }
       updates[`${draftSessionPath(campeonatoId)}/playerState/${player.id}/preco`]           = preco + 1
       updates[`${draftSessionPath(campeonatoId)}/playerState/${player.id}/ownedBy`]         = actingAs
+      updates[`${draftSessionPath(campeonatoId)}/playerState/${player.id}/tipoPosse`]       = 'roubo'
       updates[`${draftSessionPath(campeonatoId)}/captains/${actingAs}/moedas`]              = myCap.moedas - preco
       updates[`${draftSessionPath(campeonatoId)}/captains/${fromId}/moedas`]                = (fromCap?.moedas ?? 0) + paguei
       updates[`${draftSessionPath(campeonatoId)}/state/turnoExtra`]                         = fromId
