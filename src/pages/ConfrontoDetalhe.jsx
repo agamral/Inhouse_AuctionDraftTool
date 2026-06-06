@@ -1,4 +1,8 @@
 import { useState, useEffect, Fragment } from 'react'
+import {
+  ComposedChart, Area, Line,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+} from 'recharts'
 import { useParams } from 'react-router-dom'
 import { ref, onValue } from 'firebase/database'
 import { db } from '../firebase/database'
@@ -365,10 +369,121 @@ function fmtNum(n) {
   return String(n)
 }
 
+// ── XpLeadChart ───────────────────────────────────────────────────────────────
+
+function XpLeadChart({ xpTimeline, corA, corB, timeANome, timeBNome }) {
+  if (!xpTimeline?.length) {
+    return (
+      <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text3)', fontFamily: "'Barlow Condensed', sans-serif", fontSize: 13 }}>
+        Dados de XP não disponíveis — faça um novo upload do replay.
+      </div>
+    )
+  }
+
+  const data = xpTimeline.map(p => ({
+    ...p,
+    tMin: +(p.t / 60).toFixed(1),
+    label: `${Math.floor(p.t / 60)}:${String(p.t % 60).padStart(2, '0')}`,
+  }))
+
+  const maxXp    = Math.max(...data.map(p => Math.max(p.team1Xp, p.team2Xp)))
+  const maxLevel = Math.max(...data.map(p => Math.max(p.team1Level, p.team2Level)))
+
+  const fmtXp  = v => v >= 1000 ? `${Math.round(v / 1000)}k` : v
+  const fmtMin = v => {
+    const m = Math.floor(v)
+    return `${m}:00`
+  }
+
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (!active || !payload?.length) return null
+    const d = payload[0]?.payload
+    if (!d) return null
+    return (
+      <div style={{
+        background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 6,
+        padding: '10px 14px', fontFamily: "'Barlow Condensed', sans-serif", fontSize: 12,
+        color: 'var(--text)',
+      }}>
+        <div style={{ marginBottom: 6, color: 'var(--text2)', fontSize: 11 }}>{d.label}</div>
+        <div style={{ color: corA }}>
+          {timeANome}: <b>{fmtXp(d.team1Xp)} XP</b> · Lv {d.team1Level}
+        </div>
+        <div style={{ color: corB }}>
+          {timeBNome}: <b>{fmtXp(d.team2Xp)} XP</b> · Lv {d.team2Level}
+        </div>
+        <div style={{ color: 'var(--text3)', marginTop: 4, fontSize: 11 }}>
+          Lead: {d.team1Xp > d.team2Xp
+            ? <span style={{ color: corA }}>+{fmtXp(d.team1Xp - d.team2Xp)} {timeANome}</span>
+            : d.team2Xp > d.team1Xp
+              ? <span style={{ color: corB }}>+{fmtXp(d.team2Xp - d.team1Xp)} {timeBNome}</span>
+              : 'Empate'
+          }
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ marginTop: 8 }}>
+      <ResponsiveContainer width="100%" height={220}>
+        <ComposedChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+          <XAxis
+            dataKey="tMin"
+            type="number"
+            domain={[0, 'dataMax']}
+            tickFormatter={fmtMin}
+            tick={{ fill: 'var(--text3)', fontSize: 10, fontFamily: 'Barlow Condensed' }}
+            axisLine={{ stroke: 'var(--border)' }}
+            tickLine={false}
+          />
+          <YAxis
+            yAxisId="xp"
+            orientation="left"
+            domain={[0, Math.ceil(maxXp * 1.1 / 1000) * 1000]}
+            tickFormatter={fmtXp}
+            tick={{ fill: 'var(--text3)', fontSize: 10, fontFamily: 'Barlow Condensed' }}
+            axisLine={false}
+            tickLine={false}
+            width={36}
+          />
+          <YAxis
+            yAxisId="lv"
+            orientation="right"
+            domain={[0, Math.ceil(maxLevel * 1.2)]}
+            tickCount={6}
+            tick={{ fill: 'var(--text3)', fontSize: 10, fontFamily: 'Barlow Condensed' }}
+            axisLine={false}
+            tickLine={false}
+            width={24}
+          />
+          <Tooltip content={<CustomTooltip />} />
+          <Legend
+            formatter={(value) => {
+              const labels = {
+                team1Xp: `${timeANome} XP`, team2Xp: `${timeBNome} XP`,
+                team1Level: `${timeANome} Lv`, team2Level: `${timeBNome} Lv`,
+              }
+              return <span style={{ fontSize: 11, fontFamily: 'Barlow Condensed', color: 'var(--text2)' }}>{labels[value] ?? value}</span>
+            }}
+            wrapperStyle={{ paddingTop: 8 }}
+          />
+          <Area yAxisId="xp" type="monotone" dataKey="team1Xp" stroke={corA} fill={corA} fillOpacity={0.18} strokeWidth={2} dot={false} />
+          <Area yAxisId="xp" type="monotone" dataKey="team2Xp" stroke={corB} fill={corB} fillOpacity={0.18} strokeWidth={2} dot={false} />
+          <Line yAxisId="lv" type="stepAfter" dataKey="team1Level" stroke={corA} strokeWidth={1.5} dot={false} strokeDasharray="4 2" />
+          <Line yAxisId="lv" type="stepAfter" dataKey="team2Level" stroke={corB} strokeWidth={1.5} dot={false} strokeDasharray="4 2" />
+        </ComposedChart>
+      </ResponsiveContainer>
+    </div>
+  )
+}
+
 // ── ReplayStatsSection ────────────────────────────────────────────────────────
 
 function ReplayStatsSection({ replayGame, corA, corB, timeANome, timeBNome }) {
   const [talentsOpen, setTalentsOpen] = useState({})
+  const [view, setView] = useState('stats')  // 'stats' | 'chart'
 
   const players = replayGame.players ? Object.values(replayGame.players)
     .sort((a, b) => (a.slot ?? 0) - (b.slot ?? 0)) : []
@@ -393,11 +508,39 @@ function ReplayStatsSection({ replayGame, corA, corB, timeANome, timeBNome }) {
     { players: team2, result: replayGame.teams?.team2?.result, tds: replayGame.teams?.team2?.takedowns, nome: timeBNome, cor: corB, key: 'team2', lv: teamLevel(team2), maxStats: calcMaxStats(team2) },
   ]
 
+  const hasChart = (replayGame.xpTimeline?.length ?? 0) > 0
+
   return (
     <div className="cd-replay-section">
-      <div className="cd-replay-section-title">Estatísticas do Replay</div>
+      <div className="cd-replay-section-header">
+        <div className="cd-replay-section-title">Estatísticas do Replay</div>
+        {hasChart && (
+          <div className="cd-replay-view-toggle">
+            <button
+              className={`cd-replay-toggle-btn${view === 'stats' ? ' cd-replay-toggle-btn--active' : ''}`}
+              onClick={() => setView('stats')}
+            >
+              Tabela
+            </button>
+            <button
+              className={`cd-replay-toggle-btn${view === 'chart' ? ' cd-replay-toggle-btn--active' : ''}`}
+              onClick={() => setView('chart')}
+            >
+              XP Lead
+            </button>
+          </div>
+        )}
+      </div>
 
-      {teamCfg.map(({ players: tp, result, tds, nome, cor, key, lv, maxStats }) => (
+      {view === 'chart' && (
+        <XpLeadChart
+          xpTimeline={replayGame.xpTimeline}
+          corA={corA} corB={corB}
+          timeANome={timeANome} timeBNome={timeBNome}
+        />
+      )}
+
+      {view === 'stats' && teamCfg.map(({ players: tp, result, tds, nome, cor, key, lv, maxStats }) => (
         <div key={key} className="cd-replay-team-block">
           <div className="cd-replay-team-header">
             <span className="cd-replay-team-nome" style={{ color: cor }}>{nome}</span>
@@ -485,7 +628,7 @@ function ReplayStatsSection({ replayGame, corA, corB, timeANome, timeBNome }) {
   )
 }
 
-// ── Página principal ──────────────────────────────────────────────────────────
+// ── Página principal ─────────────────────────────────────────────────────────
 export default function ConfrontoDetalhe() {
   const { idPublico }   = useCampeonato()
   const { confrontoId } = useParams()

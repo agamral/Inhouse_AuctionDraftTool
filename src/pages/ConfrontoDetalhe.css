@@ -850,6 +850,13 @@
   gap: 16px;
 }
 
+.cd-replay-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
 .cd-replay-section-title {
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 10px;
@@ -857,6 +864,36 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text3);
+}
+
+.cd-replay-view-toggle {
+  display: flex;
+  gap: 4px;
+}
+
+.cd-replay-toggle-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 3px 12px;
+  cursor: pointer;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text3);
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.cd-replay-toggle-btn--active {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+.cd-replay-toggle-btn:not(.cd-replay-toggle-btn--active):hover {
+  border-color: var(--border2);
+  color: var(--text2);
 }
 
 .cd-replay-team-block {

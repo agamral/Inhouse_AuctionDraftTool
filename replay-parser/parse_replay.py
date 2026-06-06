@@ -230,6 +230,49 @@ def parse_attributes(attributes, result):
             )
 
 
+_XP_FIXED_SCALE = 4096  # valores fixed-point do heroprotocol ÷ 4096 = valor real
+
+def _build_xp_timeline(events):
+    """
+    Converte eventos PeriodicXPBreakdown em timeline de XP cumulativo por time.
+    Retorna [{t, team1Xp, team2Xp, team1Level, team2Level}].
+    """
+    def kv_int(lst):
+        return {decode_str(i["m_key"]): i["m_value"] for i in (lst or []) if "m_key" in i}
+
+    def kv_fixed(lst):
+        return {decode_str(i["m_key"]): i["m_value"] / _XP_FIXED_SCALE for i in (lst or []) if "m_key" in i}
+
+    XP_FIELDS = ["MinionXP", "CreepXP", "StructureXP", "HeroXP", "TrickleXP"]
+
+    cum = {1: 0.0, 2: 0.0}
+    per_team = {1: [], 2: []}
+
+    for ev in sorted(events, key=lambda e: e.get("_gameloop", 0)):
+        ints   = kv_int(ev.get("m_intData", []))
+        fixeds = kv_fixed(ev.get("m_fixedData", []))
+        team   = ints.get("Team", 0)
+        if team not in (1, 2):
+            continue
+        level  = ints.get("TeamLevel", 0)
+        t_sec  = int(ev.get("_gameloop", 0) / GAMELOOPS_PER_SECOND)
+        gain   = sum(fixeds.get(f, 0.0) for f in XP_FIELDS)
+        cum[team] += gain
+        per_team[team].append({"t": t_sec, "xp": int(cum[team]), "level": level})
+
+    n = min(len(per_team[1]), len(per_team[2]))
+    return [
+        {
+            "t":           per_team[1][i]["t"],
+            "team1Xp":     per_team[1][i]["xp"],
+            "team2Xp":     per_team[2][i]["xp"],
+            "team1Level":  per_team[1][i]["level"],
+            "team2Level":  per_team[2][i]["level"],
+        }
+        for i in range(n)
+    ]
+
+
 def parse_tracker_events(tracker_events, result):
     """
     Extrai duração da partida, estatísticas por jogador e mapeamento de IDs.
@@ -242,6 +285,9 @@ def parse_tracker_events(tracker_events, result):
 
     # Acumulador de stats: slot → {campo: valor}
     score_stats: dict[int, dict] = {}
+
+    # Coleta eventos periódicos de XP para timeline
+    xp_breakdown_events: list = []
 
     for event in tracker_events:
         etype = event.get("_event", "")
@@ -261,6 +307,11 @@ def parse_tracker_events(tracker_events, result):
             loop = event.get("_gameloop")
             if loop and (game_duration_loops is None or loop > game_duration_loops):
                 game_duration_loops = loop
+
+        # Timeline de XP periódica
+        elif etype == "NNet.Replay.Tracker.SStatGameEvent":
+            if decode_str(event.get("m_eventName", b"")) == "PeriodicXPBreakdown":
+                xp_breakdown_events.append(event)
 
         # Estatísticas finais
         elif etype == "NNet.Replay.Tracker.SScoreResultEvent":
@@ -326,6 +377,9 @@ def parse_tracker_events(tracker_events, result):
                 None,
             ),
         }
+
+    # Timeline de XP (PeriodicXPBreakdown → um ponto por time a cada ~60s)
+    result["xpTimeline"] = _build_xp_timeline(xp_breakdown_events)
 
 
 def parse_game_events(game_events, result):
