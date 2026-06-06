@@ -27,8 +27,21 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 app = Flask(__name__)
 
-allowed_origin = os.environ.get("ALLOWED_ORIGIN", "*")
-CORS(app, origins=allowed_origin)
+# CORS — permite todas as origens (free tier, uso interno)
+CORS(app)
+
+@app.after_request
+def ensure_cors(response):
+    """Garante CORS em todas as respostas, incluindo erros 4xx/5xx."""
+    response.headers["Access-Control-Allow-Origin"]  = "*"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    return response
+
+@app.route("/", methods=["OPTIONS"])
+@app.route("/parse", methods=["OPTIONS"])
+def handle_preflight():
+    return "", 204
 
 
 # ---------------------------------------------------------------------------
