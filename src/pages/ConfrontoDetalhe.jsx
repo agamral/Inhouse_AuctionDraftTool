@@ -399,13 +399,15 @@ function XpLeadChart({ xpTimeline, corA, corB, timeANome, timeBNome }) {
 
   const data = [origin, ...xpTimeline.map(p => {
     const lead = p.team1Xp - p.team2Xp
+    // floor para minuto inteiro: posiciona o ponto exatamente sobre o tick da grade
+    const tMin = Math.floor(p.t / 60)
     return {
       ...p,
-      tMin:     +(p.t / 60).toFixed(1),
-      label:    `${Math.floor(p.t / 60)}:${String(p.t % 60).padStart(2, '0')}`,
-      xpLead:   lead,
-      posLead:  Math.max(0, lead),
-      negLead:  Math.min(0, lead),
+      tMin,
+      label: `${tMin}:00`,
+      xpLead:  lead,
+      posLead: Math.max(0, lead),
+      negLead: Math.min(0, lead),
     }
   })]
 
