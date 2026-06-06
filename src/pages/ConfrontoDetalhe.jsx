@@ -570,33 +570,6 @@ function HeroPortrait({ hero, cor, victim, size = 28 }) {
 
 const CAMP_LABEL = { 'Siege Camp': 'Cerco', 'Bruiser Camp': 'Bruiser', 'Boss Camp': 'Boss' }
 
-// Mapeamento de nome interno do evento → label legível do objetivo de mapa
-const OBJ_PREFIX = [
-  ['BraxisHoldout',      'Braxis'],
-  ['InfernalShrine',     'Santuário Infernal'],
-  ['DragonShire',        'Covil do Dragão'],
-  ['CursedHollow',       'Vale Amaldiçoado'],
-  ['AlteracPass',        'Passo de Alterac'],
-  ['TowersOfDoom',       'Torres da Perdição'],
-  ['VolskayaFoundry',    'Fábrica Volskaya'],
-  ['HauntedMines',       'Minas Assombradas'],
-  ['GardenOfTerror',     'Jardim do Terror'],
-  ['SkyTemple',          'Templo Celestial'],
-  ['Blackheart',         'Baía do Blackheart'],
-  ['WarHead',            'Junção Warhead'],
-  ['Tomb',               'Tumba da Rainha Aranha'],
-  ['NukeData',           'Ogiva Nuclear'],
-]
-function fmtObjName(name) {
-  for (const [prefix, label] of OBJ_PREFIX) {
-    if (name.startsWith(prefix)) return label
-  }
-  // Fallback: insere espaços no CamelCase e remove sufixos técnicos
-  return name
-    .replace(/(MapEventComplete|MapEvent|Complete|Powerup|Capture|Triggered)$/g, '')
-    .replace(/([A-Z])/g, ' $1').trim()
-}
-
 function EventTimeline({ eventTimeline, corA, corB, timeANome, timeBNome }) {
   const [tooltip, setTooltip] = useState(null)   // { idx, isTop }
 
@@ -684,7 +657,7 @@ function EventTimeline({ eventTimeline, corA, corB, timeANome, timeBNome }) {
       <div className="cd-htl-tooltip-inner">
         <div className="cd-htl-tooltip-time">{fmtTime(ev.t)}</div>
         <div className="cd-htl-tooltip-label" style={{ color: teamCor(ev._team) }}>
-          {teamNome(ev._team)} — {fmtObjName(ev.name)}
+          {teamNome(ev._team)} — Objetivo Conquistado
         </div>
       </div>
     )
