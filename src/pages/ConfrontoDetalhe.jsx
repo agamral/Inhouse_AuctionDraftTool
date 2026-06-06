@@ -295,11 +295,10 @@ function PartidaCard({ numero, partida: p, tA, tB, corA, corB, timeANome, timeBN
                       const t2 = replayGame.teams?.team2?.takedowns ?? '--'
                       return `${t1} × ${t2}`
                     })() },
-                    { label: 'Modo',       val: replayGame.match.game_mode ?? '?' },
                   ].map(({ label, val }) => (
                     <div key={label} className="cd-resumo-item">
                       <div className="cd-resumo-label">{label}</div>
-                      <div className="cd-resumo-val" style={{ fontSize: label === 'Modo' ? 12 : undefined }}>{val}</div>
+                      <div className="cd-resumo-val">{val}</div>
                     </div>
                   ))}
                 </div>
@@ -377,16 +376,18 @@ function ReplayStatsSection({ replayGame, corA, corB, timeANome, timeBNome }) {
   const team1 = players.filter(p => p.team === 1)
   const team2 = players.filter(p => p.team === 2)
 
+  const teamLevel = (tp) => tp[0]?.level ?? null
+
   const teamCfg = [
-    { players: team1, result: replayGame.teams?.team1?.result, tds: replayGame.teams?.team1?.takedowns, nome: timeANome, cor: corA, key: 'team1' },
-    { players: team2, result: replayGame.teams?.team2?.result, tds: replayGame.teams?.team2?.takedowns, nome: timeBNome, cor: corB, key: 'team2' },
+    { players: team1, result: replayGame.teams?.team1?.result, tds: replayGame.teams?.team1?.takedowns, nome: timeANome, cor: corA, key: 'team1', lv: teamLevel(team1) },
+    { players: team2, result: replayGame.teams?.team2?.result, tds: replayGame.teams?.team2?.takedowns, nome: timeBNome, cor: corB, key: 'team2', lv: teamLevel(team2) },
   ]
 
   return (
     <div className="cd-replay-section">
       <div className="cd-replay-section-title">Estatísticas do Replay</div>
 
-      {teamCfg.map(({ players: tp, result, tds, nome, cor, key }) => (
+      {teamCfg.map(({ players: tp, result, tds, nome, cor, key, lv }) => (
         <div key={key} className="cd-replay-team-block">
           <div className="cd-replay-team-header">
             <span className="cd-replay-team-nome" style={{ color: cor }}>{nome}</span>
@@ -394,6 +395,7 @@ function ReplayStatsSection({ replayGame, corA, corB, timeANome, timeBNome }) {
               {result === 'win' ? 'VITÓRIA' : result === 'loss' ? 'DERROTA' : '?'}
             </span>
             <span className="cd-replay-td-total">{tds ?? 0} TD</span>
+            {lv && <span className="cd-replay-team-lv">Lv {lv}</span>}
           </div>
 
           <div className="cd-replay-table-wrap">
@@ -403,10 +405,10 @@ function ReplayStatsSection({ replayGame, corA, corB, timeANome, timeBNome }) {
                   <th>Herói</th>
                   <th>Jogador</th>
                   <th>K/D/A</th>
-                  <th>TD</th>
-                  <th>Dano</th>
-                  <th>Cura</th>
-                  <th>Nível</th>
+                  <th style={{ textAlign: 'center' }}>TD</th>
+                  <th style={{ textAlign: 'right' }}>Herói</th>
+                  <th style={{ textAlign: 'right' }}>Siege</th>
+                  <th style={{ textAlign: 'right' }}>Cura</th>
                   <th></th>
                 </tr>
               </thead>
@@ -415,6 +417,7 @@ function ReplayStatsSection({ replayGame, corA, corB, timeANome, timeBNome }) {
                   const slotKey  = `${key}_${p.slot ?? idx}`
                   const open     = !!talentsOpen[slotKey]
                   const hasTalents = (p.talents?.length ?? 0) > 0
+                  const siege = (p.structure_damage || 0) + (p.minion_damage || 0)
                   return (
                     <Fragment key={slotKey}>
                       <tr className="cd-replay-row">
@@ -431,8 +434,8 @@ function ReplayStatsSection({ replayGame, corA, corB, timeANome, timeBNome }) {
                         </td>
                         <td className="cd-replay-td-cell">{p.takedowns ?? 0}</td>
                         <td className="cd-replay-num">{fmtNum(p.hero_damage)}</td>
+                        <td className="cd-replay-num">{fmtNum(siege)}</td>
                         <td className="cd-replay-num">{fmtNum((p.healing || 0) + (p.self_healing || 0))}</td>
-                        <td className="cd-replay-num">{p.level ?? '—'}</td>
                         <td>
                           {hasTalents && (
                             <button
