@@ -103,9 +103,10 @@ export default function AdminReplayUpload({ confrontoId, confronto, campeonatoId
     await set(ref(db, path), {
       parsed:      true,
       uploadedAt:  Date.now(),
-      match:       data.match   ?? null,
-      teams:       data.teams   ?? null,
+      match:       data.match       ?? null,
+      teams:       data.teams       ?? null,
       players:     playersObj,
+      xpTimeline:  data.xpTimeline  ?? null,
       playerLinks,
       playerNames,
     })
