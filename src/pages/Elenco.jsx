@@ -7,6 +7,7 @@ import { useCampeonato } from '../contexts/CampeonatoContext'
 import PaginaInativa from '../components/PaginaInativa'
 import { teamPath, confrontosPath, draftSessionPath } from '../utils/campeonatoPaths'
 import { STATUS_CONFRONTO, TIPO_CONFRONTO } from '../utils/scheduling'
+import TeamIcon from '../components/TeamIcon'
 import './Elenco.css'
 
 export default function Elenco() {
@@ -137,7 +138,8 @@ export default function Elenco() {
             <div key={id} className="elenco-card" style={{ '--cor': team.cor ?? 'var(--blue)' }}>
               {/* Header */}
               <div className="elenco-card-header">
-                <div className="elenco-card-nome">{team.nome}</div>
+                <TeamIcon time={team} size={48} style={{ flexShrink: 0 }} />
+                <div className="elenco-card-nome" style={{ flex: 1 }}>{team.nome}</div>
                 <div className="elenco-card-wl">
                   <span className="elenco-v">{v}V</span>
                   <span className="elenco-sep">·</span>

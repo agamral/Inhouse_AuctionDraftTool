@@ -6,6 +6,7 @@ import { useModules } from '../hooks/useConfig'
 import { useCampeonato } from '../contexts/CampeonatoContext'
 import PaginaInativa from '../components/PaginaInativa'
 import { teamPath, rodadasPath, confrontosPath, tabelaOverridePath } from '../utils/campeonatoPaths'
+import TeamIcon from '../components/TeamIcon'
 import {
   calcularClassificacao, calcularPontos,
   STATUS_CONFRONTO, TIPO_CONFRONTO,
@@ -211,7 +212,7 @@ export default function Tabela() {
                       </span>
                     </td>
                     <td className="tab-td tab-td--time">
-                      <span className="tab-time-dot" style={{ background: cor }} />
+                      <TeamIcon time={time} size={22} style={{ marginRight: 2 }} />
                       <span className="tab-time-nome" style={{ color: cor }}>
                         {time?.nome ?? entry.id}
                       </span>
@@ -307,7 +308,7 @@ export default function Tabela() {
                   title={detalheUrl ? 'Ver detalhes da partida' : undefined}
                 >
                   <div className="tab-partida-time tab-partida-time--a">
-                    <span className="tab-partida-dot" style={{ background: tA?.cor }} />
+                    <TeamIcon time={tA} size={24} style={{ marginRight: 4 }} />
                     <span style={{ color: tA?.cor ?? 'var(--text)' }}>{tA?.nome ?? c.timeA}</span>
                   </div>
 
@@ -331,7 +332,7 @@ export default function Tabela() {
 
                   <div className="tab-partida-time tab-partida-time--b">
                     <span style={{ color: tB?.cor ?? 'var(--text)' }}>{tB?.nome ?? c.timeB}</span>
-                    <span className="tab-partida-dot" style={{ background: tB?.cor }} />
+                    <TeamIcon time={tB} size={24} style={{ marginLeft: 4 }} />
                   </div>
                 </div>
               )

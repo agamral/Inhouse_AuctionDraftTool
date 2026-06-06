@@ -10,6 +10,7 @@ import {
   BRACKET_UPPER, BRACKET_LOWER, BRACKET_LABELS,
   STATUS_CONFRONTO, TIPO_CONFRONTO, SLOT_LABEL,
 } from '../utils/scheduling'
+import TeamIcon from '../components/TeamIcon'
 import './Chave.css'
 
 // ── Constantes de layout do bracket ───────────────────────────────────────────
@@ -402,7 +403,7 @@ function TeamSlot({ time, placar, venceu, perdeu, tipoRes, lado, small }) {
 
   return (
     <div className={['team-slot', !time ? 'team-slot--vazio' : '', venceu ? 'team-slot--venceu' : '', perdeu ? 'team-slot--perdeu' : ''].filter(Boolean).join(' ')}>
-      <span className="team-slot-dot" style={{ background: time?.cor ?? 'var(--border)' }} />
+      <TeamIcon time={time} size={18} style={{ flexShrink: 0 }} />
       <span className="team-slot-nome" style={{ color: venceu ? (time?.cor ?? 'var(--text)') : undefined, fontSize: small ? 12 : undefined }}>
         {time?.nome ?? 'A definir'}
       </span>
