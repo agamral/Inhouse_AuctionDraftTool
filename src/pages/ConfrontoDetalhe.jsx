@@ -378,28 +378,26 @@ function ReplayStatsSection({ replayGame, corA, corB, timeANome, timeBNome }) {
 
   const teamLevel = (tp) => tp[0]?.level ?? null
 
-  // Máximos de cada stat positiva entre todos os jogadores
-  const maxStats = players.reduce((acc, p) => {
+  const calcMaxStats = (tp) => tp.reduce((acc, p) => {
     const siege   = (p.structure_damage || 0) + (p.minion_damage || 0)
     const healing = (p.healing || 0) + (p.self_healing || 0)
     return {
-      takedowns:  Math.max(acc.takedowns,  p.takedowns   || 0),
       hero_damage: Math.max(acc.hero_damage, p.hero_damage || 0),
       siege:       Math.max(acc.siege,       siege),
       healing:     Math.max(acc.healing,     healing),
     }
-  }, { takedowns: 0, hero_damage: 0, siege: 0, healing: 0 })
+  }, { hero_damage: 0, siege: 0, healing: 0 })
 
   const teamCfg = [
-    { players: team1, result: replayGame.teams?.team1?.result, tds: replayGame.teams?.team1?.takedowns, nome: timeANome, cor: corA, key: 'team1', lv: teamLevel(team1) },
-    { players: team2, result: replayGame.teams?.team2?.result, tds: replayGame.teams?.team2?.takedowns, nome: timeBNome, cor: corB, key: 'team2', lv: teamLevel(team2) },
+    { players: team1, result: replayGame.teams?.team1?.result, tds: replayGame.teams?.team1?.takedowns, nome: timeANome, cor: corA, key: 'team1', lv: teamLevel(team1), maxStats: calcMaxStats(team1) },
+    { players: team2, result: replayGame.teams?.team2?.result, tds: replayGame.teams?.team2?.takedowns, nome: timeBNome, cor: corB, key: 'team2', lv: teamLevel(team2), maxStats: calcMaxStats(team2) },
   ]
 
   return (
     <div className="cd-replay-section">
       <div className="cd-replay-section-title">Estatísticas do Replay</div>
 
-      {teamCfg.map(({ players: tp, result, tds, nome, cor, key, lv }) => (
+      {teamCfg.map(({ players: tp, result, tds, nome, cor, key, lv, maxStats }) => (
         <div key={key} className="cd-replay-team-block">
           <div className="cd-replay-team-header">
             <span className="cd-replay-team-nome" style={{ color: cor }}>{nome}</span>
@@ -446,7 +444,7 @@ function ReplayStatsSection({ replayGame, corA, corB, timeANome, timeBNome }) {
                           <span style={{ color: 'var(--text3)' }}>/</span>
                           <span style={{ color: 'var(--blue)' }}>{p.assists ?? 0}</span>
                         </td>
-                        <td className={`cd-replay-td-cell${glow(p.takedowns, maxStats.takedowns)}`}>{p.takedowns ?? 0}</td>
+                        <td className="cd-replay-td-cell">{p.takedowns ?? 0}</td>
                         <td className={`cd-replay-num${glow(p.hero_damage, maxStats.hero_damage)}`}>{fmtNum(p.hero_damage)}</td>
                         <td className={`cd-replay-num${glow(siege, maxStats.siege)}`}>{fmtNum(siege)}</td>
                         <td className={`cd-replay-num${glow(healing, maxStats.healing)}`}>{fmtNum(healing)}</td>
