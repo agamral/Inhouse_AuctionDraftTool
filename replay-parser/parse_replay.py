@@ -245,7 +245,6 @@ def _build_xp_timeline(events):
 
     XP_FIELDS = ["MinionXP", "CreepXP", "StructureXP", "HeroXP", "TrickleXP"]
 
-    cum = {1: 0.0, 2: 0.0}
     per_team = {1: [], 2: []}
 
     for ev in sorted(events, key=lambda e: e.get("_gameloop", 0)):
@@ -256,9 +255,10 @@ def _build_xp_timeline(events):
             continue
         level  = ints.get("TeamLevel", 0)
         t_sec  = int(ev.get("_gameloop", 0) / GAMELOOPS_PER_SECOND)
-        gain   = sum(fixeds.get(f, 0.0) for f in XP_FIELDS)
-        cum[team] += gain
-        per_team[team].append({"t": t_sec, "xp": int(cum[team]), "level": level})
+        # PeriodicXPBreakdown já reporta o XP acumulado total desde o início,
+        # não o ganho incremental do período — usar diretamente.
+        total_xp = sum(fixeds.get(f, 0.0) for f in XP_FIELDS)
+        per_team[team].append({"t": t_sec, "xp": int(total_xp), "level": level})
 
     n = min(len(per_team[1]), len(per_team[2]))
     return [
