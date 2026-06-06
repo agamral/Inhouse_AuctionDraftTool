@@ -372,10 +372,11 @@ function fmtNum(n) {
 // ── XpLeadChart ───────────────────────────────────────────────────────────────
 
 function XpLeadChart({ xpTimeline, corA, corB, timeANome, timeBNome }) {
-  if (!xpTimeline?.length || !Array.isArray(xpTimeline)) {
+  if (!Array.isArray(xpTimeline) || xpTimeline.length === 0) {
     return (
-      <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text3)', fontFamily: "'Barlow Condensed', sans-serif", fontSize: 13 }}>
-        Dados de XP não disponíveis — faça um novo upload do replay.
+      <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text3)', fontFamily: "'Barlow Condensed', sans-serif", fontSize: 13, lineHeight: 1.6 }}>
+        Dados de XP não disponíveis neste replay.<br />
+        <span style={{ fontSize: 11, color: 'var(--text3)' }}>Faça um novo upload para gerar o gráfico.</span>
       </div>
     )
   }
@@ -509,31 +510,31 @@ function ReplayStatsSection({ replayGame, corA, corB, timeANome, timeBNome }) {
   ]
 
   // Firebase converte arrays em objetos {0:{...}, 1:{...}} — normalizar
-  const xpArr = Array.isArray(replayGame.xpTimeline)
-    ? replayGame.xpTimeline
-    : Object.values(replayGame.xpTimeline ?? {}).sort((a, b) => a.t - b.t)
-  const hasChart = xpArr.length > 0
+  const raw = replayGame.xpTimeline
+  const xpArr = Array.isArray(raw)
+    ? raw
+    : raw && typeof raw === 'object'
+      ? Object.values(raw).sort((a, b) => (a?.t ?? 0) - (b?.t ?? 0))
+      : []
 
   return (
     <div className="cd-replay-section">
       <div className="cd-replay-section-header">
         <div className="cd-replay-section-title">Estatísticas do Replay</div>
-        {hasChart && (
-          <div className="cd-replay-view-toggle">
-            <button
-              className={`cd-replay-toggle-btn${view === 'stats' ? ' cd-replay-toggle-btn--active' : ''}`}
-              onClick={() => setView('stats')}
-            >
-              Tabela
-            </button>
-            <button
-              className={`cd-replay-toggle-btn${view === 'chart' ? ' cd-replay-toggle-btn--active' : ''}`}
-              onClick={() => setView('chart')}
-            >
-              XP Lead
-            </button>
-          </div>
-        )}
+        <div className="cd-replay-view-toggle">
+          <button
+            className={`cd-replay-toggle-btn${view === 'stats' ? ' cd-replay-toggle-btn--active' : ''}`}
+            onClick={() => setView('stats')}
+          >
+            Tabela
+          </button>
+          <button
+            className={`cd-replay-toggle-btn${view === 'chart' ? ' cd-replay-toggle-btn--active' : ''}`}
+            onClick={() => setView('chart')}
+          >
+            XP Lead
+          </button>
+        </div>
       </div>
 
       {view === 'chart' && (
