@@ -337,14 +337,21 @@ def _build_event_timeline(stat_events, player_id_to_slot, players):
                 })
 
         else:
-            # Objetivos genéricos — qualquer evento com "Winning Team"
-            winning = ints.get("Winning Team")
-            if winning is not None and int(winning) in (1, 2):
+            # Objetivos de mapa — tenta múltiplas chaves usadas por mapas diferentes
+            # Infernal Shrine / Dragon Shire: "Winning Team"
+            # Alterac Pass / Braxis / outros: "Team", "CapturingTeam", "Owning Team"
+            winning = None
+            for team_key in ("Winning Team", "Team", "CapturingTeam", "Owning Team"):
+                v = ints.get(team_key)
+                if v is not None and int(v) in (1, 2):
+                    winning = int(v)
+                    break
+            if winning is not None:
                 timeline.append({
                     "t":    t,
                     "type": "objective",
                     "name": name,
-                    "team": int(winning),
+                    "team": winning,
                 })
 
     return sorted(timeline, key=lambda e: e["t"])

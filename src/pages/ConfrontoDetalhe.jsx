@@ -644,6 +644,10 @@ function EventTimeline({ eventTimeline, corA, corB, timeANome, timeBNome }) {
 
       {/* Track */}
       <div className="cd-htl-track" style={{ height: TOTAL_H }}>
+        {/* Background zones — fundo sutil para cada time */}
+        <div className="cd-htl-zone" style={{ top: 0, height: SIDE1_H, background: corA }} />
+        <div className="cd-htl-zone" style={{ top: SIDE1_H + AXIS_H, height: SIDE2_H, background: corB }} />
+
         {/* Axis line */}
         <div className="cd-htl-axis" style={{ top: SIDE1_H }} />
 
@@ -657,33 +661,40 @@ function EventTimeline({ eventTimeline, corA, corB, timeANome, timeBNome }) {
 
         {/* Events */}
         {events.map((ev, i) => {
-          const isTop  = ev._team === 1
-          const cor    = teamCor(ev._team)
-          const yOff   = ev._level * (ICON + GAP)
-          const top    = isTop
-            ? SIDE1_H - ICON - yOff - 4    // above axis, grow upward
-            : SIDE1_H + AXIS_H + yOff + 4  // below axis, grow downward
+          const isTop       = ev._team === 1
+          const cor         = teamCor(ev._team)
+          const yOff        = ev._level * (ICON + GAP)
+          const top         = isTop
+            ? SIDE1_H - ICON - yOff - 4    // acima do eixo, cresce para cima
+            : SIDE1_H + AXIS_H + yOff + 4  // abaixo do eixo, cresce para baixo
+          const connectorH  = yOff + 4     // distância da bolinha até o eixo
 
           const showTip = tooltip?.idx === i
 
           let victimHero = null
           let icon       = null
 
-          if (ev.type === 'kill')      victimHero = ev.victim?.hero
-          else if (ev.type === 'camp') icon = '🛡'
+          if (ev.type === 'kill')           victimHero = ev.victim?.hero
+          else if (ev.type === 'camp')      icon = '🛡'
           else if (ev.type === 'objective') icon = '⭐'
 
           return (
             <div
               key={i}
               className={`cd-htl-event${showTip ? ' cd-htl-event--active' : ''}`}
-              style={{ left: `${ev._xPct * 100}%`, top, width: ICON, height: ICON }}
+              style={{ left: `${ev._xPct * 100}%`, top, width: ICON, height: ICON, '--cor': cor }}
               onMouseEnter={() => setTooltip({ idx: i, isTop })}
               onMouseLeave={() => setTooltip(null)}
             >
+              {/* Linha conectora até o eixo */}
+              <div
+                className={`cd-htl-connector${isTop ? '' : ' cd-htl-connector--bottom'}`}
+                style={{ height: connectorH }}
+              />
+
               {victimHero
                 ? <HeroPortrait hero={victimHero} cor={cor} victim size={ICON} />
-                : <div className="cd-htl-event-ico" style={{ '--cor': cor }}>{icon}</div>
+                : <div className="cd-htl-event-ico">{icon}</div>
               }
               {showTip && (
                 <div className={`cd-htl-tooltip cd-htl-tooltip--${isTop ? 'top' : 'bottom'}`}>

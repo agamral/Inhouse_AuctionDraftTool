@@ -1147,12 +1147,23 @@
   overflow: visible;
 }
 
+/* Background zones por time */
+.cd-htl-zone {
+  position: absolute;
+  left: 0; right: 0;
+  opacity: 0.05;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: 4px;
+}
+
 /* Center axis */
 .cd-htl-axis {
   position: absolute;
   left: 0; right: 0;
   height: 1px;
   background: var(--border2);
+  z-index: 1;
 }
 
 /* Time ticks */
@@ -1181,15 +1192,32 @@
   position: absolute;
   transform: translateX(-50%);
   cursor: pointer;
-  z-index: 1;
+  z-index: 2;
   border-radius: 50%;
   overflow: visible;
-  transition: filter 0.1s, z-index 0s;
+  transition: filter 0.12s;
 }
 .cd-htl-event:hover,
 .cd-htl-event--active {
   z-index: 20;
-  filter: drop-shadow(0 0 4px var(--cor, rgba(255,255,255,0.4)));
+  filter: drop-shadow(0 0 5px var(--cor, rgba(255,255,255,0.4)));
+}
+
+/* Linha conectora do evento até o eixo */
+.cd-htl-connector {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 1px;
+  background: var(--cor, var(--border2));
+  opacity: 0.22;
+  top: 100%;      /* parte de baixo da bolinha, vai até o eixo */
+  z-index: -1;
+  pointer-events: none;
+}
+.cd-htl-connector--bottom {
+  top: auto;
+  bottom: 100%;   /* parte de cima da bolinha, vai até o eixo */
 }
 
 /* Icon event (camp / objective) */
