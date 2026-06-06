@@ -289,7 +289,7 @@ def _build_event_timeline(stat_events, player_id_to_slot, players):
         "EndOfGameTalentChoices", "EndOfGameUpVotesCollected", "PlayerInit",
         "PlayerSpawned", "TalentChosen", "GameStart", "GatesOpen",
         "TownStructureInit", "TownStructureDeath", "LootSprayUsed",
-        "RegenGlobePickedUp", "LevelUp", "Punisher Killed",
+        "RegenGlobePickedUp", "LevelUp", "Punisher Killed", "JungleCampInit",
     }
 
     timeline = []
@@ -338,14 +338,25 @@ def _build_event_timeline(stat_events, player_id_to_slot, players):
 
         else:
             # Objetivos de mapa — tenta múltiplas chaves usadas por mapas diferentes
-            # Infernal Shrine / Dragon Shire: "Winning Team"
-            # Alterac Pass / Braxis / outros: "Team", "CapturingTeam", "Owning Team"
             winning = None
+
+            # Infernal Shrine / Dragon Shire / Alterac Pass: time em intData
             for team_key in ("Winning Team", "Team", "CapturingTeam", "Owning Team"):
                 v = ints.get(team_key)
                 if v is not None and int(v) in (1, 2):
                     winning = int(v)
                     break
+
+            # Braxis Holdout e mapas com barra de progresso em fixedData:
+            # TeamOrderProgress=100 → time 1, TeamChaosProgress=100 → time 2
+            if winning is None:
+                order = fixs.get("TeamOrderProgress", 0)
+                chaos = fixs.get("TeamChaosProgress", 0)
+                if order >= 100:
+                    winning = 1
+                elif chaos >= 100:
+                    winning = 2
+
             if winning is not None:
                 timeline.append({
                     "t":    t,
