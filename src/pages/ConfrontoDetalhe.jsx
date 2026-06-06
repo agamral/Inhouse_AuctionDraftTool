@@ -461,19 +461,30 @@ function XpLeadChart({ xpTimeline, corA, corB, timeANome, timeBNome }) {
           />
           <Tooltip content={<CustomTooltip />} />
           <Legend
-            formatter={(value) => {
-              const labels = {
-                team1Xp: `${timeANome} XP`, team2Xp: `${timeBNome} XP`,
-                team1Level: `${timeANome} Lv`, team2Level: `${timeBNome} Lv`,
-              }
-              return <span style={{ fontSize: 11, fontFamily: 'Barlow Condensed', color: 'var(--text2)' }}>{labels[value] ?? value}</span>
-            }}
-            wrapperStyle={{ paddingTop: 8 }}
+            content={() => (
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 20, paddingTop: 8, flexWrap: 'wrap' }}>
+                {[
+                  { cor: corA, label: timeANome, xp: true },
+                  { cor: corB, label: timeBNome, xp: true },
+                ].map(({ cor, label }) => (
+                  <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <div style={{ width: 12, height: 8, background: cor, opacity: 0.5, borderRadius: 2 }} />
+                      <span style={{ fontSize: 11, fontFamily: 'Barlow Condensed', color: cor, fontWeight: 700 }}>{label} XP</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <div style={{ width: 14, height: 2, background: cor, borderRadius: 1 }} />
+                      <span style={{ fontSize: 11, fontFamily: 'Barlow Condensed', color: 'var(--text3)' }}>Nível</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           />
-          <Area yAxisId="xp" type="monotone" dataKey="team1Xp" stroke={corA} fill={corA} fillOpacity={0.18} strokeWidth={2} dot={false} />
-          <Area yAxisId="xp" type="monotone" dataKey="team2Xp" stroke={corB} fill={corB} fillOpacity={0.18} strokeWidth={2} dot={false} />
-          <Line yAxisId="lv" type="stepAfter" dataKey="team1Level" stroke={corA} strokeWidth={1.5} dot={false} strokeDasharray="4 2" />
-          <Line yAxisId="lv" type="stepAfter" dataKey="team2Level" stroke={corB} strokeWidth={1.5} dot={false} strokeDasharray="4 2" />
+          <Area yAxisId="xp" type="monotone" dataKey="team1Xp" name={`${timeANome} XP`} stroke={corA} fill={corA} fillOpacity={0.18} strokeWidth={2} dot={false} />
+          <Area yAxisId="xp" type="monotone" dataKey="team2Xp" name={`${timeBNome} XP`} stroke={corB} fill={corB} fillOpacity={0.18} strokeWidth={2} dot={false} />
+          <Line yAxisId="lv" type="stepAfter" dataKey="team1Level" name={`${timeANome} Lv`} stroke={corA} strokeWidth={1.5} dot={false} strokeDasharray="4 2" />
+          <Line yAxisId="lv" type="stepAfter" dataKey="team2Level" name={`${timeBNome} Lv`} stroke={corB} strokeWidth={1.5} dot={false} strokeDasharray="4 2" />
         </ComposedChart>
       </ResponsiveContainer>
     </div>
