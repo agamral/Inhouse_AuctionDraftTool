@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { ref, onValue, set, update } from 'firebase/database'
 import { db } from '../firebase/database'
 import { confrontosPath, playersPath } from '../utils/campeonatoPaths'
@@ -56,7 +56,7 @@ export default function AdminReplayUpload({ confrontoId, confronto, campeonatoId
   }, [open, campeonatoId])
 
   // Monta lista de jogadores do confronto com nome + battletag
-  const rosterOptions = buildRosterOptions(tA, tB, players, confronto)
+  const rosterOptions = buildRosterOptions(tA, tB, players)
 
   function getUnidentified(gameKey) {
     const game = replays[gameKey]
@@ -252,19 +252,44 @@ export default function AdminReplayUpload({ confrontoId, confronto, campeonatoId
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function buildRosterOptions(tA, tB, players, confronto) {
+function buildRosterOptions(tA, tB, players) {
+  // Mapas de lookup: discord e battletag → uid (case-insensitive)
+  const byDiscord   = {}
+  const byBattletag = {}
+  Object.entries(players).forEach(([uid, p]) => {
+    if (p.discord)   byDiscord[p.discord.toLowerCase()]   = uid
+    if (p.battletag) {
+      byBattletag[p.battletag.toLowerCase()]                   = uid
+      byBattletag[p.battletag.split('#')[0].toLowerCase()]     = uid
+    }
+  })
+
+  // Tenta resolver UID a partir do nome guardado no time
+  const resolveUid = (nome) => {
+    const n = (nome || '').toLowerCase()
+    return byDiscord[n]
+      || byBattletag[n]
+      || byBattletag[n.split('#')[0]]
+      || null
+  }
+
   const opts = []
   const addRoster = (team, side) => {
-    if (!team?.roster) return
-    Object.entries(team.roster).forEach(([uid, r]) => {
-      const playerData = players[uid] ?? {}
+    if (!team) return
+    // `jogadores` é um array; Firebase pode retornar como objeto { "0": {}, "1": {} }
+    const raw = team.jogadores ?? team.roster
+    if (!raw) return
+    const arr = Array.isArray(raw) ? raw : Object.values(raw)
+    arr.forEach((j) => {
+      const nome = j.nome ?? j.discord ?? ''
+      const uid  = resolveUid(nome) ?? nome  // fallback: usa o nome como identificador
       opts.push({
         uid,
-        nome:     r.nome ?? playerData.nomeDiscord ?? playerData.discord ?? uid,
-        battletag: playerData.battletag ?? '',
-        side,         // 'A' | 'B'
-        teamNome: team.nome ?? side,
-        teamCor:  team.cor,
+        nome,
+        battletag: players[uid]?.battletag ?? '',
+        side,
+        teamNome:  team.nome ?? side,
+        teamCor:   team.cor,
       })
     })
   }
