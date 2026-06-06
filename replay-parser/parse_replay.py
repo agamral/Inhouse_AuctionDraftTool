@@ -273,6 +273,83 @@ def _build_xp_timeline(events):
     ]
 
 
+def _build_event_timeline(stat_events, player_id_to_slot, players):
+    """
+    Gera timeline de eventos de jogo: kills, capturas de acampamento, objetivos.
+    Retorna lista de dicts ordenada por tempo de jogo.
+    """
+    pid_to_info = {}
+    for pid, slot in player_id_to_slot.items():
+        if 0 <= slot < len(players):
+            p = players[slot]
+            pid_to_info[pid] = {"hero": p.get("hero"), "team": p.get("team")}
+
+    STAT_SKIP = {
+        "PeriodicXPBreakdown", "EndOfGameXPBreakdown", "EndOfGameTimeSpentDead",
+        "EndOfGameTalentChoices", "EndOfGameUpVotesCollected", "PlayerInit",
+        "PlayerSpawned", "TalentChosen", "GameStart", "GatesOpen",
+        "TownStructureInit", "TownStructureDeath", "LootSprayUsed",
+        "RegenGlobePickedUp", "LevelUp", "Punisher Killed",
+    }
+
+    timeline = []
+
+    for ev in sorted(stat_events, key=lambda e: e.get("_gameloop", 0)):
+        name = decode_str(ev.get("m_eventName", b""))
+        if name in STAT_SKIP:
+            continue
+
+        loop = ev.get("_gameloop", 0)
+        t    = int(loop / GAMELOOPS_PER_SECOND)
+
+        ints_raw = ev.get("m_intData")   or []
+        fixs_raw = ev.get("m_fixedData") or []
+        strs_raw = ev.get("m_stringData") or []
+
+        ints = {decode_str(i["m_key"]): i["m_value"] for i in ints_raw if "m_key" in i}
+        fixs = {decode_str(i["m_key"]): i["m_value"] / _XP_FIXED_SCALE for i in fixs_raw if "m_key" in i}
+        strs = {decode_str(i["m_key"]): decode_str(i["m_value"]) for i in strs_raw if "m_key" in i}
+
+        if name == "PlayerDeath":
+            victim_pid  = ints.get("PlayerID")
+            killer_pids = [i["m_value"] for i in ints_raw
+                           if decode_str(i.get("m_key", b"")) == "KillingPlayer"]
+            victim  = pid_to_info.get(victim_pid) if victim_pid is not None else None
+            killers = [pid_to_info[p] for p in killer_pids if p in pid_to_info]
+            if victim:
+                timeline.append({
+                    "t":       t,
+                    "type":    "kill",
+                    "victim":  {"hero": victim["hero"],  "team": victim["team"]},
+                    "killers": [{"hero": k["hero"], "team": k["team"]} for k in killers],
+                })
+
+        elif name == "JungleCampCapture":
+            # TeamID está em fixedData como inteiro × 4096
+            team = int(round(fixs.get("TeamID", 0)))
+            camp_type = strs.get("CampType", "Camp")
+            if team in (1, 2):
+                timeline.append({
+                    "t":        t,
+                    "type":     "camp",
+                    "team":     team,
+                    "campType": camp_type,
+                })
+
+        else:
+            # Objetivos genéricos — qualquer evento com "Winning Team"
+            winning = ints.get("Winning Team")
+            if winning is not None and int(winning) in (1, 2):
+                timeline.append({
+                    "t":    t,
+                    "type": "objective",
+                    "name": name,
+                    "team": int(winning),
+                })
+
+    return sorted(timeline, key=lambda e: e["t"])
+
+
 def parse_tracker_events(tracker_events, result):
     """
     Extrai duração da partida, estatísticas por jogador e mapeamento de IDs.
@@ -286,8 +363,8 @@ def parse_tracker_events(tracker_events, result):
     # Acumulador de stats: slot → {campo: valor}
     score_stats: dict[int, dict] = {}
 
-    # Coleta eventos periódicos de XP para timeline
-    xp_breakdown_events: list = []
+    # Coleta todos os SStatGameEvent para XP timeline e event timeline
+    all_stat_events: list = []
 
     for event in tracker_events:
         etype = event.get("_event", "")
@@ -308,10 +385,9 @@ def parse_tracker_events(tracker_events, result):
             if loop and (game_duration_loops is None or loop > game_duration_loops):
                 game_duration_loops = loop
 
-        # Timeline de XP periódica
+        # Todos os eventos de stat (XP + kills + camps + objetivos)
         elif etype == "NNet.Replay.Tracker.SStatGameEvent":
-            if decode_str(event.get("m_eventName", b"")) == "PeriodicXPBreakdown":
-                xp_breakdown_events.append(event)
+            all_stat_events.append(event)
 
         # Estatísticas finais
         elif etype == "NNet.Replay.Tracker.SScoreResultEvent":
@@ -378,8 +454,11 @@ def parse_tracker_events(tracker_events, result):
             ),
         }
 
-    # Timeline de XP (PeriodicXPBreakdown → um ponto por time a cada ~60s)
-    result["xpTimeline"] = _build_xp_timeline(xp_breakdown_events)
+    # XP timeline (PeriodicXPBreakdown → um ponto por time a cada ~60s)
+    xp_events = [e for e in all_stat_events
+                 if decode_str(e.get("m_eventName", b"")) == "PeriodicXPBreakdown"]
+    result["xpTimeline"]    = _build_xp_timeline(xp_events)
+    result["eventTimeline"] = _build_event_timeline(all_stat_events, player_id_to_slot, players)
 
 
 def parse_game_events(game_events, result):

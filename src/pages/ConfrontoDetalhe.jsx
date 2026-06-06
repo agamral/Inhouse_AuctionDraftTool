@@ -19,6 +19,18 @@ const HERO_MAP = Object.fromEntries(HEROES.map(h => [h.id, h]))
 function heroNome(id)  { return HERO_MAP[id]?.nome     ?? id   }
 function heroIcone(id) { return HERO_MAP[id]?.iconeUrl ?? null }
 
+// Busca ícone pelo nome interno do replay (case-insensitive, remove prefixo "Hero" e pontos)
+function heroIconeByName(heroName) {
+  if (!heroName) return null
+  const n = heroName.toLowerCase().replace(/^hero/, '').replace(/\./g, '').replace(/\s+/g, '')
+  const h = HEROES.find(h => {
+    const hId   = (h.id   || '').toLowerCase().replace(/\./g, '').replace(/\s+/g, '')
+    const hNome = (h.nome || '').toLowerCase().replace(/\./g, '').replace(/\s+/g, '')
+    return hId === n || hNome === n
+  })
+  return h?.iconeUrl ?? null
+}
+
 function formatarData(ts) {
   if (!ts) return null
   return new Date(ts).toLocaleDateString('pt-BR', {
@@ -491,11 +503,121 @@ function XpLeadChart({ xpTimeline, corA, corB, timeANome, timeBNome }) {
   )
 }
 
+// ── EventTimeline ─────────────────────────────────────────────────────────────
+
+function HeroPortraitSmall({ hero, cor, victim }) {
+  const [err, setErr] = useState(false)
+  const icone = heroIconeByName(hero)
+  return (
+    <div
+      className={`cd-ev-portrait${victim ? ' cd-ev-portrait--victim' : ''}`}
+      style={{ '--cor': cor }}
+      title={hero || '?'}
+    >
+      {icone && !err
+        ? <img src={icone} alt={hero} className="cd-ev-portrait-img" onError={() => setErr(true)} />
+        : <span className="cd-ev-portrait-fb">{((hero || '?')[0]).toUpperCase()}</span>
+      }
+    </div>
+  )
+}
+
+function EventTimeline({ eventTimeline, corA, corB, timeANome, timeBNome }) {
+  if (!Array.isArray(eventTimeline) || eventTimeline.length === 0) {
+    return (
+      <div className="cd-ev-empty">
+        Dados de eventos não disponíveis neste replay.<br />
+        <span>Faça um novo upload para gerar a timeline.</span>
+      </div>
+    )
+  }
+
+  function fmtTime(t) {
+    return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`
+  }
+
+  function teamCor(team)  { return team === 1 ? corA : corB }
+  function teamNome(team) { return team === 1 ? timeANome : timeBNome }
+
+  function normalizeArr(val) {
+    if (!val) return []
+    if (Array.isArray(val)) return val
+    if (typeof val === 'object') return Object.values(val)
+    return []
+  }
+
+  const CAMP_LABEL = {
+    'Siege Camp':   'Cerco',
+    'Bruiser Camp': 'Bruiser',
+    'Boss Camp':    'Boss',
+  }
+
+  return (
+    <div className="cd-event-timeline">
+      {eventTimeline.map((ev, i) => {
+        const cor  = teamCor(ev.team)
+        const nome = teamNome(ev.team)
+
+        if (ev.type === 'kill') {
+          const killers = normalizeArr(ev.killers)
+          return (
+            <div key={i} className="cd-event-row cd-event-row--kill">
+              <span className="cd-ev-time">{fmtTime(ev.t)}</span>
+              <span className="cd-ev-type-icon">☠</span>
+              <div className="cd-ev-kill-chain">
+                {ev.victim && (
+                  <HeroPortraitSmall
+                    hero={ev.victim.hero}
+                    cor={teamCor(ev.victim.team)}
+                    victim
+                  />
+                )}
+                {killers.length > 0 && <span className="cd-ev-arrow">←</span>}
+                {killers.slice(0, 3).map((k, ki) => (
+                  <HeroPortraitSmall key={ki} hero={k.hero} cor={teamCor(k.team)} />
+                ))}
+                {killers.length > 3 && (
+                  <span className="cd-ev-extra">+{killers.length - 3}</span>
+                )}
+              </div>
+            </div>
+          )
+        }
+
+        if (ev.type === 'camp') {
+          const label = CAMP_LABEL[ev.campType] ?? ev.campType ?? 'Acampamento'
+          return (
+            <div key={i} className="cd-event-row cd-event-row--camp">
+              <span className="cd-ev-time">{fmtTime(ev.t)}</span>
+              <span className="cd-ev-type-icon">🛡</span>
+              <span className="cd-ev-team-label" style={{ color: cor }}>{nome}</span>
+              <span className="cd-ev-detail">capturou {label}</span>
+            </div>
+          )
+        }
+
+        if (ev.type === 'objective') {
+          return (
+            <div key={i} className="cd-event-row cd-event-row--objective">
+              <span className="cd-ev-time">{fmtTime(ev.t)}</span>
+              <span className="cd-ev-type-icon">⭐</span>
+              <span className="cd-ev-team-label" style={{ color: cor }}>{nome}</span>
+              <span className="cd-ev-detail">{ev.name}</span>
+            </div>
+          )
+        }
+
+        return null
+      })}
+    </div>
+  )
+}
+
 // ── ReplayStatsSection ────────────────────────────────────────────────────────
 
 function ReplayStatsSection({ replayGame, corA, corB, timeANome, timeBNome }) {
   const [talentsOpen, setTalentsOpen] = useState({})
-  const [view, setView] = useState('stats')  // 'stats' | 'chart'
+  const [view, setView] = useState('stats')  // 'stats' | 'chart' | 'events'
 
   const players = replayGame.players ? Object.values(replayGame.players)
     .sort((a, b) => (a.slot ?? 0) - (b.slot ?? 0)) : []
@@ -521,12 +643,15 @@ function ReplayStatsSection({ replayGame, corA, corB, timeANome, timeBNome }) {
   ]
 
   // Firebase converte arrays em objetos {0:{...}, 1:{...}} — normalizar
-  const raw = replayGame.xpTimeline
-  const xpArr = Array.isArray(raw)
-    ? raw
-    : raw && typeof raw === 'object'
-      ? Object.values(raw).sort((a, b) => (a?.t ?? 0) - (b?.t ?? 0))
-      : []
+  function fbNormArr(val) {
+    if (!val) return []
+    if (Array.isArray(val)) return val
+    if (typeof val === 'object') return Object.values(val).sort((a, b) => (a?.t ?? 0) - (b?.t ?? 0))
+    return []
+  }
+
+  const xpArr     = fbNormArr(replayGame.xpTimeline)
+  const eventsArr = fbNormArr(replayGame.eventTimeline)
 
   return (
     <div className="cd-replay-section">
@@ -545,12 +670,26 @@ function ReplayStatsSection({ replayGame, corA, corB, timeANome, timeBNome }) {
           >
             XP Lead
           </button>
+          <button
+            className={`cd-replay-toggle-btn${view === 'events' ? ' cd-replay-toggle-btn--active' : ''}`}
+            onClick={() => setView('events')}
+          >
+            Eventos
+          </button>
         </div>
       </div>
 
       {view === 'chart' && (
         <XpLeadChart
           xpTimeline={xpArr}
+          corA={corA} corB={corB}
+          timeANome={timeANome} timeBNome={timeBNome}
+        />
+      )}
+
+      {view === 'events' && (
+        <EventTimeline
+          eventTimeline={eventsArr}
           corA={corA} corB={corB}
           timeANome={timeANome} timeBNome={timeBNome}
         />

@@ -1088,3 +1088,128 @@
   line-height: 1.3;
   word-break: break-word;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   EVENT TIMELINE
+═══════════════════════════════════════════════════════════════ */
+
+.cd-event-timeline {
+  max-height: 420px;
+  overflow-y: auto;
+  padding: 4px 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border2) transparent;
+}
+
+.cd-event-timeline::-webkit-scrollbar { width: 4px; }
+.cd-event-timeline::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+.cd-event-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  transition: background 0.12s;
+}
+.cd-event-row:hover { background: rgba(255,255,255,0.025); }
+
+.cd-ev-time {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+  color: var(--text3);
+  letter-spacing: 0.03em;
+  min-width: 34px;
+  text-align: right;
+}
+
+.cd-ev-type-icon {
+  font-size: 13px;
+  min-width: 16px;
+  text-align: center;
+  opacity: 0.8;
+}
+
+.cd-ev-kill-chain {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.cd-ev-arrow {
+  font-size: 11px;
+  color: var(--text3);
+  margin: 0 2px;
+}
+
+.cd-ev-extra {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 10px;
+  color: var(--text3);
+  padding: 0 4px;
+}
+
+/* Hero portrait circle */
+.cd-ev-portrait {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--cor, var(--border2));
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--bg3);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cd-ev-portrait--victim {
+  opacity: 0.5;
+  filter: grayscale(0.5);
+}
+
+.cd-ev-portrait-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.cd-ev-portrait-fb {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--cor, var(--text2));
+}
+
+/* Camp & objective events */
+.cd-ev-team-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.cd-ev-detail {
+  font-family: 'Barlow', sans-serif;
+  font-size: 11px;
+  color: var(--text2);
+}
+
+.cd-event-row--objective .cd-ev-type-icon { opacity: 1; }
+
+.cd-ev-empty {
+  padding: 32px 0;
+  text-align: center;
+  color: var(--text3);
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.cd-ev-empty span {
+  font-size: 11px;
+  color: var(--text3);
+}
