@@ -5,9 +5,10 @@ import { useTranslation } from 'react-i18next'
 import { useAuth } from '../hooks/useAuth'
 import { useModules } from '../hooks/useConfig'
 import { useCampeonato } from '../contexts/CampeonatoContext'
-import { draftSessionPath } from '../utils/campeonatoPaths'
+import { draftSessionPath, teamPath } from '../utils/campeonatoPaths'
 import EloIcon, { ELO_CONFIG } from '../components/EloIcon'
 import RoleIcon from '../components/RoleIcon'
+import TeamIcon from '../components/TeamIcon'
 import PaginaInativa from '../components/PaginaInativa'
 import './Resultados.css'
 
@@ -19,6 +20,7 @@ export default function Resultados() {
   const [captains,   setCaptains]   = useState({})
   const [draftState, setDraftState] = useState(null)
   const [players,    setPlayers]    = useState([])
+  const [teams,      setTeams]      = useState({})
   const [loading,    setLoading]    = useState(true)
 
   const cupName = campeonatoPublico?.info?.nome ?? campeonatoPublico?.config?.conteudo?.cupName ?? 'Copa Inhouse'
@@ -28,7 +30,8 @@ export default function Resultados() {
     const done = () => { if (++n === 2) setLoading(false) }
     const u1 = onValue(ref(db, `${draftSessionPath(idPublico)}/captains`), s => { setCaptains(s.val() ?? {}); done() })
     const u2 = onValue(ref(db, `${draftSessionPath(idPublico)}/state`),   s => { setDraftState(s.val()); done() })
-    return () => { u1(); u2() }
+    const u3 = onValue(ref(db, teamPath(idPublico)), s => setTeams(s.val() ?? {}))
+    return () => { u1(); u2(); u3() }
   }, [idPublico])
 
   useEffect(() => {
@@ -50,6 +53,7 @@ export default function Resultados() {
 
   const sortedCaptains = Object.entries(captains).sort(([, a], [, b]) => a.seed - b.seed)
   const playerByDiscord = Object.fromEntries(players.map(p => [p.discord, p]))
+  const teamByName = Object.fromEntries(Object.values(teams).map(t => [t.nome, t]))
   const isDone = draftState?.status === 'encerrado'
 
   // Stats globais
@@ -108,14 +112,14 @@ export default function Resultados() {
       {/* Team grid */}
       <div className="res-grid">
         {sortedCaptains.map(([id, cap]) => (
-          <TeamResultCard key={id} cap={cap} playerByDiscord={playerByDiscord} t={t} />
+          <TeamResultCard key={id} cap={cap} playerByDiscord={playerByDiscord} teamData={teamByName[cap.nome]} t={t} />
         ))}
       </div>
     </main>
   )
 }
 
-function TeamResultCard({ cap, playerByDiscord, t }) {
+function TeamResultCard({ cap, playerByDiscord, teamData, t }) {
   const roster     = Object.entries(cap.roster ?? {})
   const totalSlots = roster.length + (cap.capitaoNome ? 1 : 0)
   const totalGasto = roster.reduce((acc, [, e]) => acc + (e.preco ?? 0), 0)
@@ -133,7 +137,10 @@ function TeamResultCard({ cap, playerByDiscord, t }) {
 
       {/* Header */}
       <div className="res-team-head">
-        <div className="res-team-emoji">{cap.emoji}</div>
+        {teamData?.iconUrl
+          ? <TeamIcon time={{ nome: cap.nome, cor: cap.cor, iconUrl: teamData.iconUrl }} size={48} />
+          : <div className="res-team-emoji">{cap.emoji}</div>
+        }
         <div className="res-team-info">
           <div className="res-team-name" style={{ color: cap.cor }}>{cap.nome}</div>
           {cap.capitaoNome && (
