@@ -87,11 +87,16 @@ export default function AdminReplayUpload({ confrontoId, confronto, campeonatoId
 
     const playersObj  = playersToObj(playersArr)
     const playerLinks = {}
+    const playerNames = {}
 
     playersArr.forEach((p, i) => {
       const slot = `slot${p.slot ?? i}`
       const uid  = findPlayerUid(rosterOptions, p.battletag)
-      if (uid) playerLinks[slot] = uid
+      if (uid) {
+        playerLinks[slot] = uid
+        const opt = rosterOptions.find(o => o.uid === uid)
+        if (opt) playerNames[slot] = opt.nome
+      }
     })
 
     const path = `${confrontosPath(campeonatoId)}/${confrontoId}/replays/${gameKey}`
@@ -102,6 +107,7 @@ export default function AdminReplayUpload({ confrontoId, confronto, campeonatoId
       teams:       data.teams   ?? null,
       players:     playersObj,
       playerLinks,
+      playerNames,
     })
   }
 
@@ -160,6 +166,8 @@ export default function AdminReplayUpload({ confrontoId, confronto, campeonatoId
       const updates = {}
       nonNull.forEach(([slot, uid]) => {
         updates[`${confrontosPath(campeonatoId)}/${confrontoId}/replays/${gameKey}/playerLinks/${slot}`] = uid
+        const opt = rosterOptions.find(o => o.uid === uid)
+        if (opt) updates[`${confrontosPath(campeonatoId)}/${confrontoId}/replays/${gameKey}/playerNames/${slot}`] = opt.nome
       })
       await update(ref(db), updates)
       setOverrides(prev => ({ ...prev, [gameKey]: {} }))

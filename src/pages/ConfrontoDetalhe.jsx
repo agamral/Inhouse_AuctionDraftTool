@@ -419,7 +419,9 @@ function ReplayStatsSection({ replayGame, corA, corB, timeANome, timeBNome }) {
                     <Fragment key={slotKey}>
                       <tr className="cd-replay-row">
                         <td className="cd-replay-hero">{p.hero}</td>
-                        <td className="cd-replay-btag">{p.battletag}</td>
+                        <td className="cd-replay-btag">
+                          {replayGame.playerNames?.[`slot${p.slot}`] ?? p.battletag}
+                        </td>
                         <td className="cd-replay-kda">
                           <span style={{ color: 'var(--green)' }}>{p.kills ?? 0}</span>
                           <span style={{ color: 'var(--text3)' }}>/</span>
