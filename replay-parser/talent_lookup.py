@@ -18,6 +18,11 @@ CACHE_FILE = Path(__file__).parent / "heroes_data_cache.json"
 GITHUB_API = "https://api.github.com/repos/HeroesToolChest/heroes-data/contents/heroesdata"
 RAW_BASE   = "https://raw.githubusercontent.com/HeroesToolChest/heroes-data/master/heroesdata"
 
+# Locales adicionais para indexar nomes de heróis localizados (m_hero do replay
+# vem no idioma de quem gravou). Cobre os idiomas usados pela comunidade
+# (PT, ES) e os mais comuns na cena competitiva ocidental.
+LOCALES = ["ptbr", "eses", "esmx", "frfr", "dede", "itit", "plpl", "ruru"]
+
 # Tier label do herodata → índice 0-based
 TIER_TO_INDEX = {
     "level1":  0,
@@ -101,6 +106,24 @@ def download(progress_fn=None) -> tuple[str, int]:
         progress_fn(f"Processando {len(herodata)} heróis...")
 
     db, hyperlink_idx = _build_db(herodata, name_by_id)
+
+    # --- Nomes de herói localizados ---
+    # m_hero no replay vem no idioma do cliente de quem gravou (ex: "Asa da Morte"
+    # para Deathwing em pt-BR). Baixa gamestrings de outros locales e monta um
+    # índice reverso {nome_localizado: internal_id} para casar com o internal_id.
+    if progress_fn:
+        progress_fn("Baixando nomes de heróis localizados...")
+
+    internal_ids = set(db.keys()) | set(hyperlink_idx.values())
+    for locale in LOCALES:
+        try:
+            loc_gs = _fetch_json(f"{RAW_BASE}/{latest}/gamestrings/gamestrings_{build}_{locale}.json")
+        except Exception:
+            continue
+        unit_names = loc_gs.get("gamestrings", {}).get("unit", {}).get("name", {})
+        for internal_id, localized_name in unit_names.items():
+            if internal_id in internal_ids and localized_name not in hyperlink_idx:
+                hyperlink_idx[localized_name] = internal_id
 
     cache = {"version": latest, "db": db, "hyperlink_idx": hyperlink_idx}
     with open(CACHE_FILE, "w", encoding="utf-8") as f:
