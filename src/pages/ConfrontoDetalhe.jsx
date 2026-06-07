@@ -31,6 +31,19 @@ function heroIconeByName(heroName) {
   return h?.iconeUrl ?? null
 }
 
+// Monta o código de build no formato usado pelo "Copy Build" do próprio jogo:
+// "T<7 dígitos>,<NomeHerói>" — cada dígito é a opção escolhida (1-3) em cada
+// tier (Lv1,4,7,10,13,16,20), ou 0 se o talento não foi escolhido.
+function buildTalentCode(player) {
+  const porTier = {}
+  for (const t of player.talents || []) {
+    if (t.tier != null && t.choice != null) porTier[t.tier] = t.choice + 1
+  }
+  const digits = Array.from({ length: 7 }, (_, i) => porTier[i] ?? 0).join('')
+  const heroNomeBuild = player.heroIcon || player.hero
+  return `T${digits},${heroNomeBuild}`
+}
+
 function formatarData(ts) {
   if (!ts) return null
   return new Date(ts).toLocaleDateString('pt-BR', {
@@ -749,6 +762,15 @@ function EventTimeline({ eventTimeline, corA, corB, timeANome, timeBNome }) {
 function ReplayStatsSection({ replayGame, corA, corB, timeANome, timeBNome }) {
   const [talentsOpen, setTalentsOpen] = useState({})
   const [view, setView] = useState('stats')  // 'stats' | 'chart' | 'events'
+  const [copiedKey, setCopiedKey] = useState(null)
+
+  const copyBuild = (slotKey, player) => {
+    const code = buildTalentCode(player)
+    navigator.clipboard?.writeText(code).then(() => {
+      setCopiedKey(slotKey)
+      setTimeout(() => setCopiedKey(prev => (prev === slotKey ? null : prev)), 1800)
+    })
+  }
 
   const players = replayGame.players ? Object.values(replayGame.players)
     .sort((a, b) => (a.slot ?? 0) - (b.slot ?? 0)) : []
@@ -891,9 +913,18 @@ function ReplayStatsSection({ replayGame, corA, corB, timeANome, timeBNome }) {
                       {open && hasTalents && (
                         <tr className="cd-replay-talents-row">
                           <td colSpan={8}>
+                            <div className="cd-replay-talents-header">
+                              <button
+                                className="cd-replay-copy-btn"
+                                onClick={() => copyBuild(slotKey, p)}
+                                title="Copiar código da build (formato do jogo)"
+                              >
+                                {copiedKey === slotKey ? '✓ copiado!' : '📋 copiar build'}
+                              </button>
+                            </div>
                             <div className="cd-replay-talents">
                               {p.talents.map((t, ti) => (
-                                <div key={ti} className="cd-replay-talent-badge">
+                                <div key={ti} className="cd-replay-talent-badge" title={t.description || undefined}>
                                   {t.icon && (
                                     <img className="cd-replay-talent-icon" src={t.icon} alt="" loading="lazy"
                                          onError={e => { e.currentTarget.style.display = 'none' }} />

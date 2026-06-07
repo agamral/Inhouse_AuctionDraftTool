@@ -1051,12 +1051,35 @@
   border-bottom: 1px solid rgba(255,255,255,0.03);
 }
 
+.cd-replay-talents-header {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 8px;
+}
+
+.cd-replay-copy-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 3px 9px;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--text2);
+  cursor: pointer;
+  font-family: 'Barlow Condensed', sans-serif;
+  white-space: nowrap;
+  transition: border-color 0.15s, color 0.15s;
+}
+.cd-replay-copy-btn:hover { color: var(--gold2); border-color: var(--gold); }
+
 .cd-replay-talents {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   padding: 6px 0;
 }
+
+.cd-replay-talent-badge { cursor: help; }
 
 .cd-replay-talent-badge {
   display: flex;

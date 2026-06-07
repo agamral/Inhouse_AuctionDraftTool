@@ -44,6 +44,16 @@ _version: str | None = None
 # HTTP
 # ---------------------------------------------------------------------------
 
+_TAG_RE = re.compile(r"<[^>]+>")
+
+
+def _clean_description(text: str) -> str:
+    """Remove markup das gamestrings (<c val="...">...</c>, <n/>) → texto plano."""
+    text = text.replace("<n/>", "\n")
+    text = _TAG_RE.sub("", text)
+    return text.strip()
+
+
 def _fetch_json(url: str):
     req = urllib.request.Request(
         url,
@@ -92,21 +102,29 @@ def download(progress_fn=None) -> tuple[str, int]:
     gs_url = f"{RAW_BASE}/{latest}/gamestrings/gamestrings_{build}_enus.json"
     gs = _fetch_json(gs_url)
 
-    # Mapeamento nameId → nome de exibição
-    # Chave no JSON: "{nameId}|{buttonId}|{abilityType}|{isPassive}" → nome
-    raw_names = gs.get("gamestrings", {}).get("abiltalent", {}).get("name", {})
+    # Mapeamento nameId → nome de exibição / descrição
+    # Chave no JSON: "{nameId}|{buttonId}|{abilityType}|{isPassive}" → texto
+    abiltalent = gs.get("gamestrings", {}).get("abiltalent", {})
+    raw_names = abiltalent.get("name", {})
+    raw_descs = abiltalent.get("full", {}) or abiltalent.get("short", {})
     name_by_id: dict[str, str] = {}
+    desc_by_id: dict[str, str] = {}
     for key, display_name in raw_names.items():
         name_id = key.split("|")[0]
         # Mantém o nome mais curto em caso de duplicata (evita "Cancel X" etc.)
         if name_id not in name_by_id or len(display_name) < len(name_by_id[name_id]):
             name_by_id[name_id] = display_name
+    for key, text in raw_descs.items():
+        name_id = key.split("|")[0]
+        text = _clean_description(text)
+        if name_id not in desc_by_id or len(text) > len(desc_by_id[name_id]):
+            desc_by_id[name_id] = text
 
     # --- Construir DB ---
     if progress_fn:
         progress_fn(f"Processando {len(herodata)} heróis...")
 
-    db, hyperlink_idx, canonical_name = _build_db(herodata, name_by_id)
+    db, hyperlink_idx, canonical_name = _build_db(herodata, name_by_id, desc_by_id)
 
     # --- Nomes de herói localizados ---
     # m_hero no replay vem no idioma do cliente de quem gravou (ex: "Asa da Morte"
@@ -140,16 +158,17 @@ def download(progress_fn=None) -> tuple[str, int]:
     return latest, len(db)
 
 
-def _build_db(herodata: dict, name_by_id: dict) -> tuple[dict, dict, dict]:
+def _build_db(herodata: dict, name_by_id: dict, desc_by_id: dict | None = None) -> tuple[dict, dict, dict]:
     """
     Constrói:
-      db             = {internal_id: {tier_index: {choice_0based: {"name", "icon"}}}}
+      db             = {internal_id: {tier_index: {choice_0based: {"name", "icon", "description"}}}}
       hyperlink_idx  = {hyperlinkId: internal_id}   ← usado para mapear nomes do replay
       canonical_name = {internal_id: hyperlinkId}   ← nome canônico em inglês do herói
 
     "icon" é o nome do arquivo PNG (ex: "storm_ui_icon_abathur_spikeburst.png"),
     servido pelo repositório heroes-images (ver ICON_BASE_URL).
     """
+    desc_by_id = desc_by_id or {}
     db: dict = {}
     hyperlink_idx: dict = {}
     canonical_name: dict = {}
@@ -173,7 +192,8 @@ def _build_db(herodata: dict, name_by_id: dict) -> tuple[dict, dict, dict]:
                 name_id = talent.get("nameId", "")
                 name    = name_by_id.get(name_id) or name_id  # fallback: nameId
                 icon    = talent.get("icon") or None
-                hero_db.setdefault(tier_idx, {})[choice] = {"name": name, "icon": icon}
+                desc    = desc_by_id.get(name_id) or None
+                hero_db.setdefault(tier_idx, {})[choice] = {"name": name, "icon": icon, "description": desc}
         if hero_db:
             db[hero_id] = hero_db
 
@@ -278,7 +298,7 @@ def _entry(hero_name: str, tier_index: int, choice: int) -> dict | None:
     entry = tier_db.get(choice) or tier_db.get(str(choice))
     # Compat: caches antigos guardavam o nome direto como string
     if isinstance(entry, str):
-        return {"name": entry, "icon": None}
+        return {"name": entry, "icon": None, "description": None}
     return entry
 
 
@@ -300,3 +320,9 @@ def get_icon_url(hero_name: str, tier_index: int, choice: int) -> str | None:
     entry = _entry(hero_name, tier_index, choice)
     icon  = entry.get("icon") if entry else None
     return f"{ICON_BASE_URL}/{icon}" if icon else None
+
+
+def get_description(hero_name: str, tier_index: int, choice: int) -> str | None:
+    """Retorna a descrição do talento, ou None se não encontrada."""
+    entry = _entry(hero_name, tier_index, choice)
+    return entry.get("description") if entry else None

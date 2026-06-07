@@ -533,6 +533,7 @@ def parse_game_events(game_events, result):
 
         name = None
         icon = None
+        description = None
         if event.get("m_talentName"):
             name = decode_str(event["m_talentName"])
 
@@ -544,7 +545,8 @@ def parse_game_events(game_events, result):
                     hero = players[user_id].get("hero", "")
                     if name is None:
                         name = _tl.get_name(hero, tier_index, within_tier)
-                    icon = _tl.get_icon_url(hero, tier_index, within_tier)
+                    icon        = _tl.get_icon_url(hero, tier_index, within_tier)
+                    description = _tl.get_description(hero, tier_index, within_tier)
             except Exception:
                 pass
 
@@ -555,6 +557,7 @@ def parse_game_events(game_events, result):
             "absolute_index": abs_index,
             "name":           name,
             "icon":           icon,
+            "description":    description,
         }
         players[user_id]["talents"].append(talent_entry)
         talent_counters[user_id] += 1
