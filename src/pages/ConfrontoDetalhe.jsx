@@ -42,7 +42,7 @@ function buildTalentCode(player) {
   }
   const digits = Array.from({ length: 7 }, (_, i) => porTier[i] ?? 0).join('')
   const heroNomeBuild = player.heroIcon || player.hero
-  return `T${digits},${heroNomeBuild}`
+  return `[T${digits},${heroNomeBuild}]`
 }
 
 function formatarData(ts) {
