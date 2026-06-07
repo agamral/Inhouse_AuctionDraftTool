@@ -5,6 +5,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
 import { useParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { ref, onValue } from 'firebase/database'
 import { db } from '../firebase/database'
 import { useCampeonato } from '../contexts/CampeonatoContext'
@@ -20,16 +21,27 @@ const HERO_MAP = Object.fromEntries(HEROES.map(h => [h.id, h]))
 function heroNome(id)  { return HERO_MAP[id]?.nome     ?? id   }
 function heroIcone(id) { return HERO_MAP[id]?.iconeUrl ?? null }
 
-// Busca ícone pelo nome interno do replay (case-insensitive, remove prefixo "Hero" e pontos)
-function heroIconeByName(heroName) {
+// Busca o herói da pool pelo nome vindo do replay (case-insensitive, remove prefixo "Hero" e pontos)
+function findHeroByName(heroName) {
   if (!heroName) return null
   const n = heroName.toLowerCase().replace(/^hero/, '').replace(/\./g, '').replace(/\s+/g, '')
-  const h = HEROES.find(h => {
+  return HEROES.find(h => {
     const hId   = (h.id   || '').toLowerCase().replace(/\./g, '').replace(/\s+/g, '')
     const hNome = (h.nome || '').toLowerCase().replace(/\./g, '').replace(/\s+/g, '')
     return hId === n || hNome === n
-  })
-  return h?.iconeUrl ?? null
+  }) ?? null
+}
+
+function heroIconeByName(heroName) {
+  return findHeroByName(heroName)?.iconeUrl ?? null
+}
+
+// Resolve o nome do herói traduzido (mesmo esquema do Hero Draft: chave i18n
+// "heroes.<id>" com fallback para o nome cru do replay quando não encontrado)
+function heroNomeReplay(t, hero, heroIcon) {
+  const h = findHeroByName(heroIcon) || findHeroByName(hero)
+  if (!h) return hero
+  return t('heroes.' + h.id, { defaultValue: h.nome })
 }
 
 // Monta o código de build no formato usado pelo "Copy Build" do próprio jogo:
@@ -398,11 +410,12 @@ function fmtNum(n) {
 // ── XpLeadChart ───────────────────────────────────────────────────────────────
 
 function XpLeadChart({ xpTimeline, corA, corB, timeANome, timeBNome }) {
+  const { t } = useTranslation()
   if (!Array.isArray(xpTimeline) || xpTimeline.length === 0) {
     return (
       <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text3)', fontFamily: "'Barlow Condensed', sans-serif", fontSize: 13, lineHeight: 1.6 }}>
-        Dados de XP não disponíveis neste replay.<br />
-        <span style={{ fontSize: 11, color: 'var(--text3)' }}>Faça um novo upload para gerar o gráfico.</span>
+        {t('replay.noXpData')}<br />
+        <span style={{ fontSize: 11, color: 'var(--text3)' }}>{t('replay.uploadForChart')}</span>
       </div>
     )
   }
@@ -461,9 +474,9 @@ function XpLeadChart({ xpTimeline, corA, corB, timeANome, timeBNome }) {
         <div style={{ marginBottom: 5, color: 'var(--text2)', fontSize: 11 }}>{d.label}</div>
         {lead !== 0
           ? <div style={{ color: leadCor, fontWeight: 700, fontSize: 13 }}>
-              {leadNom} +{fmtLead(lead)} XP
+              {t('replay.leadXp', { team: leadNom, value: fmtLead(lead) })}
             </div>
-          : <div style={{ color: 'var(--text2)' }}>Empate</div>
+          : <div style={{ color: 'var(--text2)' }}>{t('replay.tie')}</div>
         }
         <div style={{ color: 'var(--text3)', marginTop: 5, fontSize: 11 }}>
           <span style={{ color: corA }}>Lv {d.team1Level}</span>
@@ -563,18 +576,20 @@ function fmtTime(t) {
 // Portrait inline reutilizável (tamanho configurável)
 // heroIcon: nome canônico em inglês vindo do parser (resolve heróis com m_hero localizado, ex: "Asa da Morte" → "Deathwing")
 function HeroPortrait({ hero, heroIcon, cor, victim, size = 28 }) {
+  const { t } = useTranslation()
   const [err, setErr] = useState(false)
-  const icone = heroIconeByName(heroIcon) || heroIconeByName(hero)
+  const icone  = heroIconeByName(heroIcon) || heroIconeByName(hero)
+  const nomeTr = heroNomeReplay(t, hero, heroIcon)
   return (
     <div
       className={`cd-ev-portrait${victim ? ' cd-ev-portrait--victim' : ''}`}
       style={{ '--cor': cor, width: size, height: size, flexShrink: 0 }}
-      title={hero || '?'}
+      title={nomeTr || '?'}
     >
       {icone && !err
-        ? <img src={icone} alt={hero} className="cd-ev-portrait-img" onError={() => setErr(true)} />
+        ? <img src={icone} alt={nomeTr} className="cd-ev-portrait-img" onError={() => setErr(true)} />
         : <span className="cd-ev-portrait-fb" style={{ fontSize: Math.max(8, size * 0.38) }}>
-            {((hero || '?')[0]).toUpperCase()}
+            {((nomeTr || '?')[0]).toUpperCase()}
           </span>
       }
     </div>
@@ -622,9 +637,8 @@ function TalentBadge({ talent: t }) {
 
 // ── EventTimeline — eixo horizontal com Time A acima e Time B abaixo ──────────
 
-const CAMP_LABEL = { 'Siege Camp': 'Cerco', 'Bruiser Camp': 'Bruiser', 'Boss Camp': 'Boss' }
-
 function EventTimeline({ eventTimeline, corA, corB, timeANome, timeBNome }) {
+  const { t } = useTranslation()
   const [tooltip, setTooltip] = useState(null)   // { idx, isTop }
 
   const events = useMemo(() => {
@@ -659,8 +673,8 @@ function EventTimeline({ eventTimeline, corA, corB, timeANome, timeBNome }) {
   if (!events.length) {
     return (
       <div className="cd-ev-empty">
-        Dados de eventos não disponíveis neste replay.<br />
-        <span>Faça um novo upload para gerar a timeline.</span>
+        {t('replay.noEventsData')}<br />
+        <span>{t('replay.uploadForTimeline')}</span>
       </div>
     )
   }
@@ -695,7 +709,7 @@ function EventTimeline({ eventTimeline, corA, corB, timeANome, timeBNome }) {
           {killers.length > 3 && <span style={{ fontSize: 10, color: 'var(--text3)' }}>+{killers.length - 3}</span>}
         </div>
         <div className="cd-htl-tooltip-label" style={{ color: teamCor(ev._team) }}>
-          {teamNome(ev._team)} abateu {ev.victim?.hero}
+          {t('replay.killedBy', { team: teamNome(ev._team), hero: heroNomeReplay(t, ev.victim?.hero, ev.victim?.heroIcon) })}
         </div>
       </div>
     )
@@ -703,7 +717,7 @@ function EventTimeline({ eventTimeline, corA, corB, timeANome, timeBNome }) {
       <div className="cd-htl-tooltip-inner">
         <div className="cd-htl-tooltip-time">{fmtTime(ev.t)}</div>
         <div className="cd-htl-tooltip-label" style={{ color: teamCor(ev._team) }}>
-          {teamNome(ev._team)} capturou {CAMP_LABEL[ev.campType] ?? ev.campType}
+          {t('replay.captured', { team: teamNome(ev._team), camp: t(`replay.campTypes.${ev.campType}`, { defaultValue: ev.campType }) })}
         </div>
       </div>
     )
@@ -711,7 +725,7 @@ function EventTimeline({ eventTimeline, corA, corB, timeANome, timeBNome }) {
       <div className="cd-htl-tooltip-inner">
         <div className="cd-htl-tooltip-time">{fmtTime(ev.t)}</div>
         <div className="cd-htl-tooltip-label" style={{ color: teamCor(ev._team) }}>
-          {teamNome(ev._team)} — Objetivo Conquistado
+          {t('replay.objectiveCaptured', { team: teamNome(ev._team) })}
         </div>
       </div>
     )
@@ -800,6 +814,7 @@ function EventTimeline({ eventTimeline, corA, corB, timeANome, timeBNome }) {
 // ── ReplayStatsSection ────────────────────────────────────────────────────────
 
 function ReplayStatsSection({ replayGame, corA, corB, timeANome, timeBNome }) {
+  const { t } = useTranslation()
   const [talentsOpen, setTalentsOpen] = useState({})
   const [view, setView] = useState('stats')  // 'stats' | 'chart' | 'events'
   const [copiedKey, setCopiedKey] = useState(null)
@@ -849,25 +864,25 @@ function ReplayStatsSection({ replayGame, corA, corB, timeANome, timeBNome }) {
   return (
     <div className="cd-replay-section">
       <div className="cd-replay-section-header">
-        <div className="cd-replay-section-title">Estatísticas do Replay</div>
+        <div className="cd-replay-section-title">{t('replay.title')}</div>
         <div className="cd-replay-view-toggle">
           <button
             className={`cd-replay-toggle-btn${view === 'stats' ? ' cd-replay-toggle-btn--active' : ''}`}
             onClick={() => setView('stats')}
           >
-            Tabela
+            {t('replay.tabs.table')}
           </button>
           <button
             className={`cd-replay-toggle-btn${view === 'chart' ? ' cd-replay-toggle-btn--active' : ''}`}
             onClick={() => setView('chart')}
           >
-            XP Lead
+            {t('replay.tabs.xpLead')}
           </button>
           <button
             className={`cd-replay-toggle-btn${view === 'events' ? ' cd-replay-toggle-btn--active' : ''}`}
             onClick={() => setView('events')}
           >
-            Eventos
+            {t('replay.tabs.events')}
           </button>
         </div>
       </div>
@@ -893,7 +908,7 @@ function ReplayStatsSection({ replayGame, corA, corB, timeANome, timeBNome }) {
           <div className="cd-replay-team-header">
             <span className="cd-replay-team-nome" style={{ color: cor }}>{nome}</span>
             <span className={`cd-replay-result-badge ${result === 'win' ? 'cd-replay-result-badge--win' : 'cd-replay-result-badge--loss'}`}>
-              {result === 'win' ? 'VITÓRIA' : result === 'loss' ? 'DERROTA' : '?'}
+              {result === 'win' ? t('replay.result.win') : result === 'loss' ? t('replay.result.loss') : '?'}
             </span>
             <span className="cd-replay-td-total">{tds ?? 0} TD</span>
             {lv && <span className="cd-replay-team-lv">Lv {lv}</span>}
@@ -903,13 +918,13 @@ function ReplayStatsSection({ replayGame, corA, corB, timeANome, timeBNome }) {
             <table className="cd-replay-table">
               <thead>
                 <tr>
-                  <th>Herói</th>
-                  <th>Jogador</th>
-                  <th>K/D/A</th>
-                  <th style={{ textAlign: 'center' }}>TD</th>
-                  <th style={{ textAlign: 'right' }}>Hero Dmg</th>
-                  <th style={{ textAlign: 'right' }}>Siege</th>
-                  <th style={{ textAlign: 'right' }}>Cura</th>
+                  <th>{t('replay.table.hero')}</th>
+                  <th>{t('replay.table.player')}</th>
+                  <th>{t('replay.table.kda')}</th>
+                  <th style={{ textAlign: 'center' }}>{t('replay.table.td')}</th>
+                  <th style={{ textAlign: 'right' }}>{t('replay.table.heroDmg')}</th>
+                  <th style={{ textAlign: 'right' }}>{t('replay.table.siege')}</th>
+                  <th style={{ textAlign: 'right' }}>{t('replay.table.healing')}</th>
                   <th></th>
                 </tr>
               </thead>
@@ -924,7 +939,7 @@ function ReplayStatsSection({ replayGame, corA, corB, timeANome, timeBNome }) {
                   return (
                     <Fragment key={slotKey}>
                       <tr className="cd-replay-row">
-                        <td className="cd-replay-hero">{p.hero}</td>
+                        <td className="cd-replay-hero">{heroNomeReplay(t, p.hero, p.heroIcon)}</td>
                         <td className="cd-replay-btag">
                           {replayGame.playerNames?.[`slot${p.slot}`] ?? p.battletag}
                         </td>
@@ -945,7 +960,7 @@ function ReplayStatsSection({ replayGame, corA, corB, timeANome, timeBNome }) {
                               className="cd-replay-expand-btn"
                               onClick={() => setTalentsOpen(prev => ({ ...prev, [slotKey]: !prev[slotKey] }))}
                             >
-                              {open ? '▲' : '▼ build'}
+                              {open ? '▲' : `▼ ${t('replay.build')}`}
                             </button>
                           )}
                         </td>
@@ -957,9 +972,9 @@ function ReplayStatsSection({ replayGame, corA, corB, timeANome, timeBNome }) {
                               <button
                                 className="cd-replay-copy-btn"
                                 onClick={() => copyBuild(slotKey, p)}
-                                title="Copiar código da build (formato do jogo)"
+                                title={t('replay.copyBuildTitle')}
                               >
-                                {copiedKey === slotKey ? '✓ copiado!' : '📋 copiar build'}
+                                {copiedKey === slotKey ? `✓ ${t('replay.copied')}` : `📋 ${t('replay.copyBuild')}`}
                               </button>
                             </div>
                             <div className="cd-replay-talents">
