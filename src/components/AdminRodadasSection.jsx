@@ -4,6 +4,7 @@ import { ref, onValue, set, update, remove, push } from 'firebase/database'
 import { db } from '../firebase/database'
 import { useCampeonato } from '../contexts/CampeonatoContext'
 import { teamPath, rodadasPath, confrontosPath, disponibilidadePath } from '../utils/campeonatoPaths'
+import AdminReplayUpload from './AdminReplayUpload'
 import { HEROES } from '../utils/heroPool'
 import { MAPAS } from '../utils/mapPool'
 import {
@@ -386,6 +387,7 @@ export default function AdminRodadasSection() {
                   key={id}
                   confrontoId={id}
                   confronto={c}
+                  campeonatoId={campeonatoId}
                   times={times}
                   disponibilidade={disponibilidade[id] ?? {}}
                   onRegistrarResultado={() => setModalResultado(id)}
@@ -491,7 +493,7 @@ function RodadaHeader({ rodada, rodadaId, onChange }) {
   )
 }
 
-function ConfrontoCard({ confrontoId, confronto: c, times, disponibilidade, onRegistrarResultado, onForcarSlot, onEditarTimes, onMudarStatus, onAgendarDesempate, onDeletar, confirmandoDelete, onConfirmarDelete, onCancelarDelete, onIniciarDraft }) {
+function ConfrontoCard({ confrontoId, confronto: c, campeonatoId, times, disponibilidade, onRegistrarResultado, onForcarSlot, onEditarTimes, onMudarStatus, onAgendarDesempate, onDeletar, confirmandoDelete, onConfirmarDelete, onCancelarDelete, onIniciarDraft }) {
   const tA = times[c.timeA]
   const tB = times[c.timeB]
   const dispA = disponibilidade[c.timeA]?.slots ?? []
@@ -772,6 +774,14 @@ function ConfrontoCard({ confrontoId, confronto: c, times, disponibilidade, onRe
           </button>
         )}
       </div>
+
+      {/* Seção de replays */}
+      <AdminReplayUpload
+        confrontoId={confrontoId}
+        confronto={c}
+        campeonatoId={campeonatoId}
+        times={times}
+      />
     </div>
   )
 }

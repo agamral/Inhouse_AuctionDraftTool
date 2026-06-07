@@ -310,5 +310,61 @@
     "medivh":         "Medivh",
     "thelostvikings": "Os Vikings Perdidos",
     "zarya":          "Zarya"
+  },
+  "maps": {
+    "alterac-pass": "Garganta de Alterac",
+    "battlefield-of-eternity": "Campo de Batalha da Eternidade",
+    "blackhearts-bay": "Baía do Coração Negro",
+    "braxis-holdout": "Resistência de Braxis",
+    "cursed-hollow": "Clareira Maldita",
+    "dragon-shire": "Condado do Dragão",
+    "garden-of-terror": "Jardim do Terror",
+    "hanamura-temple": "Templo de Hanamura",
+    "haunted-mines": "Mina Assombrada",
+    "infernal-shrines": "Santuários Infernais",
+    "sky-temple": "Templo Celeste",
+    "tomb-of-the-spider-queen": "Tumba da Aranha Rainha",
+    "towers-of-doom": "Torres da Perdição",
+    "volskaya-foundry": "Fundição Volskaya",
+    "warhead-junction": "Junção da Ogiva"
+  },
+  "replay": {
+    "title": "Estatísticas do Replay",
+    "tabs": {
+      "table": "Tabela",
+      "xpLead": "XP Lead",
+      "events": "Eventos"
+    },
+    "result": {
+      "win": "VITÓRIA",
+      "loss": "DERROTA"
+    },
+    "table": {
+      "hero": "Herói",
+      "player": "Jogador",
+      "kda": "K/D/A",
+      "td": "TD",
+      "heroDmg": "Hero Dmg",
+      "siege": "Siege",
+      "healing": "Cura"
+    },
+    "build": "build",
+    "copyBuild": "copiar build",
+    "copyBuildTitle": "Copiar código da build (formato do jogo)",
+    "copied": "copiado!",
+    "noXpData": "Dados de XP não disponíveis neste replay.",
+    "uploadForChart": "Faça um novo upload para gerar o gráfico.",
+    "noEventsData": "Dados de eventos não disponíveis neste replay.",
+    "uploadForTimeline": "Faça um novo upload para gerar a timeline.",
+    "tie": "Empate",
+    "leadXp": "{{team}} +{{value}} XP",
+    "killedBy": "{{team}} abateu {{hero}}",
+    "captured": "{{team}} capturou {{camp}}",
+    "objectiveCaptured": "{{team}} — Objetivo Conquistado",
+    "campTypes": {
+      "Siege Camp": "Cerco",
+      "Bruiser Camp": "Bruiser",
+      "Boss Camp": "Boss"
+    }
   }
 }

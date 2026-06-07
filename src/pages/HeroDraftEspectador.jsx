@@ -292,7 +292,7 @@ export default function HeroDraftEspectador() {
 
         {/* Centro: mapa + timer circular + dots de fases */}
         <div className="hde-header-mid">
-          <div className="hde-mapa-nome">{mapa?.nome ?? 'HEROES OF THE STORM'}</div>
+          <div className="hde-mapa-nome">{mapa ? t('maps.' + mapa.id, { defaultValue: mapa.nome }) : 'HEROES OF THE STORM'}</div>
           <div className="hde-timer-row">
 
             {/* Fases concluídas — mais recente mais perto do timer */}
@@ -629,8 +629,10 @@ function AnuncioBanOverlay({ heroi, timeSide, nomeTime, saindo }) {
 // ── Lobby do espectador ────────────────────────────────────────────────────────
 
 function EspectadorLobby({ sessaoData }) {
+  const { t } = useTranslation()
   const config  = sessaoData?.config ?? {}
   const mapa    = getMapaById(config.mapaId)
+  const mapaNome = mapa ? t('maps.' + mapa.id, { defaultValue: mapa.nome }) : null
   const nomeA   = sessaoData?.timeA?.nome ?? 'Time A'
   const nomeB   = sessaoData?.timeB?.nome ?? 'Time B'
   const bans    = (config.globalBans ?? [])
@@ -661,8 +663,8 @@ function EspectadorLobby({ sessaoData }) {
         </div>
         {mapa && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-            <img src={mapa.splashUrl} alt={mapa.nome} style={{ width: 280, height: 157, objectFit: 'cover', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }} onError={e => { e.target.style.display = 'none' }} />
-            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 13, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{mapa.nome}</div>
+            <img src={mapa.splashUrl} alt={mapaNome} style={{ width: 280, height: 157, objectFit: 'cover', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }} onError={e => { e.target.style.display = 'none' }} />
+            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 13, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{mapaNome}</div>
           </div>
         )}
         {bans.length > 0 && (

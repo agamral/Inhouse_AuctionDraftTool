@@ -1,0 +1,782 @@
+{
+  "match": {
+    "build": 97039,
+    "datetime": "2026-05-16T19:02:03.005632+00:00",
+    "map": "Dragon Shire",
+    "game_mode": "Quick Match",
+    "duration": "23:24",
+    "duration_seconds": 1404
+  },
+  "teams": {
+    "team1": {
+      "takedowns": 58,
+      "result": "loss"
+    },
+    "team2": {
+      "takedowns": 87,
+      "result": "win"
+    }
+  },
+  "players": [
+    {
+      "slot": 0,
+      "battletag": "Brócoli",
+      "hero": "Nazeebo",
+      "team": 1,
+      "result": "loss",
+      "kills": 5,
+      "deaths": 4,
+      "assists": 6,
+      "takedowns": 11,
+      "hero_damage": 83363,
+      "damage_taken": 56628,
+      "healing": 0,
+      "self_healing": 10869,
+      "experience_contribution": 22034,
+      "minion_damage": 143324,
+      "structure_damage": 28401,
+      "level": 23,
+      "time_dead": 209,
+      "time_cc_enemy": 40,
+      "merc_camps": 1,
+      "watchtowers": 0,
+      "highest_kill_streak": 5,
+      "talents": [
+        {
+          "tier": 0,
+          "level": 1,
+          "choice": 0,
+          "absolute_index": 0,
+          "name": "Widowmakers"
+        },
+        {
+          "tier": 1,
+          "level": 4,
+          "choice": 0,
+          "absolute_index": 3,
+          "name": "Hexed Crawlers"
+        },
+        {
+          "tier": 2,
+          "level": 7,
+          "choice": 0,
+          "absolute_index": 6,
+          "name": "Spirit of Arachyr"
+        },
+        {
+          "tier": 3,
+          "level": 10,
+          "choice": 1,
+          "absolute_index": 10,
+          "name": "Ravenous Spirit"
+        },
+        {
+          "tier": 4,
+          "level": 13,
+          "choice": 1,
+          "absolute_index": 13,
+          "name": "Superstition"
+        },
+        {
+          "tier": 5,
+          "level": 16,
+          "choice": 1,
+          "absolute_index": 16,
+          "name": "Ring of Poison"
+        },
+        {
+          "tier": 6,
+          "level": 20,
+          "choice": 1,
+          "absolute_index": 19,
+          "name": "Annihilating Spirit"
+        }
+      ],
+      "team_level": 23
+    },
+    {
+      "slot": 1,
+      "battletag": "AmigoDoC0rn0",
+      "hero": "Chen",
+      "team": 1,
+      "result": "loss",
+      "kills": 3,
+      "deaths": 4,
+      "assists": 4,
+      "takedowns": 7,
+      "hero_damage": 55743,
+      "damage_taken": 112164,
+      "healing": 0,
+      "self_healing": 70583,
+      "experience_contribution": 20668,
+      "minion_damage": 104901,
+      "structure_damage": 12907,
+      "level": 23,
+      "time_dead": 230,
+      "time_cc_enemy": 93,
+      "merc_camps": 1,
+      "watchtowers": 0,
+      "highest_kill_streak": 3,
+      "talents": [
+        {
+          "tier": 0,
+          "level": 1,
+          "choice": 0,
+          "absolute_index": 0,
+          "name": "Accumulating Flame"
+        },
+        {
+          "tier": 1,
+          "level": 4,
+          "choice": 1,
+          "absolute_index": 4,
+          "name": "Eye of the Tiger"
+        },
+        {
+          "tier": 2,
+          "level": 7,
+          "choice": 1,
+          "absolute_index": 7,
+          "name": "Brewmaster's Balance"
+        },
+        {
+          "tier": 3,
+          "level": 10,
+          "choice": 1,
+          "absolute_index": 10,
+          "name": "Storm, Earth, Fire"
+        },
+        {
+          "tier": 4,
+          "level": 13,
+          "choice": 1,
+          "absolute_index": 13,
+          "name": "A Touch of Honey"
+        },
+        {
+          "tier": 5,
+          "level": 16,
+          "choice": 2,
+          "absolute_index": 17,
+          "name": "Combo Strikes"
+        },
+        {
+          "tier": 6,
+          "level": 20,
+          "choice": 1,
+          "absolute_index": 19,
+          "name": "Elemental Conduit"
+        }
+      ],
+      "team_level": 23
+    },
+    {
+      "slot": 2,
+      "battletag": "malcomBacon",
+      "hero": "Garrosh",
+      "team": 1,
+      "result": "loss",
+      "kills": 3,
+      "deaths": 8,
+      "assists": 9,
+      "takedowns": 12,
+      "hero_damage": 25430,
+      "damage_taken": 83403,
+      "healing": 0,
+      "self_healing": 18262,
+      "experience_contribution": 6634,
+      "minion_damage": 3401,
+      "structure_damage": 853,
+      "level": 23,
+      "time_dead": 352,
+      "time_cc_enemy": 221,
+      "merc_camps": 0,
+      "watchtowers": 0,
+      "highest_kill_streak": 4,
+      "talents": [
+        {
+          "tier": 0,
+          "level": 1,
+          "choice": 1,
+          "absolute_index": 1,
+          "name": "Unrivaled Strength"
+        },
+        {
+          "tier": 1,
+          "level": 4,
+          "choice": 2,
+          "absolute_index": 5,
+          "name": "Indomitable"
+        },
+        {
+          "tier": 2,
+          "level": 7,
+          "choice": 2,
+          "absolute_index": 8,
+          "name": "Lok-tar ogar!"
+        },
+        {
+          "tier": 3,
+          "level": 10,
+          "choice": 0,
+          "absolute_index": 9,
+          "name": "Warlord's Challenge"
+        },
+        {
+          "tier": 4,
+          "level": 13,
+          "choice": 0,
+          "absolute_index": 12,
+          "name": "Defensive Measures"
+        },
+        {
+          "tier": 5,
+          "level": 16,
+          "choice": 0,
+          "absolute_index": 15,
+          "name": "Mortal Combo"
+        },
+        {
+          "tier": 6,
+          "level": 20,
+          "choice": 1,
+          "absolute_index": 19,
+          "name": "Deadly Calm"
+        }
+      ],
+      "team_level": 23
+    },
+    {
+      "slot": 3,
+      "battletag": "alucardlopes",
+      "hero": "Stukov",
+      "team": 1,
+      "result": "loss",
+      "kills": 5,
+      "deaths": 3,
+      "assists": 12,
+      "takedowns": 17,
+      "hero_damage": 40671,
+      "damage_taken": 38293,
+      "healing": 65116,
+      "self_healing": 0,
+      "experience_contribution": 12569,
+      "minion_damage": 22162,
+      "structure_damage": 12061,
+      "level": 23,
+      "time_dead": 168,
+      "time_cc_enemy": 273,
+      "merc_camps": 4,
+      "watchtowers": 0,
+      "highest_kill_streak": 8,
+      "talents": [
+        {
+          "tier": 0,
+          "level": 1,
+          "choice": 1,
+          "absolute_index": 1,
+          "name": "Low Blow"
+        },
+        {
+          "tier": 1,
+          "level": 4,
+          "choice": 2,
+          "absolute_index": 5,
+          "name": "Vigorous Reuptake"
+        },
+        {
+          "tier": 2,
+          "level": 7,
+          "choice": 1,
+          "absolute_index": 7,
+          "name": "Growing Infestation"
+        },
+        {
+          "tier": 3,
+          "level": 10,
+          "choice": 1,
+          "absolute_index": 10,
+          "name": "Massive Shove"
+        },
+        {
+          "tier": 4,
+          "level": 13,
+          "choice": 2,
+          "absolute_index": 11,
+          "name": "Poppin' Pustules"
+        },
+        {
+          "tier": 5,
+          "level": 16,
+          "choice": 0,
+          "absolute_index": 15,
+          "name": "Superstrain"
+        },
+        {
+          "tier": 6,
+          "level": 20,
+          "choice": 0,
+          "absolute_index": 18,
+          "name": "Controlled Chaos"
+        }
+      ],
+      "team_level": 23
+    },
+    {
+      "slot": 4,
+      "battletag": "Player",
+      "hero": "Alarak",
+      "team": 1,
+      "result": "loss",
+      "kills": 4,
+      "deaths": 6,
+      "assists": 7,
+      "takedowns": 11,
+      "hero_damage": 54216,
+      "damage_taken": 59737,
+      "healing": 0,
+      "self_healing": 14710,
+      "experience_contribution": 11861,
+      "minion_damage": 52168,
+      "structure_damage": 40491,
+      "level": 23,
+      "time_dead": 252,
+      "time_cc_enemy": 94,
+      "merc_camps": 3,
+      "watchtowers": 0,
+      "highest_kill_streak": 4,
+      "talents": [
+        {
+          "tier": 0,
+          "level": 1,
+          "choice": 0,
+          "absolute_index": 0,
+          "name": "Overwhelming Power"
+        },
+        {
+          "tier": 1,
+          "level": 4,
+          "choice": 2,
+          "absolute_index": 5,
+          "name": "Show of Force"
+        },
+        {
+          "tier": 2,
+          "level": 7,
+          "choice": 1,
+          "absolute_index": 7,
+          "name": "Hindered Motion"
+        },
+        {
+          "tier": 3,
+          "level": 10,
+          "choice": 0,
+          "absolute_index": 9,
+          "name": "Deadly Charge"
+        },
+        {
+          "tier": 4,
+          "level": 13,
+          "choice": 2,
+          "absolute_index": 11,
+          "name": "Rite of Rak'Shir"
+        },
+        {
+          "tier": 5,
+          "level": 16,
+          "choice": 2,
+          "absolute_index": 14,
+          "name": "Mocking Strikes"
+        },
+        {
+          "tier": 6,
+          "level": 20,
+          "choice": 1,
+          "absolute_index": 19,
+          "name": "Might of the Highlord"
+        }
+      ],
+      "team_level": 23
+    },
+    {
+      "slot": 5,
+      "battletag": "Ahomechiki",
+      "hero": "Valla",
+      "team": 2,
+      "result": "win",
+      "kills": 11,
+      "deaths": 1,
+      "assists": 9,
+      "takedowns": 20,
+      "hero_damage": 76186,
+      "damage_taken": 37039,
+      "healing": 0,
+      "self_healing": 18814,
+      "experience_contribution": 20448,
+      "minion_damage": 77757,
+      "structure_damage": 24474,
+      "level": 24,
+      "time_dead": 65,
+      "time_cc_enemy": 5,
+      "merc_camps": 7,
+      "watchtowers": 0,
+      "highest_kill_streak": 16,
+      "talents": [
+        {
+          "tier": 0,
+          "level": 1,
+          "choice": 2,
+          "absolute_index": 2,
+          "name": "Creed of the Hunter"
+        },
+        {
+          "tier": 1,
+          "level": 4,
+          "choice": 1,
+          "absolute_index": 4,
+          "name": "Death Dealer"
+        },
+        {
+          "tier": 2,
+          "level": 7,
+          "choice": 2,
+          "absolute_index": 8,
+          "name": "Hot Pursuit"
+        },
+        {
+          "tier": 3,
+          "level": 10,
+          "choice": 1,
+          "absolute_index": 10,
+          "name": "Rain of Vengeance"
+        },
+        {
+          "tier": 4,
+          "level": 13,
+          "choice": 0,
+          "absolute_index": 12,
+          "name": "Siphoning Arrows"
+        },
+        {
+          "tier": 5,
+          "level": 16,
+          "choice": 1,
+          "absolute_index": 16,
+          "name": "Seething Hatred"
+        },
+        {
+          "tier": 6,
+          "level": 20,
+          "choice": 2,
+          "absolute_index": 20,
+          "name": "Acrobat"
+        }
+      ],
+      "team_level": 24
+    },
+    {
+      "slot": 6,
+      "battletag": "attoslins",
+      "hero": "Uther",
+      "team": 2,
+      "result": "win",
+      "kills": 2,
+      "deaths": 2,
+      "assists": 16,
+      "takedowns": 18,
+      "hero_damage": 21691,
+      "damage_taken": 44757,
+      "healing": 55221,
+      "self_healing": 6940,
+      "experience_contribution": 12528,
+      "minion_damage": 44035,
+      "structure_damage": 8600,
+      "level": 24,
+      "time_dead": 65,
+      "time_cc_enemy": 66,
+      "merc_camps": 6,
+      "watchtowers": 0,
+      "highest_kill_streak": 13,
+      "talents": [
+        {
+          "tier": 0,
+          "level": 1,
+          "choice": 0,
+          "absolute_index": 0,
+          "name": "Silver Touch"
+        },
+        {
+          "tier": 1,
+          "level": 4,
+          "choice": 2,
+          "absolute_index": 5,
+          "name": "Holy Fire"
+        },
+        {
+          "tier": 2,
+          "level": 7,
+          "choice": 2,
+          "absolute_index": 8,
+          "name": "Hand of Protection"
+        },
+        {
+          "tier": 3,
+          "level": 10,
+          "choice": 0,
+          "absolute_index": 9,
+          "name": "Divine Shield"
+        },
+        {
+          "tier": 4,
+          "level": 13,
+          "choice": 0,
+          "absolute_index": 12,
+          "name": "Blessed Champion"
+        },
+        {
+          "tier": 5,
+          "level": 16,
+          "choice": 1,
+          "absolute_index": 16,
+          "name": "Tyr's Deliverance"
+        },
+        {
+          "tier": 6,
+          "level": 20,
+          "choice": 1,
+          "absolute_index": 19,
+          "name": "Divine Hurricane"
+        }
+      ],
+      "team_level": 24
+    },
+    {
+      "slot": 7,
+      "battletag": "Nietzsche",
+      "hero": "Kel'Thuzad",
+      "team": 2,
+      "result": "win",
+      "kills": 6,
+      "deaths": 6,
+      "assists": 10,
+      "takedowns": 16,
+      "hero_damage": 59440,
+      "damage_taken": 46165,
+      "healing": 0,
+      "self_healing": 0,
+      "experience_contribution": 16210,
+      "minion_damage": 65283,
+      "structure_damage": 28720,
+      "level": 24,
+      "time_dead": 250,
+      "time_cc_enemy": 209,
+      "merc_camps": 5,
+      "watchtowers": 0,
+      "highest_kill_streak": 6,
+      "talents": [
+        {
+          "tier": 0,
+          "level": 1,
+          "choice": 1,
+          "absolute_index": 1,
+          "name": "Blighted Frost"
+        },
+        {
+          "tier": 1,
+          "level": 4,
+          "choice": 2,
+          "absolute_index": 5,
+          "name": "Armor of the Archlich"
+        },
+        {
+          "tier": 2,
+          "level": 7,
+          "choice": 1,
+          "absolute_index": 7,
+          "name": "Chilling Touch"
+        },
+        {
+          "tier": 3,
+          "level": 10,
+          "choice": 1,
+          "absolute_index": 10,
+          "name": "Shadow Fissure"
+        },
+        {
+          "tier": 4,
+          "level": 13,
+          "choice": 0,
+          "absolute_index": 12,
+          "name": "Icy Grasp"
+        },
+        {
+          "tier": 5,
+          "level": 16,
+          "choice": 0,
+          "absolute_index": 15,
+          "name": "Arcane Echoes"
+        },
+        {
+          "tier": 6,
+          "level": 20,
+          "choice": 2,
+          "absolute_index": 20,
+          "name": "Shifting Malice"
+        }
+      ],
+      "team_level": 24
+    },
+    {
+      "slot": 8,
+      "battletag": "Darkhaunt",
+      "hero": "Deathwing",
+      "team": 2,
+      "result": "win",
+      "kills": 1,
+      "deaths": 5,
+      "assists": 11,
+      "takedowns": 12,
+      "hero_damage": 56546,
+      "damage_taken": 75045,
+      "healing": 0,
+      "self_healing": 25730,
+      "experience_contribution": 16626,
+      "minion_damage": 83967,
+      "structure_damage": 13730,
+      "level": 24,
+      "time_dead": 181,
+      "time_cc_enemy": 182,
+      "merc_camps": 0,
+      "watchtowers": 0,
+      "highest_kill_streak": 5,
+      "talents": [
+        {
+          "tier": 0,
+          "level": 1,
+          "choice": 2,
+          "absolute_index": 2,
+          "name": "Draconic Might"
+        },
+        {
+          "tier": 1,
+          "level": 4,
+          "choice": 1,
+          "absolute_index": 4,
+          "name": "Heat Wave"
+        },
+        {
+          "tier": 2,
+          "level": 7,
+          "choice": 0,
+          "absolute_index": 6,
+          "name": "Firestorm"
+        },
+        {
+          "tier": 3,
+          "level": 10,
+          "choice": 1,
+          "absolute_index": 10,
+          "name": "Bellowing Roar"
+        },
+        {
+          "tier": 4,
+          "level": 13,
+          "choice": 1,
+          "absolute_index": 13,
+          "name": "Ruination"
+        },
+        {
+          "tier": 5,
+          "level": 16,
+          "choice": 1,
+          "absolute_index": 16,
+          "name": "Gaze Onto Destruction"
+        },
+        {
+          "tier": 6,
+          "level": 20,
+          "choice": 1,
+          "absolute_index": 19,
+          "name": "Arrival of a God"
+        }
+      ],
+      "team_level": 24
+    },
+    {
+      "slot": 9,
+      "battletag": "starvax90",
+      "hero": "Mal'Ganis",
+      "team": 2,
+      "result": "win",
+      "kills": 4,
+      "deaths": 6,
+      "assists": 17,
+      "takedowns": 21,
+      "hero_damage": 62588,
+      "damage_taken": 100103,
+      "healing": 0,
+      "self_healing": 34343,
+      "experience_contribution": 13132,
+      "minion_damage": 31809,
+      "structure_damage": 30855,
+      "level": 24,
+      "time_dead": 280,
+      "time_cc_enemy": 144,
+      "merc_camps": 2,
+      "watchtowers": 0,
+      "highest_kill_streak": 8,
+      "talents": [
+        {
+          "tier": 0,
+          "level": 1,
+          "choice": 0,
+          "absolute_index": 0,
+          "name": "Will of Tichondrius"
+        },
+        {
+          "tier": 1,
+          "level": 4,
+          "choice": 0,
+          "absolute_index": 3,
+          "name": "Might of Sargeras"
+        },
+        {
+          "tier": 2,
+          "level": 7,
+          "choice": 0,
+          "absolute_index": 6,
+          "name": "Black Claws"
+        },
+        {
+          "tier": 3,
+          "level": 10,
+          "choice": 0,
+          "absolute_index": 9,
+          "name": "Carrion Swarm"
+        },
+        {
+          "tier": 4,
+          "level": 13,
+          "choice": 1,
+          "absolute_index": 13,
+          "name": "The Night Beckons"
+        },
+        {
+          "tier": 5,
+          "level": 16,
+          "choice": 1,
+          "absolute_index": 16,
+          "name": "Frenzied Assault"
+        },
+        {
+          "tier": 6,
+          "level": 20,
+          "choice": 2,
+          "absolute_index": 17,
+          "name": "Vanquish the Weak"
+        }
+      ],
+      "team_level": 24
+    }
+  ]
+}

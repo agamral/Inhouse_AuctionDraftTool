@@ -310,5 +310,61 @@
     "medivh":         "Medivh",
     "thelostvikings": "The Lost Vikings",
     "zarya":          "Zarya"
+  },
+  "maps": {
+    "alterac-pass": "Alterac Pass",
+    "battlefield-of-eternity": "Battlefield of Eternity",
+    "blackhearts-bay": "Blackheart's Bay",
+    "braxis-holdout": "Braxis Holdout",
+    "cursed-hollow": "Cursed Hollow",
+    "dragon-shire": "Dragon Shire",
+    "garden-of-terror": "Garden of Terror",
+    "hanamura-temple": "Hanamura Temple",
+    "haunted-mines": "Haunted Mines",
+    "infernal-shrines": "Infernal Shrines",
+    "sky-temple": "Sky Temple",
+    "tomb-of-the-spider-queen": "Tomb of the Spider Queen",
+    "towers-of-doom": "Towers of Doom",
+    "volskaya-foundry": "Volskaya Foundry",
+    "warhead-junction": "Warhead Junction"
+  },
+  "replay": {
+    "title": "Replay Statistics",
+    "tabs": {
+      "table": "Table",
+      "xpLead": "XP Lead",
+      "events": "Events"
+    },
+    "result": {
+      "win": "VICTORY",
+      "loss": "DEFEAT"
+    },
+    "table": {
+      "hero": "Hero",
+      "player": "Player",
+      "kda": "K/D/A",
+      "td": "TD",
+      "heroDmg": "Hero Dmg",
+      "siege": "Siege",
+      "healing": "Healing"
+    },
+    "build": "build",
+    "copyBuild": "copy build",
+    "copyBuildTitle": "Copy build code (in-game format)",
+    "copied": "copied!",
+    "noXpData": "XP data not available for this replay.",
+    "uploadForChart": "Upload a new replay to generate the chart.",
+    "noEventsData": "Event data not available for this replay.",
+    "uploadForTimeline": "Upload a new replay to generate the timeline.",
+    "tie": "Tied",
+    "leadXp": "{{team}} +{{value}} XP",
+    "killedBy": "{{team}} took down {{hero}}",
+    "captured": "{{team}} captured {{camp}}",
+    "objectiveCaptured": "{{team}} — Objective Captured",
+    "campTypes": {
+      "Siege Camp": "Siege",
+      "Bruiser Camp": "Bruiser",
+      "Boss Camp": "Boss"
+    }
   }
 }
