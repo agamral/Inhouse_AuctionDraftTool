@@ -379,11 +379,24 @@ function PartidaCard({ numero, partida: p, tA, tB, corA, corB, timeANome, timeBN
               )}
             </div>
 
-            {/* VOD — placeholder */}
+            {/* VOD */}
             <div className="cd-info-panel cd-info-panel--vod">
               <div className="cd-info-panel-label">VOD</div>
-              <button className="cd-vod-btn" disabled>▶ Assistir Partida</button>
-              <div className="cd-resumo-hint">Disponível em breve</div>
+              {replayGame?.vodUrl ? (
+                <a
+                  className="cd-vod-btn"
+                  href={replayGame.vodUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  ▶ Assistir Partida
+                </a>
+              ) : (
+                <>
+                  <button className="cd-vod-btn" disabled>▶ Assistir Partida</button>
+                  <div className="cd-resumo-hint">Disponível em breve</div>
+                </>
+              )}
             </div>
           </div>
 

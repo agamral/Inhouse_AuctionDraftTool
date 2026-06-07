@@ -39,6 +39,8 @@ export default function AdminReplayUpload({ confrontoId, confronto, campeonatoId
   const [jsonInput, setJsonInput] = useState({})
   const [overrides, setOverrides] = useState({})   // { game1: { slot0: uid|null } }
   const [savingOv, setSavingOv]   = useState({})
+  const [vodInput, setVodInput]   = useState({})   // { game1: 'https://youtube.com/...' }
+  const [savingVod, setSavingVod] = useState({})
 
   const replays   = confronto.replays ?? {}
   const maxGames  = FORMAT_MAX_GAMES[confronto.formato] ?? 1
@@ -178,6 +180,19 @@ export default function AdminReplayUpload({ confrontoId, confronto, campeonatoId
     }
   }
 
+  async function handleSaveVod(gameNum) {
+    const gameKey = `game${gameNum}`
+    const url = (vodInput[gameKey] ?? '').trim()
+    setSavingVod(prev => ({ ...prev, [gameKey]: true }))
+    try {
+      await update(ref(db, `${confrontosPath(campeonatoId)}/${confrontoId}/replays/${gameKey}`), {
+        vodUrl: url || null,
+      })
+    } finally {
+      setSavingVod(prev => ({ ...prev, [gameKey]: false }))
+    }
+  }
+
   return (
     <div style={{ marginTop: 10, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
       <button
@@ -252,6 +267,10 @@ export default function AdminReplayUpload({ confrontoId, confronto, campeonatoId
                 [`game${n}`]: { ...(prev[`game${n}`] ?? {}), [slot]: uid },
               }))}
               onSaveOverrides={() => handleSaveOverrides(n)}
+              vodValue={vodInput[`game${n}`] ?? replays[`game${n}`]?.vodUrl ?? ''}
+              onVodChange={val => setVodInput(prev => ({ ...prev, [`game${n}`]: val }))}
+              onVodSave={() => handleSaveVod(n)}
+              savingVod={!!savingVod[`game${n}`]}
             />
           ))}
         </div>
@@ -315,6 +334,7 @@ function GamePanel({
   pendingOverrides, rosterOptions, getUsedUids, tA, tB,
   savingOverrides, parserAvailable,
   onFileUpload, onToggleJsonMode, onJsonInput, onJsonSave, onSetOverride, onSaveOverrides,
+  vodValue, onVodChange, onVodSave, savingVod,
 }) {
   const parsed    = !!gameData?.parsed
   const uploading = status === 'uploading'
@@ -454,6 +474,32 @@ function GamePanel({
           </button>
         </div>
       )}
+
+      {/* Link do VOD (YouTube) */}
+      <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{ fontSize: 11, color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+          🎬 VOD
+        </span>
+        <input
+          type="text"
+          value={vodValue}
+          onChange={e => onVodChange(e.target.value)}
+          placeholder="Link do YouTube..."
+          style={{
+            flex: 1, minWidth: 160, background: 'var(--bg)', border: '1px solid var(--border2)',
+            borderRadius: 4, padding: '5px 8px', color: 'var(--text)',
+            fontFamily: "'Barlow', sans-serif", fontSize: 11, outline: 'none',
+          }}
+        />
+        <button
+          className="btn"
+          disabled={savingVod}
+          onClick={onVodSave}
+          style={{ fontSize: 11, padding: '4px 12px', borderColor: 'var(--blue)', color: 'var(--blue)' }}
+        >
+          {savingVod ? 'Salvando...' : 'Salvar'}
+        </button>
+      </div>
 
       {/* Jogadores não identificados — agrupados por time do replay */}
       {parsed && hasUnidentified && (
