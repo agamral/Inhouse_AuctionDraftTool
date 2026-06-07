@@ -924,7 +924,7 @@ function ReplayStatsSection({ replayGame, corA, corB, timeANome, timeBNome }) {
                             </div>
                             <div className="cd-replay-talents">
                               {p.talents.map((t, ti) => (
-                                <div key={ti} className="cd-replay-talent-badge" title={t.description || undefined}>
+                                <div key={ti} className="cd-replay-talent-badge">
                                   {t.icon && (
                                     <img className="cd-replay-talent-icon" src={t.icon} alt="" loading="lazy"
                                          onError={e => { e.currentTarget.style.display = 'none' }} />
@@ -933,6 +933,12 @@ function ReplayStatsSection({ replayGame, corA, corB, timeANome, timeBNome }) {
                                     <span className="cd-replay-talent-level">Lv{t.level}</span>
                                     <span className="cd-replay-talent-name">{t.name ?? `idx ${t.absolute_index}`}</span>
                                   </div>
+                                  {t.description && (
+                                    <div className="cd-replay-talent-tooltip">
+                                      <div className="cd-replay-talent-tooltip-name">{t.name}</div>
+                                      <div className="cd-replay-talent-tooltip-desc">{t.description}</div>
+                                    </div>
+                                  )}
                                 </div>
                               ))}
                             </div>

@@ -1079,7 +1079,56 @@
   padding: 6px 0;
 }
 
-.cd-replay-talent-badge { cursor: help; }
+.cd-replay-talent-badge {
+  position: relative;
+  cursor: help;
+}
+
+.cd-replay-talent-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
+  width: 260px;
+  max-width: 70vw;
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  padding: 10px 12px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(-50%) translateY(4px);
+  transition: opacity 0.12s ease, transform 0.12s ease, visibility 0.12s;
+  pointer-events: none;
+  white-space: normal;
+}
+.cd-replay-talent-badge:hover .cd-replay-talent-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+.cd-replay-talent-tooltip-name {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--gold2);
+  letter-spacing: 0.02em;
+  margin-bottom: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.cd-replay-talent-tooltip-desc {
+  font-family: 'Barlow', sans-serif;
+  font-size: 12px;
+  font-weight: 300;
+  line-height: 1.5;
+  color: var(--text);
+  white-space: pre-line;
+}
 
 .cd-replay-talent-badge {
   display: flex;
