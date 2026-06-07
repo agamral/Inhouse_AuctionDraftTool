@@ -547,9 +547,10 @@ function fmtTime(t) {
 }
 
 // Portrait inline reutilizável (tamanho configurável)
-function HeroPortrait({ hero, cor, victim, size = 28 }) {
+// heroIcon: nome canônico em inglês vindo do parser (resolve heróis com m_hero localizado, ex: "Asa da Morte" → "Deathwing")
+function HeroPortrait({ hero, heroIcon, cor, victim, size = 28 }) {
   const [err, setErr] = useState(false)
-  const icone = heroIconeByName(hero)
+  const icone = heroIconeByName(heroIcon) || heroIconeByName(hero)
   return (
     <div
       className={`cd-ev-portrait${victim ? ' cd-ev-portrait--victim' : ''}`}
@@ -633,10 +634,10 @@ function EventTimeline({ eventTimeline, corA, corB, timeANome, timeBNome }) {
       <div className="cd-htl-tooltip-inner">
         <div className="cd-htl-tooltip-time">{fmtTime(ev.t)}</div>
         <div className="cd-htl-tooltip-row">
-          <HeroPortrait hero={ev.victim?.hero} cor={teamCor(ev.victim?.team)} victim size={20} />
+          <HeroPortrait hero={ev.victim?.hero} heroIcon={ev.victim?.heroIcon} cor={teamCor(ev.victim?.team)} victim size={20} />
           <span className="cd-htl-tooltip-sep">←</span>
           {killers.slice(0, 3).map((k, ki) => (
-            <HeroPortrait key={ki} hero={k.hero} cor={teamCor(k.team)} size={20} />
+            <HeroPortrait key={ki} hero={k.hero} heroIcon={k.heroIcon} cor={teamCor(k.team)} size={20} />
           ))}
           {killers.length > 3 && <span style={{ fontSize: 10, color: 'var(--text3)' }}>+{killers.length - 3}</span>}
         </div>
@@ -702,9 +703,13 @@ function EventTimeline({ eventTimeline, corA, corB, timeANome, timeBNome }) {
           const showTip = tooltip?.idx === i
 
           let victimHero = null
+          let victimHeroIcon = null
           let icon       = null
 
-          if (ev.type === 'kill')           victimHero = ev.victim?.hero
+          if (ev.type === 'kill') {
+            victimHero     = ev.victim?.hero
+            victimHeroIcon = ev.victim?.heroIcon
+          }
           else if (ev.type === 'camp')      icon = '🛡'
           else if (ev.type === 'objective') icon = '⭐'
 
@@ -723,7 +728,7 @@ function EventTimeline({ eventTimeline, corA, corB, timeANome, timeBNome }) {
               />
 
               {victimHero
-                ? <HeroPortrait hero={victimHero} cor={cor} victim size={ICON} />
+                ? <HeroPortrait hero={victimHero} heroIcon={victimHeroIcon} cor={cor} victim size={ICON} />
                 : <div className="cd-htl-event-ico">{icon}</div>
               }
               {showTip && (

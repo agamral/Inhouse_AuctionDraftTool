@@ -36,6 +36,7 @@ TIER_TO_INDEX = {
 
 _db: dict | None = None            # {internal_id: {tier_index: {choice: name}}}
 _hyperlink_idx: dict | None = None # {hyperlinkId (replay name) → internal_id}
+_canonical_name: dict | None = None # {internal_id → hyperlinkId (nome canônico em inglês)}
 _version: str | None = None
 
 
@@ -61,7 +62,7 @@ def download(progress_fn=None) -> tuple[str, int]:
     Baixa herodata + gamestrings da versão mais recente disponível.
     Retorna (version_string, hero_count).
     """
-    global _db, _version
+    global _db, _hyperlink_idx, _canonical_name, _version
 
     if progress_fn:
         progress_fn("Buscando versões disponíveis no HeroesToolChest...")
@@ -105,7 +106,7 @@ def download(progress_fn=None) -> tuple[str, int]:
     if progress_fn:
         progress_fn(f"Processando {len(herodata)} heróis...")
 
-    db, hyperlink_idx = _build_db(herodata, name_by_id)
+    db, hyperlink_idx, canonical_name = _build_db(herodata, name_by_id)
 
     # --- Nomes de herói localizados ---
     # m_hero no replay vem no idioma do cliente de quem gravou (ex: "Asa da Morte"
@@ -125,33 +126,40 @@ def download(progress_fn=None) -> tuple[str, int]:
             if internal_id in internal_ids and localized_name not in hyperlink_idx:
                 hyperlink_idx[localized_name] = internal_id
 
-    cache = {"version": latest, "db": db, "hyperlink_idx": hyperlink_idx}
+    cache = {
+        "version": latest, "db": db, "hyperlink_idx": hyperlink_idx,
+        "canonical_name": canonical_name,
+    }
     with open(CACHE_FILE, "w", encoding="utf-8") as f:
         json.dump(cache, f, ensure_ascii=False, separators=(",", ":"))
 
-    _db           = db
+    _db            = db
     _hyperlink_idx = hyperlink_idx
+    _canonical_name = canonical_name
     _version       = latest
     return latest, len(db)
 
 
-def _build_db(herodata: dict, name_by_id: dict) -> tuple[dict, dict]:
+def _build_db(herodata: dict, name_by_id: dict) -> tuple[dict, dict, dict]:
     """
     Constrói:
       db             = {internal_id: {tier_index: {choice_0based: {"name", "icon"}}}}
       hyperlink_idx  = {hyperlinkId: internal_id}   ← usado para mapear nomes do replay
+      canonical_name = {internal_id: hyperlinkId}   ← nome canônico em inglês do herói
 
     "icon" é o nome do arquivo PNG (ex: "storm_ui_icon_abathur_spikeburst.png"),
     servido pelo repositório heroes-images (ver ICON_BASE_URL).
     """
     db: dict = {}
     hyperlink_idx: dict = {}
+    canonical_name: dict = {}
 
     for hero_id, hero in herodata.items():
         # hyperlinkId é o nome que aparece no replay (ex: "Brightwing", "Li-Ming")
         hl_id = hero.get("hyperlinkId", "")
         if hl_id:
             hyperlink_idx[hl_id] = hero_id
+            canonical_name[hero_id] = hl_id
 
         talents_by_tier = hero.get("talents", {})
         hero_db: dict = {}
@@ -169,7 +177,7 @@ def _build_db(herodata: dict, name_by_id: dict) -> tuple[dict, dict]:
         if hero_db:
             db[hero_id] = hero_db
 
-    return db, hyperlink_idx
+    return db, hyperlink_idx, canonical_name
 
 
 # ---------------------------------------------------------------------------
@@ -178,7 +186,7 @@ def _build_db(herodata: dict, name_by_id: dict) -> tuple[dict, dict]:
 
 def load() -> bool:
     """Carrega o cache do disco em memória. Retorna True se disponível."""
-    global _db, _hyperlink_idx, _version
+    global _db, _hyperlink_idx, _canonical_name, _version
     if _db is not None:
         return True
     if not CACHE_FILE.exists():
@@ -186,9 +194,10 @@ def load() -> bool:
     try:
         with open(CACHE_FILE, "r", encoding="utf-8") as f:
             cache = json.load(f)
-        _db            = cache["db"]
-        _hyperlink_idx = cache.get("hyperlink_idx", {})
-        _version       = cache.get("version", "?")
+        _db             = cache["db"]
+        _hyperlink_idx  = cache.get("hyperlink_idx", {})
+        _canonical_name = cache.get("canonical_name", {})
+        _version        = cache.get("version", "?")
         return True
     except Exception:
         return False
@@ -214,34 +223,49 @@ def _normalize(name: str) -> str:
 ICON_BASE_URL = "https://raw.githubusercontent.com/HeroesToolChest/heroes-images/master/heroesimages/abilitytalents"
 
 
-def _hero_db(hero_name: str) -> dict | None:
-    """Resolve o hero_name do replay para a sub-árvore de talentos no DB."""
-    if _db is None:
+def _resolve_internal_id(hero_name: str) -> str | None:
+    """Resolve o hero_name do replay (em qualquer locale) para o internal_id."""
+    if _db is None or not hero_name:
         return None
 
-    # Tentativa 1: match direto no DB (já é o internal_id)
-    hero_db = _db.get(hero_name)
+    # Tentativa 1: já é o internal_id
+    if hero_name in _db:
+        return hero_name
 
-    # Tentativa 2: hyperlinkId → internal_id  (ex: "Brightwing" → "FaerieDragon")
-    if hero_db is None and _hyperlink_idx:
+    # Tentativa 2: hyperlinkId ou nome localizado → internal_id
+    if _hyperlink_idx:
         internal = _hyperlink_idx.get(hero_name)
         if internal:
-            hero_db = _db.get(internal)
+            return internal
 
     # Tentativa 3: match normalizado (remove espaços, apóstrofos, pontos)
-    if hero_db is None:
-        target = _normalize(hero_name)
-        for hl_name, internal in (_hyperlink_idx or {}).items():
-            if _normalize(hl_name) == target:
-                hero_db = _db.get(internal)
-                break
-        if hero_db is None:
-            for key in _db:
-                if _normalize(key) == target:
-                    hero_db = _db[key]
-                    break
+    target = _normalize(hero_name)
+    for hl_name, internal in (_hyperlink_idx or {}).items():
+        if _normalize(hl_name) == target:
+            return internal
+    for key in _db:
+        if _normalize(key) == target:
+            return key
 
-    return hero_db
+    return None
+
+
+def _hero_db(hero_name: str) -> dict | None:
+    """Resolve o hero_name do replay para a sub-árvore de talentos no DB."""
+    internal = _resolve_internal_id(hero_name)
+    return _db.get(internal) if internal else None
+
+
+def get_canonical_name(hero_name: str) -> str | None:
+    """
+    Resolve o hero_name do replay (em qualquer locale, ex: "Asa da Morte")
+    para o nome canônico em inglês (hyperlinkId, ex: "Deathwing"), usado
+    para casar com os assets de ícone do site.
+    """
+    internal = _resolve_internal_id(hero_name)
+    if internal is None:
+        return None
+    return (_canonical_name or {}).get(internal)
 
 
 def _entry(hero_name: str, tier_index: int, choice: int) -> dict | None:

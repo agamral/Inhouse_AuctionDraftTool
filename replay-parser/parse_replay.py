@@ -169,6 +169,22 @@ def load_protocol(archive_header_content):
 
 
 # ---------------------------------------------------------------------------
+# Resolução de nome canônico do herói (m_hero vem localizado no idioma de
+# quem gravou — ex: "Asa da Morte" em pt-BR para "Deathwing"). O front-end
+# casa ícones pelo nome em inglês, então expomos "heroIcon" com esse nome.
+# ---------------------------------------------------------------------------
+
+def _canonical_hero_name(hero_name):
+    try:
+        import talent_lookup as _tl
+        if _tl.load():
+            return _tl.get_canonical_name(hero_name)
+    except Exception:
+        pass
+    return None
+
+
+# ---------------------------------------------------------------------------
 # Parsing de cada seção do replay
 # ---------------------------------------------------------------------------
 
@@ -180,10 +196,12 @@ def parse_details(details, result):
 
     for i, p in enumerate(details.get("m_playerList", [])):
         raw_result = p.get("m_result")
+        hero_name = decode_str(p.get("m_hero", b""))
         player = {
             "slot":          i,
             "battletag":     decode_str(p.get("m_name", b"")),
-            "hero":          decode_str(p.get("m_hero", b"")),
+            "hero":          hero_name,
+            "heroIcon":      _canonical_hero_name(hero_name),
             "team":          (p.get("m_teamId", 0) + 1),  # 0/1 → 1/2
             "result":        "win" if raw_result == 1 else "loss" if raw_result == 2 else None,
             # Estatísticas — preenchidas depois
@@ -282,7 +300,7 @@ def _build_event_timeline(stat_events, player_id_to_slot, players):
     for pid, slot in player_id_to_slot.items():
         if 0 <= slot < len(players):
             p = players[slot]
-            pid_to_info[pid] = {"hero": p.get("hero"), "team": p.get("team")}
+            pid_to_info[pid] = {"hero": p.get("hero"), "heroIcon": p.get("heroIcon"), "team": p.get("team")}
 
     STAT_SKIP = {
         "PeriodicXPBreakdown", "EndOfGameXPBreakdown", "EndOfGameTimeSpentDead",
@@ -320,8 +338,8 @@ def _build_event_timeline(stat_events, player_id_to_slot, players):
                 timeline.append({
                     "t":       t,
                     "type":    "kill",
-                    "victim":  {"hero": victim["hero"],  "team": victim["team"]},
-                    "killers": [{"hero": k["hero"], "team": k["team"]} for k in killers],
+                    "victim":  {"hero": victim["hero"],  "heroIcon": victim["heroIcon"],  "team": victim["team"]},
+                    "killers": [{"hero": k["hero"], "heroIcon": k["heroIcon"], "team": k["team"]} for k in killers],
                 })
 
         elif name == "JungleCampCapture":
