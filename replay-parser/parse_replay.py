@@ -534,6 +534,8 @@ def parse_game_events(game_events, result):
         name = None
         icon = None
         description = None
+        name_i18n = None
+        description_i18n = None
         if event.get("m_talentName"):
             name = decode_str(event["m_talentName"])
 
@@ -543,21 +545,25 @@ def parse_game_events(game_events, result):
                 import talent_lookup as _tl
                 if _tl.load():
                     hero = players[user_id].get("hero", "")
+                    name_i18n        = _tl.get_names_i18n(hero, tier_index, within_tier)
+                    description_i18n = _tl.get_descriptions_i18n(hero, tier_index, within_tier)
+                    icon             = _tl.get_icon_url(hero, tier_index, within_tier)
                     if name is None:
-                        name = _tl.get_name(hero, tier_index, within_tier)
-                    icon        = _tl.get_icon_url(hero, tier_index, within_tier)
-                    description = _tl.get_description(hero, tier_index, within_tier)
+                        name = (name_i18n or {}).get("en") or _tl.get_name(hero, tier_index, within_tier)
+                    description = (description_i18n or {}).get("en")
             except Exception:
                 pass
 
         talent_entry = {
-            "tier":           tier_index,
-            "level":          TALENT_TIER_LEVELS[tier_index] if tier_index < len(TALENT_TIER_LEVELS) else None,
-            "choice":         within_tier,    # 0=1ª opção, 1=2ª, 2=3ª dentro do tier
-            "absolute_index": abs_index,
-            "name":           name,
-            "icon":           icon,
-            "description":    description,
+            "tier":              tier_index,
+            "level":             TALENT_TIER_LEVELS[tier_index] if tier_index < len(TALENT_TIER_LEVELS) else None,
+            "choice":            within_tier,    # 0=1ª opção, 1=2ª, 2=3ª dentro do tier
+            "absolute_index":    abs_index,
+            "name":              name,
+            "name_i18n":         name_i18n,          # {"en":..., "pt":..., "es":...}
+            "icon":              icon,
+            "description":       description,
+            "description_i18n":  description_i18n,   # {"en":..., "pt":..., "es":...}
         }
         players[user_id]["talents"].append(talent_entry)
         talent_counters[user_id] += 1

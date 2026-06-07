@@ -44,9 +44,24 @@ function heroNomeReplay(t, hero, heroIcon) {
   return t('heroes.' + h.id, { defaultValue: h.nome })
 }
 
+// Resolve nome/descrição de talento no idioma ativo do site, usando os dicts
+// {en, pt, es} vindos do parser (name_i18n/description_i18n), com fallback
+// para "en" e depois para o texto cru salvo pelo replay.
+function talentTexto(lang, i18nDict, fallback) {
+  if (i18nDict) return i18nDict[lang] || i18nDict.en || fallback
+  return fallback
+}
+
 // Monta o código de build no formato usado pelo "Copy Build" do próprio jogo:
 // "T<7 dígitos>,<NomeHerói>" — cada dígito é a opção escolhida (1-3) em cada
 // tier (Lv1,4,7,10,13,16,20), ou 0 se o talento não foi escolhido.
+// Resolve o nome do mapa traduzido (mesmo esquema dos heróis: chave i18n
+// "maps.<id>" com fallback para o nome cru cadastrado em mapPool.js)
+function mapaNome(t, mapa) {
+  if (!mapa) return null
+  return t('maps.' + mapa.id, { defaultValue: mapa.nome })
+}
+
 function buildTalentCode(player) {
   const porTier = {}
   for (const t of player.talents || []) {
@@ -183,6 +198,7 @@ function DraftTimeline({ historico, timeANome, timeBNome, corA, corB }) {
 
 // ── PartidaCard ───────────────────────────────────────────────────────────────
 function PartidaCard({ numero, partida: p, tA, tB, corA, corB, timeANome, timeBNome, replayGame }) {
+  const { t } = useTranslation()
   const temDraftData = p?.status === 'concluida' &&
     ((p.picks?.A?.length ?? 0) + (p.picks?.B?.length ?? 0)) > 0
 
@@ -215,9 +231,9 @@ function PartidaCard({ numero, partida: p, tA, tB, corA, corB, timeANome, timeBN
 
           {mapa && (
             <div className="cd-partida-mapa-badge">
-              <img src={mapa.splashUrl} alt={mapa.nome} className="cd-partida-mapa-thumb"
+              <img src={mapa.splashUrl} alt={mapaNome(t, mapa)} className="cd-partida-mapa-thumb"
                 onError={e => { e.target.style.display = 'none' }} />
-              <span>{mapa.nome}</span>
+              <span>{mapaNome(t, mapa)}</span>
             </div>
           )}
 
@@ -310,9 +326,9 @@ function PartidaCard({ numero, partida: p, tA, tB, corA, corB, timeANome, timeBN
               <div className="cd-info-panel-label">Mapa</div>
               {mapa ? (
                 <>
-                  <img src={mapa.splashUrl} alt={mapa.nome} className="cd-mapa-splash"
+                  <img src={mapa.splashUrl} alt={mapaNome(t, mapa)} className="cd-mapa-splash"
                     onError={e => { e.target.style.display = 'none' }} />
-                  <div className="cd-mapa-nome">{mapa.nome}</div>
+                  <div className="cd-mapa-nome">{mapaNome(t, mapa)}</div>
                 </>
               ) : (
                 <div className="cd-info-vazio">—</div>
@@ -599,8 +615,12 @@ function HeroPortrait({ hero, heroIcon, cor, victim, size = 28 }) {
 // Badge de talento com tooltip customizado (via portal — evita ser cortado por
 // containers com overflow:hidden) seguindo o tema visual do site
 function TalentBadge({ talent: t }) {
+  const { i18n } = useTranslation()
   const ref = useRef(null)
   const [pos, setPos] = useState(null)
+
+  const nome      = talentTexto(i18n.language, t.name_i18n, t.name) ?? `idx ${t.absolute_index}`
+  const descricao = talentTexto(i18n.language, t.description_i18n, t.description)
 
   const handleEnter = () => {
     if (!ref.current) return
@@ -622,12 +642,12 @@ function TalentBadge({ talent: t }) {
       )}
       <div className="cd-replay-talent-info">
         <span className="cd-replay-talent-level">Lv{t.level}</span>
-        <span className="cd-replay-talent-name">{t.name ?? `idx ${t.absolute_index}`}</span>
+        <span className="cd-replay-talent-name">{nome}</span>
       </div>
-      {t.description && pos && createPortal(
+      {descricao && pos && createPortal(
         <div className="cd-replay-talent-tooltip" style={{ top: pos.top, left: pos.left }}>
-          <div className="cd-replay-talent-tooltip-name">{t.name}</div>
-          <div className="cd-replay-talent-tooltip-desc">{t.description}</div>
+          <div className="cd-replay-talent-tooltip-name">{nome}</div>
+          <div className="cd-replay-talent-tooltip-desc">{descricao}</div>
         </div>,
         document.body
       )}

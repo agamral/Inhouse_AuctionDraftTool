@@ -23,6 +23,11 @@ RAW_BASE   = "https://raw.githubusercontent.com/HeroesToolChest/heroes-data/mast
 # (PT, ES) e os mais comuns na cena competitiva ocidental.
 LOCALES = ["ptbr", "eses", "esmx", "frfr", "dede", "itit", "plpl", "ruru"]
 
+# Idiomas em que traduzimos nome/descrição de talentos no site (chave usada
+# no front via i18next: "pt", "en", "es"). "en" vem do gamestrings_enus já
+# baixado por padrão; os demais mapeiam para o locale do heroes-data.
+TALENT_LOCALES = {"pt": "ptbr", "es": "eses"}
+
 # Tier label do herodata → índice 0-based
 TIER_TO_INDEX = {
     "level1":  0,
@@ -102,29 +107,48 @@ def download(progress_fn=None) -> tuple[str, int]:
     gs_url = f"{RAW_BASE}/{latest}/gamestrings/gamestrings_{build}_enus.json"
     gs = _fetch_json(gs_url)
 
-    # Mapeamento nameId → nome de exibição / descrição
+    # Mapeamento nameId → nome de exibição / descrição, por idioma.
     # Chave no JSON: "{nameId}|{buttonId}|{abilityType}|{isPassive}" → texto
-    abiltalent = gs.get("gamestrings", {}).get("abiltalent", {})
-    raw_names = abiltalent.get("name", {})
-    raw_descs = abiltalent.get("full", {}) or abiltalent.get("short", {})
-    name_by_id: dict[str, str] = {}
-    desc_by_id: dict[str, str] = {}
-    for key, display_name in raw_names.items():
-        name_id = key.split("|")[0]
-        # Mantém o nome mais curto em caso de duplicata (evita "Cancel X" etc.)
-        if name_id not in name_by_id or len(display_name) < len(name_by_id[name_id]):
-            name_by_id[name_id] = display_name
-    for key, text in raw_descs.items():
-        name_id = key.split("|")[0]
-        text = _clean_description(text)
-        if name_id not in desc_by_id or len(text) > len(desc_by_id[name_id]):
-            desc_by_id[name_id] = text
+    def _index_abiltalent(gamestrings: dict) -> tuple[dict, dict]:
+        abiltalent  = gamestrings.get("gamestrings", {}).get("abiltalent", {})
+        raw_names   = abiltalent.get("name", {})
+        raw_descs   = abiltalent.get("full", {}) or abiltalent.get("short", {})
+        names: dict[str, str] = {}
+        descs: dict[str, str] = {}
+        for key, display_name in raw_names.items():
+            name_id = key.split("|")[0]
+            # Mantém o nome mais curto em caso de duplicata (evita "Cancel X" etc.)
+            if name_id not in names or len(display_name) < len(names[name_id]):
+                names[name_id] = display_name
+        for key, text in raw_descs.items():
+            name_id = key.split("|")[0]
+            text = _clean_description(text)
+            if name_id not in descs or len(text) > len(descs[name_id]):
+                descs[name_id] = text
+        return names, descs
+
+    name_by_id, desc_by_id = _index_abiltalent(gs)
+    name_by_id_langs: dict[str, dict] = {"en": name_by_id}
+    desc_by_id_langs: dict[str, dict] = {"en": desc_by_id}
+
+    # --- Gamestrings de talentos em outros idiomas (pt, es) ---
+    if progress_fn:
+        progress_fn("Baixando nomes/descrições de talentos traduzidos...")
+
+    for lang, locale in TALENT_LOCALES.items():
+        try:
+            loc_gs = _fetch_json(f"{RAW_BASE}/{latest}/gamestrings/gamestrings_{build}_{locale}.json")
+        except Exception:
+            continue
+        loc_names, loc_descs = _index_abiltalent(loc_gs)
+        name_by_id_langs[lang] = loc_names
+        desc_by_id_langs[lang] = loc_descs
 
     # --- Construir DB ---
     if progress_fn:
         progress_fn(f"Processando {len(herodata)} heróis...")
 
-    db, hyperlink_idx, canonical_name = _build_db(herodata, name_by_id, desc_by_id)
+    db, hyperlink_idx, canonical_name = _build_db(herodata, name_by_id_langs, desc_by_id_langs)
 
     # --- Nomes de herói localizados ---
     # m_hero no replay vem no idioma do cliente de quem gravou (ex: "Asa da Morte"
@@ -158,17 +182,20 @@ def download(progress_fn=None) -> tuple[str, int]:
     return latest, len(db)
 
 
-def _build_db(herodata: dict, name_by_id: dict, desc_by_id: dict | None = None) -> tuple[dict, dict, dict]:
+def _build_db(herodata: dict, name_by_id_langs: dict, desc_by_id_langs: dict | None = None) -> tuple[dict, dict, dict]:
     """
     Constrói:
       db             = {internal_id: {tier_index: {choice_0based: {"name", "icon", "description"}}}}
       hyperlink_idx  = {hyperlinkId: internal_id}   ← usado para mapear nomes do replay
       canonical_name = {internal_id: hyperlinkId}   ← nome canônico em inglês do herói
 
+    "name" e "description" são dicts {idioma: texto} (ex: {"en": "...", "pt": "...", "es": "..."}),
+    para permitir exibição no idioma ativo do site (ver TALENT_LOCALES).
+
     "icon" é o nome do arquivo PNG (ex: "storm_ui_icon_abathur_spikeburst.png"),
     servido pelo repositório heroes-images (ver ICON_BASE_URL).
     """
-    desc_by_id = desc_by_id or {}
+    desc_by_id_langs = desc_by_id_langs or {}
     db: dict = {}
     hyperlink_idx: dict = {}
     canonical_name: dict = {}
@@ -190,10 +217,25 @@ def _build_db(herodata: dict, name_by_id: dict, desc_by_id: dict | None = None) 
                 sort    = talent.get("sort", 1)
                 choice  = sort - 1                             # 0-based
                 name_id = talent.get("nameId", "")
-                name    = name_by_id.get(name_id) or name_id  # fallback: nameId
                 icon    = talent.get("icon") or None
-                desc    = desc_by_id.get(name_id) or None
-                hero_db.setdefault(tier_idx, {})[choice] = {"name": name, "icon": icon, "description": desc}
+
+                name: dict[str, str] = {}
+                for lang, names in name_by_id_langs.items():
+                    text = names.get(name_id)
+                    if text:
+                        name[lang] = text
+                if not name:
+                    name["en"] = name_id  # fallback: nameId
+
+                desc: dict[str, str] = {}
+                for lang, descs in desc_by_id_langs.items():
+                    text = descs.get(name_id)
+                    if text:
+                        desc[lang] = text
+
+                hero_db.setdefault(tier_idx, {})[choice] = {
+                    "name": name, "icon": icon, "description": desc or None,
+                }
         if hero_db:
             db[hero_id] = hero_db
 
@@ -289,30 +331,42 @@ def get_canonical_name(hero_name: str) -> str | None:
 
 
 def _entry(hero_name: str, tier_index: int, choice: int) -> dict | None:
-    """Retorna {"name", "icon"} do talento, ou None se não encontrado."""
+    """Retorna {"name", "icon", "description"} do talento, ou None se não encontrado.
+
+    "name" e "description" são dicts {idioma: texto} (ver TALENT_LOCALES + "en")."""
     hero_db = _hero_db(hero_name)
     if hero_db is None:
         return None
     # JSON serializa chaves int → str, então testamos ambos os tipos
     tier_db = hero_db.get(tier_index) or hero_db.get(str(tier_index), {})
     entry = tier_db.get(choice) or tier_db.get(str(choice))
-    # Compat: caches antigos guardavam o nome direto como string
+    # Compat: caches antigos guardavam nome/descrição como string única (en)
     if isinstance(entry, str):
-        return {"name": entry, "icon": None, "description": None}
+        return {"name": {"en": entry}, "icon": None, "description": None}
+    if isinstance(entry, dict) and isinstance(entry.get("name"), str):
+        return {
+            "name":        {"en": entry["name"]},
+            "icon":        entry.get("icon"),
+            "description": {"en": entry["description"]} if entry.get("description") else None,
+        }
     return entry
 
 
-def get_name(hero_name: str, tier_index: int, choice: int) -> str | None:
+def get_name(hero_name: str, tier_index: int, choice: int, lang: str = "en") -> str | None:
     """
-    Retorna o nome do talento ou None se não encontrado.
+    Retorna o nome do talento no idioma pedido (fallback "en"), ou None se não encontrado.
 
     Args:
         hero_name:  nome do herói como vem do replay (ex: "Li Li", "Sgt. Hammer")
         tier_index: 0-based (0=Lv1 … 6=Lv20)
         choice:     0-based dentro do tier (0=1ª opção, 1=2ª, 2=3ª)
+        lang:       "en" | "pt" | "es"
     """
     entry = _entry(hero_name, tier_index, choice)
-    return entry.get("name") if entry else None
+    if not entry:
+        return None
+    names = entry.get("name") or {}
+    return names.get(lang) or names.get("en")
 
 
 def get_icon_url(hero_name: str, tier_index: int, choice: int) -> str | None:
@@ -322,7 +376,22 @@ def get_icon_url(hero_name: str, tier_index: int, choice: int) -> str | None:
     return f"{ICON_BASE_URL}/{icon}" if icon else None
 
 
-def get_description(hero_name: str, tier_index: int, choice: int) -> str | None:
-    """Retorna a descrição do talento, ou None se não encontrada."""
+def get_description(hero_name: str, tier_index: int, choice: int, lang: str = "en") -> str | None:
+    """Retorna a descrição do talento no idioma pedido (fallback "en"), ou None se não encontrada."""
+    entry = _entry(hero_name, tier_index, choice)
+    if not entry:
+        return None
+    descs = entry.get("description") or {}
+    return descs.get(lang) or descs.get("en")
+
+
+def get_names_i18n(hero_name: str, tier_index: int, choice: int) -> dict | None:
+    """Retorna {"en": ..., "pt": ..., "es": ...} com o nome do talento em cada idioma disponível."""
+    entry = _entry(hero_name, tier_index, choice)
+    return entry.get("name") if entry else None
+
+
+def get_descriptions_i18n(hero_name: str, tier_index: int, choice: int) -> dict | None:
+    """Retorna {"en": ..., "pt": ..., "es": ...} com a descrição do talento em cada idioma disponível."""
     entry = _entry(hero_name, tier_index, choice)
     return entry.get("description") if entry else None

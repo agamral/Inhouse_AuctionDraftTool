@@ -474,10 +474,12 @@ function TimePanel({ time, lado, corRealce, maxBans = 3 }) {
 }
 
 function TurnStrip({ estado, passo, tempoRestante, mapa }) {
+  const { t } = useTranslation()
+  const mapaNome = mapa ? t('maps.' + mapa.id, { defaultValue: mapa.nome }) : null
   if (estado.status === STATUS_DRAFT.AGUARDANDO) {
     return (
       <div className="hd-turn-strip hd-turn-strip--aguardando">
-        {mapa && <span className="hd-turn-mapa">{mapa.splashUrl && <img src={mapa.splashUrl} alt={mapa.nome} onError={e=>{e.target.style.display='none'}} />}{mapa.nome}</span>}
+        {mapa && <span className="hd-turn-mapa">{mapa.splashUrl && <img src={mapa.splashUrl} alt={mapaNome} onError={e=>{e.target.style.display='none'}} />}{mapaNome}</span>}
         <span>Em breve</span>
       </div>
     )
@@ -485,7 +487,7 @@ function TurnStrip({ estado, passo, tempoRestante, mapa }) {
   if (estado.status === STATUS_DRAFT.ENCERRADO || !passo) {
     return (
       <div className="hd-turn-strip hd-turn-strip--fim">
-        {mapa && <span className="hd-turn-mapa">{mapa.splashUrl && <img src={mapa.splashUrl} alt={mapa.nome} onError={e=>{e.target.style.display='none'}} />}{mapa.nome}</span>}
+        {mapa && <span className="hd-turn-mapa">{mapa.splashUrl && <img src={mapa.splashUrl} alt={mapaNome} onError={e=>{e.target.style.display='none'}} />}{mapaNome}</span>}
         <span>FIM</span>
       </div>
     )
@@ -498,7 +500,7 @@ function TurnStrip({ estado, passo, tempoRestante, mapa }) {
 
   return (
     <div className="hd-turn-strip">
-      {mapa && <span className="hd-turn-mapa">{mapa.nome}</span>}
+      {mapa && <span className="hd-turn-mapa">{mapaNome}</span>}
       <span className="hd-turn-acao" data-acao={passo.acao}>{acaoLabel}</span>
       <span className="hd-turn-time">{timeLabel}</span>
       <span className={`hd-turn-timer${urgente ? ' hd-turn-timer--urgente' : ''}`}>
@@ -622,6 +624,7 @@ function ShowmatchPreDraft({ sessaoData, timeLocal, draftPronto, confirmado, out
   const { t } = useTranslation()
   const config  = sessaoData?.config ?? {}
   const mapa    = getMapaById(config.mapaId)
+  const mapaNome = mapa ? t('maps.' + mapa.id, { defaultValue: mapa.nome }) : null
   const nomeA   = sessaoData?.timeA?.nome ?? 'Time A'
   const nomeB   = sessaoData?.timeB?.nome ?? 'Time B'
   const meuNome = timeLocal === 'A' ? nomeA : timeLocal === 'B' ? nomeB : null
@@ -654,8 +657,8 @@ function ShowmatchPreDraft({ sessaoData, timeLocal, draftPronto, confirmado, out
             <div style={{ fontSize: 10, fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', marginBottom: 8 }}>Mapa</div>
             {mapa ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <img src={mapa.splashUrl} alt={mapa.nome} style={{ width: 80, height: 44, objectFit: 'cover', borderRadius: 5, border: '1px solid rgba(255,255,255,0.1)' }} onError={e => { e.target.style.display = 'none' }} />
-                <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 16, color: '#fff' }}>{mapa.nome}</span>
+                <img src={mapa.splashUrl} alt={mapaNome} style={{ width: 80, height: 44, objectFit: 'cover', borderRadius: 5, border: '1px solid rgba(255,255,255,0.1)' }} onError={e => { e.target.style.display = 'none' }} />
+                <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 16, color: '#fff' }}>{mapaNome}</span>
               </div>
             ) : (
               <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.25)', fontStyle: 'italic' }}>Aguardando seleção...</span>
@@ -744,8 +747,10 @@ function ShowmatchPreDraft({ sessaoData, timeLocal, draftPronto, confirmado, out
 // ── (legado — mantido por compatibilidade) ────────────────────────────────────
 
 function ShowmatchLobby({ sessaoData, timeLocal }) {
+  const { t } = useTranslation()
   const config = sessaoData?.config ?? {}
   const mapa   = getMapaById(config.mapaId)
+  const mapaNome = mapa ? t('maps.' + mapa.id, { defaultValue: mapa.nome }) : null
   const nomeA  = sessaoData?.timeA?.nome ?? 'Time A'
   const nomeB  = sessaoData?.timeB?.nome ?? 'Time B'
   const meuNome = timeLocal === 'A' ? nomeA : timeLocal === 'B' ? nomeB : null
@@ -777,8 +782,8 @@ function ShowmatchLobby({ sessaoData, timeLocal }) {
             <div style={{ fontSize: 10, fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', marginBottom: 8 }}>Mapa</div>
             {mapa ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <img src={mapa.splashUrl} alt={mapa.nome} style={{ width: 80, height: 44, objectFit: 'cover', borderRadius: 5, border: '1px solid rgba(255,255,255,0.1)' }} onError={e => { e.target.style.display = 'none' }} />
-                <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 16, color: '#fff' }}>{mapa.nome}</span>
+                <img src={mapa.splashUrl} alt={mapaNome} style={{ width: 80, height: 44, objectFit: 'cover', borderRadius: 5, border: '1px solid rgba(255,255,255,0.1)' }} onError={e => { e.target.style.display = 'none' }} />
+                <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 16, color: '#fff' }}>{mapaNome}</span>
               </div>
             ) : (
               <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.25)', fontStyle: 'italic' }}>Aguardando admin selecionar...</span>
@@ -839,11 +844,13 @@ function ShowmatchLobby({ sessaoData, timeLocal }) {
 // ── Confirmação de presença ────────────────────────────────────────────────────
 
 function ShowmatchConfirmacao({ sessaoData, timeLocal, onConfirmar }) {
+  const { t } = useTranslation()
   const nomeA   = sessaoData?.timeA?.nome ?? 'Time A'
   const nomeB   = sessaoData?.timeB?.nome ?? 'Time B'
   const meuNome = timeLocal === 'A' ? nomeA : nomeB
   const config  = sessaoData?.config ?? {}
   const mapa    = getMapaById(config.mapaId)
+  const mapaNome = mapa ? t('maps.' + mapa.id, { defaultValue: mapa.nome }) : null
 
   return (
     <main className="hero-draft-page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#050612', padding: 24 }}>
@@ -865,8 +872,8 @@ function ShowmatchConfirmacao({ sessaoData, timeLocal, onConfirmar }) {
         <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 10, textAlign: 'left' }}>
           {mapa && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <img src={mapa.splashUrl} alt={mapa.nome} style={{ width: 64, height: 36, objectFit: 'cover', borderRadius: 4, border: '1px solid rgba(255,255,255,0.1)' }} onError={e => { e.target.style.display = 'none' }} />
-              <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 14, color: '#fff', fontWeight: 700 }}>{mapa.nome}</span>
+              <img src={mapa.splashUrl} alt={mapaNome} style={{ width: 64, height: 36, objectFit: 'cover', borderRadius: 4, border: '1px solid rgba(255,255,255,0.1)' }} onError={e => { e.target.style.display = 'none' }} />
+              <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 14, color: '#fff', fontWeight: 700 }}>{mapaNome}</span>
             </div>
           )}
           <div style={{ display: 'flex', gap: 16 }}>

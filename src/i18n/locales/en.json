@@ -311,6 +311,23 @@
     "thelostvikings": "The Lost Vikings",
     "zarya":          "Zarya"
   },
+  "maps": {
+    "alterac-pass": "Alterac Pass",
+    "battlefield-of-eternity": "Battlefield of Eternity",
+    "blackhearts-bay": "Blackheart's Bay",
+    "braxis-holdout": "Braxis Holdout",
+    "cursed-hollow": "Cursed Hollow",
+    "dragon-shire": "Dragon Shire",
+    "garden-of-terror": "Garden of Terror",
+    "hanamura-temple": "Hanamura Temple",
+    "haunted-mines": "Haunted Mines",
+    "infernal-shrines": "Infernal Shrines",
+    "sky-temple": "Sky Temple",
+    "tomb-of-the-spider-queen": "Tomb of the Spider Queen",
+    "towers-of-doom": "Towers of Doom",
+    "volskaya-foundry": "Volskaya Foundry",
+    "warhead-junction": "Warhead Junction"
+  },
   "replay": {
     "title": "Replay Statistics",
     "tabs": {

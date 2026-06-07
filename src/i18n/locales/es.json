@@ -311,6 +311,23 @@
     "thelostvikings": "Los Vikingos Perdidos",
     "zarya":          "Zarya"
   },
+  "maps": {
+    "alterac-pass": "Paso de Alterac",
+    "battlefield-of-eternity": "Campo de Batalla de la Eternidad",
+    "blackhearts-bay": "Bahía de Corazón Negro",
+    "braxis-holdout": "Reducto de Braxis",
+    "cursed-hollow": "Hondonada Maldita",
+    "dragon-shire": "Comarca del Dragón",
+    "garden-of-terror": "Jardín del Terror",
+    "hanamura-temple": "Templo de Hanamura",
+    "haunted-mines": "Minas Encantadas",
+    "infernal-shrines": "Santuarios Infernales",
+    "sky-temple": "Templo Celestial",
+    "tomb-of-the-spider-queen": "Tumba de la Reina Araña",
+    "towers-of-doom": "Torres de la Perdición",
+    "volskaya-foundry": "Fundición Volskaya",
+    "warhead-junction": "Cruce de la Ojiva"
+  },
   "replay": {
     "title": "Estadísticas del Replay",
     "tabs": {
