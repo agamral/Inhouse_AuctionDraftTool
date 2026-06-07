@@ -115,8 +115,11 @@ def download(progress_fn=None) -> tuple[str, int]:
 def _build_db(herodata: dict, name_by_id: dict) -> tuple[dict, dict]:
     """
     Constrói:
-      db             = {internal_id: {tier_index: {choice_0based: display_name}}}
+      db             = {internal_id: {tier_index: {choice_0based: {"name", "icon"}}}}
       hyperlink_idx  = {hyperlinkId: internal_id}   ← usado para mapear nomes do replay
+
+    "icon" é o nome do arquivo PNG (ex: "storm_ui_icon_abathur_spikeburst.png"),
+    servido pelo repositório heroes-images (ver ICON_BASE_URL).
     """
     db: dict = {}
     hyperlink_idx: dict = {}
@@ -138,7 +141,8 @@ def _build_db(herodata: dict, name_by_id: dict) -> tuple[dict, dict]:
                 choice  = sort - 1                             # 0-based
                 name_id = talent.get("nameId", "")
                 name    = name_by_id.get(name_id) or name_id  # fallback: nameId
-                hero_db.setdefault(tier_idx, {})[choice] = name
+                icon    = talent.get("icon") or None
+                hero_db.setdefault(tier_idx, {})[choice] = {"name": name, "icon": icon}
         if hero_db:
             db[hero_id] = hero_db
 
@@ -183,15 +187,12 @@ def _normalize(name: str) -> str:
     return re.sub(r"[^a-z0-9]", "", name.lower())
 
 
-def get_name(hero_name: str, tier_index: int, choice: int) -> str | None:
-    """
-    Retorna o nome do talento ou None se não encontrado.
+# Base do repositório de imagens HeroesToolChest — servir ícones de talento
+ICON_BASE_URL = "https://raw.githubusercontent.com/HeroesToolChest/heroes-images/master/heroesimages/abilitytalents"
 
-    Args:
-        hero_name:  nome do herói como vem do replay (ex: "Li Li", "Sgt. Hammer")
-        tier_index: 0-based (0=Lv1 … 6=Lv20)
-        choice:     0-based dentro do tier (0=1ª opção, 1=2ª, 2=3ª)
-    """
+
+def _hero_db(hero_name: str) -> dict | None:
+    """Resolve o hero_name do replay para a sub-árvore de talentos no DB."""
     if _db is None:
         return None
 
@@ -207,21 +208,48 @@ def get_name(hero_name: str, tier_index: int, choice: int) -> str | None:
     # Tentativa 3: match normalizado (remove espaços, apóstrofos, pontos)
     if hero_db is None:
         target = _normalize(hero_name)
-        # Tenta no hyperlink_idx normalizado
         for hl_name, internal in (_hyperlink_idx or {}).items():
             if _normalize(hl_name) == target:
                 hero_db = _db.get(internal)
                 break
-        # Tenta no DB normalizado
         if hero_db is None:
             for key in _db:
                 if _normalize(key) == target:
                     hero_db = _db[key]
                     break
 
+    return hero_db
+
+
+def _entry(hero_name: str, tier_index: int, choice: int) -> dict | None:
+    """Retorna {"name", "icon"} do talento, ou None se não encontrado."""
+    hero_db = _hero_db(hero_name)
     if hero_db is None:
         return None
-
     # JSON serializa chaves int → str, então testamos ambos os tipos
     tier_db = hero_db.get(tier_index) or hero_db.get(str(tier_index), {})
-    return tier_db.get(choice) or tier_db.get(str(choice))
+    entry = tier_db.get(choice) or tier_db.get(str(choice))
+    # Compat: caches antigos guardavam o nome direto como string
+    if isinstance(entry, str):
+        return {"name": entry, "icon": None}
+    return entry
+
+
+def get_name(hero_name: str, tier_index: int, choice: int) -> str | None:
+    """
+    Retorna o nome do talento ou None se não encontrado.
+
+    Args:
+        hero_name:  nome do herói como vem do replay (ex: "Li Li", "Sgt. Hammer")
+        tier_index: 0-based (0=Lv1 … 6=Lv20)
+        choice:     0-based dentro do tier (0=1ª opção, 1=2ª, 2=3ª)
+    """
+    entry = _entry(hero_name, tier_index, choice)
+    return entry.get("name") if entry else None
+
+
+def get_icon_url(hero_name: str, tier_index: int, choice: int) -> str | None:
+    """Retorna a URL completa do ícone do talento, ou None se não encontrado."""
+    entry = _entry(hero_name, tier_index, choice)
+    icon  = entry.get("icon") if entry else None
+    return f"{ICON_BASE_URL}/{icon}" if icon else None

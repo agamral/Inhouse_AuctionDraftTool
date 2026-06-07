@@ -38,8 +38,51 @@ def main():
         print(f"  {count:5d}x  {tipo}")
     print()
 
-    # ── SStatGameEvent ────────────────────────────────────────────────────────
+    # ── Eventos de interesse para timeline ───────────────────────────────────
+    TARGET_NAMES = {b"PlayerDeath", b"JungleCampCapture", b"LevelUp"}
+    # Também pega eventos de objetivo (nome variável por mapa)
     stat_events = [e for e in events if e.get("_event") == "NNet.Replay.Tracker.SStatGameEvent"]
+    timeline_events = [
+        e for e in stat_events
+        if e.get("m_eventName") in TARGET_NAMES
+        or (e.get("m_eventName", b"") not in (b"RegenGlobePickedUp", b"PeriodicXPBreakdown",
+            b"EndOfGameXPBreakdown", b"EndOfGameTimeSpentDead", b"EndOfGameTalentChoices",
+            b"EndOfGameUpVotesCollected", b"PlayerInit", b"PlayerSpawned", b"TalentChosen",
+            b"GameStart", b"GatesOpen", b"TownStructureInit", b"TownStructureDeath",
+            b"LootSprayUsed"))
+    ]
+
+    print(f"\n=== Eventos de timeline ({len(timeline_events)} total) ===")
+    seen = set()
+    for ev in timeline_events:
+        nome = ev.get("m_eventName", b"")
+        nome_str = nome.decode() if isinstance(nome, bytes) else nome
+        if nome_str in seen:
+            continue
+        seen.add(nome_str)
+        loop = ev.get("_gameloop", 0)
+        secs = loop // 16
+        print(f"\n[{nome_str}]  t={secs//60}:{secs%60:02d}")
+        for k in ("m_intData", "m_stringData", "m_fixedData"):
+            val = ev.get(k)
+            if val:
+                print(f"  {k}: {val}")
+
+    print("\n=== PlayerDeath — todos os eventos ===")
+    deaths = [e for e in stat_events if e.get("m_eventName") == b"PlayerDeath"]
+    for ev in deaths[:5]:
+        loop = ev.get("_gameloop", 0)
+        secs = loop // 16
+        print(f"  t={secs//60}:{secs%60:02d}  intData={ev.get('m_intData')}  strData={ev.get('m_stringData')}")
+
+    print("\n=== JungleCampCapture — todos os eventos ===")
+    camps = [e for e in stat_events if e.get("m_eventName") == b"JungleCampCapture"]
+    for ev in camps:
+        loop = ev.get("_gameloop", 0)
+        secs = loop // 16
+        print(f"  t={secs//60}:{secs%60:02d}  intData={ev.get('m_intData')}  strData={ev.get('m_stringData')}")
+
+    # ── SStatGameEvent (original) ─────────────────────────────────────────────
     print(f"=== SStatGameEvent: {len(stat_events)} eventos encontrados ===")
     if not stat_events:
         print("  (nenhum)")

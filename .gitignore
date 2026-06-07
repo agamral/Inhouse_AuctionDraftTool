@@ -9,3 +9,5 @@ dist
 .misc/
 *.csv
 public/videos/
+replay-parser/.misc_replay/
+replay-parser/__pycache__/

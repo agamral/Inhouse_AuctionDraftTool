@@ -514,16 +514,19 @@ def parse_game_events(game_events, result):
         within_tier = (abs_index % 3) if abs_index is not None else None
 
         name = None
+        icon = None
         if event.get("m_talentName"):
             name = decode_str(event["m_talentName"])
 
         # Tenta lookup no banco de dados de heróis se disponível
-        if name is None and within_tier is not None:
+        if within_tier is not None:
             try:
                 import talent_lookup as _tl
                 if _tl.load():
                     hero = players[user_id].get("hero", "")
-                    name = _tl.get_name(hero, tier_index, within_tier)
+                    if name is None:
+                        name = _tl.get_name(hero, tier_index, within_tier)
+                    icon = _tl.get_icon_url(hero, tier_index, within_tier)
             except Exception:
                 pass
 
@@ -533,6 +536,7 @@ def parse_game_events(game_events, result):
             "choice":         within_tier,    # 0=1ª opção, 1=2ª, 2=3ª dentro do tier
             "absolute_index": abs_index,
             "name":           name,
+            "icon":           icon,
         }
         players[user_id]["talents"].append(talent_entry)
         talent_counters[user_id] += 1
