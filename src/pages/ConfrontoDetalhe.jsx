@@ -1,4 +1,5 @@
-import { useState, useEffect, Fragment, useMemo } from 'react'
+import { useState, useEffect, useRef, Fragment, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import {
   ComposedChart, Area, Line, ReferenceLine,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -580,6 +581,45 @@ function HeroPortrait({ hero, heroIcon, cor, victim, size = 28 }) {
   )
 }
 
+// Badge de talento com tooltip customizado (via portal — evita ser cortado por
+// containers com overflow:hidden) seguindo o tema visual do site
+function TalentBadge({ talent: t }) {
+  const ref = useRef(null)
+  const [pos, setPos] = useState(null)
+
+  const handleEnter = () => {
+    if (!ref.current) return
+    const r = ref.current.getBoundingClientRect()
+    setPos({ top: r.bottom + 8, left: r.left + r.width / 2 })
+  }
+  const handleLeave = () => setPos(null)
+
+  return (
+    <div
+      ref={ref}
+      className="cd-replay-talent-badge"
+      onMouseEnter={handleEnter}
+      onMouseLeave={handleLeave}
+    >
+      {t.icon && (
+        <img className="cd-replay-talent-icon" src={t.icon} alt="" loading="lazy"
+             onError={e => { e.currentTarget.style.display = 'none' }} />
+      )}
+      <div className="cd-replay-talent-info">
+        <span className="cd-replay-talent-level">Lv{t.level}</span>
+        <span className="cd-replay-talent-name">{t.name ?? `idx ${t.absolute_index}`}</span>
+      </div>
+      {t.description && pos && createPortal(
+        <div className="cd-replay-talent-tooltip" style={{ top: pos.top, left: pos.left }}>
+          <div className="cd-replay-talent-tooltip-name">{t.name}</div>
+          <div className="cd-replay-talent-tooltip-desc">{t.description}</div>
+        </div>,
+        document.body
+      )}
+    </div>
+  )
+}
+
 // ── EventTimeline — eixo horizontal com Time A acima e Time B abaixo ──────────
 
 const CAMP_LABEL = { 'Siege Camp': 'Cerco', 'Bruiser Camp': 'Bruiser', 'Boss Camp': 'Boss' }
@@ -923,24 +963,7 @@ function ReplayStatsSection({ replayGame, corA, corB, timeANome, timeBNome }) {
                               </button>
                             </div>
                             <div className="cd-replay-talents">
-                              {p.talents.map((t, ti) => (
-                                <div key={ti} className="cd-replay-talent-badge">
-                                  {t.icon && (
-                                    <img className="cd-replay-talent-icon" src={t.icon} alt="" loading="lazy"
-                                         onError={e => { e.currentTarget.style.display = 'none' }} />
-                                  )}
-                                  <div className="cd-replay-talent-info">
-                                    <span className="cd-replay-talent-level">Lv{t.level}</span>
-                                    <span className="cd-replay-talent-name">{t.name ?? `idx ${t.absolute_index}`}</span>
-                                  </div>
-                                  {t.description && (
-                                    <div className="cd-replay-talent-tooltip">
-                                      <div className="cd-replay-talent-tooltip-name">{t.name}</div>
-                                      <div className="cd-replay-talent-tooltip-desc">{t.description}</div>
-                                    </div>
-                                  )}
-                                </div>
-                              ))}
+                              {p.talents.map((t, ti) => <TalentBadge key={ti} talent={t} />)}
                             </div>
                           </td>
                         </tr>
