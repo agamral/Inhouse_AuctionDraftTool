@@ -289,6 +289,32 @@ para construir um índice `{nameId: display_name}`.
 
 ---
 
+## 5.1. Resolução multi-idioma (PT/EN/ES)
+
+Para exibir nomes e descrições de talentos localizados sem precisar reprocessar o replay
+por idioma, o lookup busca **todos os idiomas suportados de uma vez** no momento do parsing
+e os embute no JSON salvo (`name_i18n`/`description_i18n` como `{lang: texto}`).
+
+O HeroesToolChest publica um `gamestrings_{build}_{locale}.json` por locale. Os sufixos de
+locale não seguem o código de idioma do site:
+
+```python
+TALENT_LOCALES = {"pt": "ptbr", "es": "eses"}
+# inglês não precisa de mapeamento — é o arquivo *_enus.json já usado
+```
+
+Para cada idioma, o gamestrings é baixado e indexado com o mesmo helper `_index_abiltalent`,
+produzindo `name_by_id_langs = {"en": {...}, "pt": {...}, "es": {...}}` (e equivalente para
+descrições). O cache (`heroes_data_cache.json`) passou a guardar `name`/`description` como
+dicionário `{lang: texto}` por talento.
+
+**Compatibilidade com o cache antigo:** caches gerados antes desta mudança guardavam
+`name`/`description` como string única (inglês). O parser de leitura (`_entry`) trata os
+três formatos possíveis — dict novo, string legada, e dict legado com apenas `"en"` — para
+não quebrar caches antigos sem necessidade de regenerá-los manualmente.
+
+---
+
 ## 6. Resumo dos obstáculos e soluções
 
 | Problema | Causa | Solução |
