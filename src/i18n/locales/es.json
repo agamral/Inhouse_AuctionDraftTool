@@ -313,20 +313,20 @@
   },
   "maps": {
     "alterac-pass": "Paso de Alterac",
-    "battlefield-of-eternity": "Campo de Batalla de la Eternidad",
-    "blackhearts-bay": "Bahía de Corazón Negro",
-    "braxis-holdout": "Reducto de Braxis",
+    "battlefield-of-eternity": "Campos de Batalla de la Eternidad",
+    "blackhearts-bay": "Bahía de Almanegra",
+    "braxis-holdout": "Resistencia en Braxis",
     "cursed-hollow": "Hondonada Maldita",
     "dragon-shire": "Comarca del Dragón",
-    "garden-of-terror": "Jardín del Terror",
+    "garden-of-terror": "Jardines del Terror",
     "hanamura-temple": "Templo de Hanamura",
     "haunted-mines": "Minas Encantadas",
-    "infernal-shrines": "Santuarios Infernales",
-    "sky-temple": "Templo Celestial",
+    "infernal-shrines": "Sagrarios Infernales",
+    "sky-temple": "Templo Celeste",
     "tomb-of-the-spider-queen": "Tumba de la Reina Araña",
     "towers-of-doom": "Torres de la Perdición",
-    "volskaya-foundry": "Fundición Volskaya",
-    "warhead-junction": "Cruce de la Ojiva"
+    "volskaya-foundry": "Fundición de Volskaya",
+    "warhead-junction": "Cruce Nuclear"
   },
   "replay": {
     "title": "Estadísticas del Replay",

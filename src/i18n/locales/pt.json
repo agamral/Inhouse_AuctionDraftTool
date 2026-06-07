@@ -312,21 +312,21 @@
     "zarya":          "Zarya"
   },
   "maps": {
-    "alterac-pass": "Passo de Alterac",
+    "alterac-pass": "Garganta de Alterac",
     "battlefield-of-eternity": "Campo de Batalha da Eternidade",
-    "blackhearts-bay": "Baía de Coração Negro",
-    "braxis-holdout": "Reduto de Braxis",
-    "cursed-hollow": "Vale Amaldiçoado",
+    "blackhearts-bay": "Baía do Coração Negro",
+    "braxis-holdout": "Resistência de Braxis",
+    "cursed-hollow": "Clareira Maldita",
     "dragon-shire": "Condado do Dragão",
     "garden-of-terror": "Jardim do Terror",
     "hanamura-temple": "Templo de Hanamura",
-    "haunted-mines": "Minas Assombradas",
+    "haunted-mines": "Mina Assombrada",
     "infernal-shrines": "Santuários Infernais",
-    "sky-temple": "Templo Celestial",
-    "tomb-of-the-spider-queen": "Tumba da Rainha Aranha",
+    "sky-temple": "Templo Celeste",
+    "tomb-of-the-spider-queen": "Tumba da Aranha Rainha",
     "towers-of-doom": "Torres da Perdição",
     "volskaya-foundry": "Fundição Volskaya",
-    "warhead-junction": "Entroncamento da Ogiva"
+    "warhead-junction": "Junção da Ogiva"
   },
   "replay": {
     "title": "Estatísticas do Replay",
