@@ -117,20 +117,23 @@ function BanCard({ heroId }) {
 
 // ── DraftTimeline — linha do tempo horizontal ────────────────────────────────
 function HeroStep({ passo: p, corTime, nomeTime, isBan }) {
-  const icone = heroIcone(p.heroiId)
-  const nome  = heroNome(p.heroiId)
   const cor   = isBan ? 'var(--red)' : 'var(--green)'
+  const ids   = p.heroiPar ? [p.heroiId, p.heroiPar] : [p.heroiId]
+  const nome  = p.heroiPar ? "Cho'Gall" : heroNome(p.heroiId)
   return (
     <div className="cd-tl-step" style={{ '--step-cor': cor }}>
       <div className="cd-tl-circle">
         <span className="cd-tl-num">{p.passo + 1}</span>
       </div>
       <span className="cd-tl-acao" style={{ color: cor }}>{isBan ? 'BAN' : 'PICK'}</span>
-      <div className="cd-tl-hero-wrap">
-        {icone
-          ? <img src={icone} alt={nome} className="cd-tl-hero-img" onError={e => { e.target.style.display = 'none' }} />
-          : <div className="cd-tl-hero-placeholder">{nome[0]}</div>
-        }
+      <div className="cd-tl-hero-wrap" style={ids.length > 1 ? { display: 'flex', gap: 2 } : undefined}>
+        {ids.map(id => {
+          const icone = heroIcone(id)
+          const n     = heroNome(id)
+          return icone
+            ? <img key={id} src={icone} alt={n} className="cd-tl-hero-img" onError={e => { e.target.style.display = 'none' }} />
+            : <div key={id} className="cd-tl-hero-placeholder">{n[0]}</div>
+        })}
       </div>
       <span className="cd-tl-hero-nome">{nome}</span>
       <span className="cd-tl-time-nome" style={{ color: corTime }}>{nomeTime}</span>

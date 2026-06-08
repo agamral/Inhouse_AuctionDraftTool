@@ -7,7 +7,7 @@ import { useServerTimeOffset } from '../hooks/useServerTimeOffset'
 import { useCampeonato } from '../contexts/CampeonatoContext'
 import { heroDraftPath } from '../utils/campeonatoPaths'
 import { HEROES, getHeroesByRole, ROLES } from '../utils/heroPool'
-import { passoAtual, heroiBloqueado, getDuracao, ACOES, STATUS_DRAFT } from '../utils/heroDraft'
+import { passoAtual, heroiBloqueado, getDuracao, ACOES, STATUS_DRAFT, parVinculado, ehInicioDePickDuplo } from '../utils/heroDraft'
 import { getMapaById } from '../utils/mapPool'
 import { useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -120,6 +120,38 @@ export default function HeroDraft() {
   // Ref com snapshot sempre fresco — usada pelo visibilitychange e auto-transição
   const liveRef = useRef({})
   liveRef.current = { estado, ehMinhaTez, agir, timeOffset, iniciar }
+
+  // ── Aviso sonoro de "sua vez" ─────────────────────────────────────────────
+  // Toca um ping quando o turno passa a ser do capitão local (borda da subida
+  // !minha → minha). Desbloqueia no primeiro clique/tecla, igual ao Draft.jsx.
+  const turnoAudioRef    = useRef(null)
+  const turnoAudioOkRef  = useRef(false)
+  const eraMinhaTezRef   = useRef(false)
+
+  useEffect(() => {
+    const ping = new Audio('/sounds/ui_bnet_draft_goplayer02.ogg')
+    ping.preload = 'auto'
+    ping.volume  = 0.6
+    ping.oncanplaythrough = () => { turnoAudioRef.current = ping }
+
+    const unlock = () => { turnoAudioOkRef.current = true }
+    document.addEventListener('click',   unlock, { once: true })
+    document.addEventListener('keydown', unlock, { once: true })
+    return () => {
+      ping.src = ''
+      document.removeEventListener('click',   unlock)
+      document.removeEventListener('keydown', unlock)
+    }
+  }, [])
+
+  useEffect(() => {
+    const minhaAgora = estado?.status === STATUS_DRAFT.RODANDO && ehMinhaTez()
+    if (minhaAgora && !eraMinhaTezRef.current && turnoAudioOkRef.current && turnoAudioRef.current) {
+      turnoAudioRef.current.currentTime = 0
+      turnoAudioRef.current.play().catch(() => {})
+    }
+    eraMinhaTezRef.current = minhaAgora
+  }, [estado?.status, estado?.passoAtual])
 
   // Auto-transição countdown → rodando quando timeLocal === 'admin'.
   // Garante que o draft inicia mesmo se o ShowmatchAdmin / AdminHeroDraftSection
@@ -360,7 +392,7 @@ export default function HeroDraft() {
 
   return (
     <div
-      className="hd-root"
+      className={`hd-root${minha && estado.status === STATUS_DRAFT.RODANDO ? ' hd-root--minha-vez' : ''}`}
       style={mapa?.splashUrl ? { '--mapa-splash': `url(${mapa.splashUrl})` } : {}}
     >
 
@@ -424,13 +456,15 @@ export default function HeroDraft() {
 
           <div className="hd-grid">
             {heroisVisiveis.map((heroi) => {
-              const bloqueado = heroiBloqueado(estado, heroi.id)
+              const restritoChoGall = passo?.acao === ACOES.PICK && parVinculado(heroi.id) && !ehInicioDePickDuplo(estado)
+              const bloqueado = heroiBloqueado(estado, heroi.id) || restritoChoGall
               const selecionado = confirmando === heroi.id
               return (
                 <HeroCard
                   key={heroi.id}
                   heroi={heroi}
                   bloqueado={bloqueado}
+                  motivo={restritoChoGall ? "Cho'Gall só pode ser escolhido no início de um pick duplo" : null}
                   selecionado={selecionado}
                   clicavel={minha && !bloqueado}
                   estado={estado}
@@ -535,7 +569,7 @@ function SlotHeroi({ heroiId, tipo, corTime }) {
   )
 }
 
-function HeroCard({ heroi, bloqueado, selecionado, clicavel, estado, onClick }) {
+function HeroCard({ heroi, bloqueado, motivo, selecionado, clicavel, estado, onClick }) {
   const { t } = useTranslation()
   // Determina se foi banido ou pickado e por quem
   const banidoPorA  = (estado.timeA.bans  ?? []).includes(heroi.id)
@@ -560,7 +594,7 @@ function HeroCard({ heroi, bloqueado, selecionado, clicavel, estado, onClick }) 
       ].join(' ')}
       onClick={clicavel ? onClick : undefined}
       disabled={bloqueado || !clicavel}
-      title={t('heroes.' + heroi.id, { defaultValue: heroi.nome })}
+      title={motivo ?? t('heroes.' + heroi.id, { defaultValue: heroi.nome })}
     >
       <img
         src={heroi.iconeUrl}

@@ -495,7 +495,7 @@ export default function Agendamento() {
                                   )
                                 )
                                 const horarioLocal = slotHoraLocal(slot, fusoExibicao)
-                                const horarioBRT   = slot.split('-')[1]
+                                const horarioBRT   = slot.split('-')[1].replace(/h$/, '')
                                 const mostraBRT    = fusoExibicao !== FUSO_PADRAO
 
                                 return (

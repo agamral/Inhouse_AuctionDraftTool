@@ -228,7 +228,7 @@ export default function Tabela() {
                           }}
                         >⚖ DESEMPATE</span>
                       )}
-                      {entry.posicaoManual != null && (
+                      {isAdmin && entry.posicaoManual != null && (
                         <span
                           title={`Posição forçada manualmente pelo admin (${entry.posicaoManual}º)`}
                           style={{

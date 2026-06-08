@@ -646,6 +646,7 @@ function PartidaCard({ num, partida: p, sessao, sessaoId, scrimPath, campeonatoI
   const urlBase = `${window.location.origin}/campeonatos/${campeonatoId}/hero-draft`
   const urlA    = p.heroDraftId ? `${urlBase}?sessao=${p.heroDraftId}&time=A` : null
   const urlB    = p.heroDraftId ? `${urlBase}?sessao=${p.heroDraftId}&time=B` : null
+  const urlEsp  = p.heroDraftId ? `${window.location.origin}/showmatch/espectador?sessao=${p.heroDraftId}` : null
 
   // Bloco 3: detecta quando o draft encerrou e salva resumo na partida
   const jaFinalizouRef = useRef(false)
@@ -968,6 +969,22 @@ function PartidaCard({ num, partida: p, sessao, sessaoId, scrimPath, campeonatoI
               </div>
             ))}
           </div>
+
+          {/* Link espectador */}
+          {urlEsp && (
+            <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 6, padding: 10 }}>
+              <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, marginBottom: 6 }}>
+                👁 Espectador (compartilhe com a audiência)
+              </div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input readOnly value={urlEsp} style={{ ...inputStyle, fontSize: 10, flex: 1, padding: '4px 8px', color: 'var(--text3)' }} onFocus={e => e.target.select()} />
+                <button className="btn" onClick={() => copiar(urlEsp, 'esp')}
+                  style={{ fontSize: 11, padding: '4px 10px', flexShrink: 0, color: copiado === 'esp' ? 'var(--green)' : 'var(--text2)', borderColor: copiado === 'esp' ? 'var(--green)' : 'var(--border)' }}>
+                  {copiado === 'esp' ? '✓' : '⎘'}
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Editar config (lobby apenas — antes de iniciar) */}
           {p.status === 'lobby' && editandoConfig && (

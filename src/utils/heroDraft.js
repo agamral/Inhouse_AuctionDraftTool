@@ -23,6 +23,28 @@ export const TIMES = {
   B: 'B',
 }
 
+// ── Heróis vinculados ────────────────────────────────────────────────────────
+//
+// Cho'Gall é um único "herói" controlado por dois jogadores — ocupa 2 slots
+// do roster. No draft: banir um bane os dois (mas conta como 1 ban); escolher
+// um escolhe os dois de uma vez, e só pode acontecer no início de um pick duplo
+// (onde os 2 slots consecutivos da sequência ficam preenchidos pelo par).
+
+export const PARES_VINCULADOS = { cho: 'gall', gall: 'cho' }
+
+export function parVinculado(heroiId) {
+  return PARES_VINCULADOS[heroiId] ?? null
+}
+
+// Verifica se o passo atual é o primeiro de um pick duplo (mesmo time, 2 picks seguidos)
+export function ehInicioDePickDuplo(estado) {
+  const idx   = estado.passoAtual
+  const atual = estado.sequencia[idx]
+  const prox  = estado.sequencia[idx + 1]
+  return !!atual && atual.acao === ACOES.PICK &&
+         !!prox  && prox.acao === ACOES.PICK && prox.time === atual.time
+}
+
 export const STATUS_DRAFT = {
   AGUARDANDO: 'aguardando',
   COUNTDOWN:  'countdown',
@@ -170,13 +192,23 @@ export function executarAcao(estado, heroiId) {
     return { ok: false, erro: 'Herói já foi escolhido ou banido' }
   }
 
+  const par = parVinculado(heroiId)
+
+  // Cho'Gall só pode ser ESCOLHIDO no início de um pick duplo (preenche os 2 slots)
+  if (passo.acao === ACOES.PICK && par && !ehInicioDePickDuplo(estado)) {
+    return { ok: false, erro: "Cho'Gall só pode ser escolhido no início de um pick duplo" }
+  }
+
   const novoEstado = deepClone(estado)
   const time = passo.time === TIMES.A ? novoEstado.timeA : novoEstado.timeB
+  const passosConsumidos = par ? (passo.acao === ACOES.BAN ? 1 : 2) : 1
 
   if (passo.acao === ACOES.BAN) {
     time.bans.push(heroiId)
+    if (par) time.bans.push(par)
   } else {
     time.picks.push(heroiId)
+    if (par) time.picks.push(par)
   }
 
   novoEstado.historico.push({
@@ -184,10 +216,11 @@ export function executarAcao(estado, heroiId) {
     acao:    passo.acao,
     time:    passo.time,
     heroiId,
+    ...(par ? { heroiPar: par } : {}),
     timestamp: Date.now(),
   })
 
-  novoEstado.passoAtual += 1
+  novoEstado.passoAtual += passosConsumidos
 
   // Só reseta o timer ao trocar de grupo (time ou tipo de ação diferente)
   const nextPasso = novoEstado.sequencia[novoEstado.passoAtual]
@@ -213,11 +246,12 @@ export function desfazerUltimaAcao(estado) {
   const novoEstado  = deepClone(estado)
   const ultimaAcao  = novoEstado.historico.pop()
   const time        = ultimaAcao.time === TIMES.A ? novoEstado.timeA : novoEstado.timeB
+  const idsRemover  = ultimaAcao.heroiPar ? [ultimaAcao.heroiId, ultimaAcao.heroiPar] : [ultimaAcao.heroiId]
 
   if (ultimaAcao.acao === ACOES.BAN) {
-    time.bans = time.bans.filter((id) => id !== ultimaAcao.heroiId)
+    time.bans = time.bans.filter((id) => !idsRemover.includes(id))
   } else {
-    time.picks = time.picks.filter((id) => id !== ultimaAcao.heroiId)
+    time.picks = time.picks.filter((id) => !idsRemover.includes(id))
   }
 
   novoEstado.passoAtual      = ultimaAcao.passo

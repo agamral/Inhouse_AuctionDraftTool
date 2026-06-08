@@ -11,6 +11,17 @@
   overflow-y: auto;
 }
 
+/* Aviso de "sua vez" — borda pulsante para chamar atenção do capitão */
+.hd-root--minha-vez {
+  box-shadow: inset 0 0 0 3px var(--gold);
+  animation: hd-minha-vez-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes hd-minha-vez-pulse {
+  0%, 100% { box-shadow: inset 0 0 0 3px var(--gold),   inset 0 0 28px rgba(201,168,76,0.15); }
+  50%      { box-shadow: inset 0 0 0 3px var(--gold2),  inset 0 0 48px rgba(240,204,110,0.35); }
+}
+
 .hd-loading,
 .hd-erro {
   display: flex;
