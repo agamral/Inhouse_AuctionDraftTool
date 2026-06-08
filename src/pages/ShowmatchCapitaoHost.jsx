@@ -646,7 +646,7 @@ function PartidaCard({ num, partida: p, sessao, sessaoId, scrimPath, campeonatoI
   const urlBase = `${window.location.origin}/campeonatos/${campeonatoId}/hero-draft`
   const urlA    = p.heroDraftId ? `${urlBase}?sessao=${p.heroDraftId}&time=A` : null
   const urlB    = p.heroDraftId ? `${urlBase}?sessao=${p.heroDraftId}&time=B` : null
-  const urlEsp  = p.heroDraftId ? `${window.location.origin}/showmatch/espectador?sessao=${p.heroDraftId}` : null
+  const urlEsp  = p.heroDraftId ? `${urlBase}/espectador?sessao=${p.heroDraftId}` : null
 
   // Bloco 3: detecta quando o draft encerrou e salva resumo na partida
   const jaFinalizouRef = useRef(false)
