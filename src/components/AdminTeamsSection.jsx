@@ -146,6 +146,7 @@ export default function AdminTeamsSection() {
         moedas:      cap.moedas ?? null,        // saldo final do leilão (pra Espectador encerrado)
         seed:        cap.seed ?? null,          // ordem original do leilão
         fonte:       'leilao',
+        leilaoCapId: capId,
         jogadores,
         criadoEm:    Date.now(),
       })
@@ -403,7 +404,7 @@ export default function AdminTeamsSection() {
   const timesArr = Object.entries(times).sort(([, a], [, b]) => (a.criadoEm ?? 0) - (b.criadoEm ?? 0))
 
   const timesJaImportados = new Set(
-    timesArr.filter(([, t]) => t.fonte === 'leilao').map(([, t]) => t.nome)
+    timesArr.filter(([, t]) => t.fonte === 'leilao').map(([, t]) => t.leilaoCapId ?? t.nome)
   )
 
   const capitaesArr = Object.entries(capitaes).filter(([, c]) => c.nome)
@@ -580,7 +581,7 @@ export default function AdminTeamsSection() {
             <FieldLabel label="Times do leilão atual" hint="clique para importar" />
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
               {capitaesArr.map(([id, cap]) => {
-                const jaImportado = timesJaImportados.has(cap.nome)
+                const jaImportado = timesJaImportados.has(id)
                 const rosterCount = Object.keys(cap.roster ?? {}).length + (cap.capitaoNome ? 1 : 0)
                 return (
                   <button
