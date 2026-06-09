@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { ref, update, get } from 'firebase/database'
+import { ref, update } from 'firebase/database'
 import { db } from '../firebase/database'
 import { loginCapitao, atualizarSenha, emailEhSintetico, enviarResetSenha } from '../firebase/auth'
 import { useAuth } from '../hooks/useAuth'
 import { useCampeonato } from '../contexts/CampeonatoContext'
 import { useTranslation } from 'react-i18next'
+import { teamPath } from '../utils/campeonatoPaths'
 
 const inputCss = {
   background: 'var(--bg)', border: '1px solid var(--border2)', borderRadius: 6,
@@ -117,7 +118,7 @@ function FormLogin({ onSintetico }) {
 }
 
 // ── Etapa 2: Completar perfil (email sintético) ────────────────────────────────
-function FormCompletarPerfil({ chaveAtual, onConcluido }) {
+function FormCompletarPerfil({ chaveAtual, capitao, onConcluido }) {
   const [emailContato, setEmailContato] = useState('')
   const [novaSenha,    setNovaSenha]    = useState('')
   const [conf,         setConf]         = useState('')
@@ -133,19 +134,23 @@ function FormCompletarPerfil({ chaveAtual, onConcluido }) {
     setSalvando(true)
     setErro(null)
     try {
-      // 1. Muda só a senha no Firebase Auth (sem tocar no email de login)
+      // 1. Muda a senha no Firebase Auth
       await atualizarSenha(novaSenha)
 
-      // 2. Salva email de contato no banco (campo separado do email de login)
-      if (emailContato.trim()) {
-        const teamsSnap = await get(ref(db, '/teams'))
-        const teams = teamsSnap.val() ?? {}
-        const entry = Object.entries(teams).find(([, t]) => t.capitaoEmail === chaveAtual)
-        if (entry) {
-          await update(ref(db, `/teams/${entry[0]}`), {
-            capitaoEmailContato: emailContato.trim(),
-          })
-        }
+      // 2. Verifica imediatamente que a nova senha funciona
+      try {
+        await loginCapitao(chaveAtual, novaSenha)
+      } catch (verifyErr) {
+        setErro(`A senha foi alterada mas não pôde ser verificada (${verifyErr.code}). Anote suas credenciais e contate o admin no Discord.`)
+        setSalvando(false)
+        return
+      }
+
+      // 3. Salva email de contato no banco, se informado
+      if (emailContato.trim() && capitao?.teamId) {
+        await update(ref(db, `${teamPath(capitao.campeonatoId)}/${capitao.teamId}`), {
+          capitaoEmailContato: emailContato.trim(),
+        })
       }
 
       onConcluido()
@@ -167,8 +172,8 @@ function FormCompletarPerfil({ chaveAtual, onConcluido }) {
         Defina uma senha pessoal para os próximos acessos.<br />
         <span style={{ opacity: 0.7 }}>Você continuará entrando com a mesma chave de login.</span>
       </div>
-      <input type="email" placeholder="Seu email de contato (opcional)"
-        autoComplete="off"
+      <input type="text" placeholder="Seu email de contato (opcional)"
+        name="contato-capitao" autoComplete="off"
         value={emailContato} onChange={e => setEmailContato(e.target.value)} style={inputCss} />
       <div style={{ position: 'relative' }}>
         <input type={mostraSenha ? 'text' : 'password'} placeholder="Nova senha (mín. 6 caracteres)" required
@@ -252,7 +257,7 @@ export default function LoginCapitao() {
         )}
 
         {etapa === 'completar' && (
-          <FormCompletarPerfil chaveAtual={chaveSintetica} onConcluido={handleConcluido} />
+          <FormCompletarPerfil chaveAtual={chaveSintetica} capitao={capitao} onConcluido={handleConcluido} />
         )}
 
         {etapa === 'concluido' && (
