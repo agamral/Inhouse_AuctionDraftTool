@@ -98,8 +98,10 @@ function FormLogin({ onSintetico }) {
   return (
     <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <input type="email" placeholder={t('captainLogin.email_label')}
+        autoComplete="username"
         value={email} onChange={e => setEmail(e.target.value)} required style={inputCss} />
       <input type="password" placeholder={t('captainLogin.password_label')}
+        autoComplete="current-password"
         value={senha} onChange={e => setSenha(e.target.value)} required style={inputCss} />
       {erro && <p style={{ color: 'var(--red)', fontSize: 13, margin: 0 }}>{erro}</p>}
       <button type="submit" className="btn primary" disabled={entrando}
@@ -166,9 +168,11 @@ function FormCompletarPerfil({ chaveAtual, onConcluido }) {
         <span style={{ opacity: 0.7 }}>Você continuará entrando com a mesma chave de login.</span>
       </div>
       <input type="email" placeholder="Seu email de contato (opcional)"
+        autoComplete="off"
         value={emailContato} onChange={e => setEmailContato(e.target.value)} style={inputCss} />
       <div style={{ position: 'relative' }}>
         <input type={mostraSenha ? 'text' : 'password'} placeholder="Nova senha (mín. 6 caracteres)" required
+          autoComplete="new-password"
           value={novaSenha} onChange={e => setNovaSenha(e.target.value)}
           style={{ ...inputCss, paddingRight: 40 }} />
         <button type="button" onClick={() => setMostraSenha(v => !v)}
@@ -178,6 +182,7 @@ function FormCompletarPerfil({ chaveAtual, onConcluido }) {
       </div>
       <div style={{ position: 'relative' }}>
         <input type={mostraSenha ? 'text' : 'password'} placeholder="Confirmar nova senha" required
+          autoComplete="new-password"
           value={conf} onChange={e => setConf(e.target.value)}
           style={{ ...inputCss, paddingRight: 40 }} />
       </div>
