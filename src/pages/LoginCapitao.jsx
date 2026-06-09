@@ -121,6 +121,7 @@ function FormCompletarPerfil({ chaveAtual, onConcluido }) {
   const [conf,         setConf]         = useState('')
   const [erro,         setErro]         = useState(null)
   const [salvando,     setSalvando]     = useState(false)
+  const [mostraSenha,  setMostraSenha]  = useState(false)
 
   async function handleSalvar(e) {
     e.preventDefault()
@@ -166,10 +167,20 @@ function FormCompletarPerfil({ chaveAtual, onConcluido }) {
       </div>
       <input type="email" placeholder="Seu email de contato (opcional)"
         value={emailContato} onChange={e => setEmailContato(e.target.value)} style={inputCss} />
-      <input type="password" placeholder="Nova senha (mín. 6 caracteres)" required
-        value={novaSenha} onChange={e => setNovaSenha(e.target.value)} style={inputCss} />
-      <input type="password" placeholder="Confirmar nova senha" required
-        value={conf} onChange={e => setConf(e.target.value)} style={inputCss} />
+      <div style={{ position: 'relative' }}>
+        <input type={mostraSenha ? 'text' : 'password'} placeholder="Nova senha (mín. 6 caracteres)" required
+          value={novaSenha} onChange={e => setNovaSenha(e.target.value)}
+          style={{ ...inputCss, paddingRight: 40 }} />
+        <button type="button" onClick={() => setMostraSenha(v => !v)}
+          style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 16, padding: 0 }}>
+          {mostraSenha ? '🙈' : '👁'}
+        </button>
+      </div>
+      <div style={{ position: 'relative' }}>
+        <input type={mostraSenha ? 'text' : 'password'} placeholder="Confirmar nova senha" required
+          value={conf} onChange={e => setConf(e.target.value)}
+          style={{ ...inputCss, paddingRight: 40 }} />
+      </div>
       {erro && <p style={{ color: 'var(--red)', fontSize: 13, margin: 0 }}>{erro}</p>}
       <button type="submit" className="btn primary" disabled={salvando}
         style={{ padding: 11, fontSize: 14, marginTop: 4 }}>
