@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { ref, update } from 'firebase/database'
+import { ref, update, get, set } from 'firebase/database'
 import { db } from '../firebase/database'
 import { loginCapitao, atualizarSenha, emailEhSintetico, enviarResetSenha } from '../firebase/auth'
 import { useAuth } from '../hooks/useAuth'
@@ -13,6 +13,9 @@ const inputCss = {
   padding: '10px 14px', color: 'var(--text)', fontFamily: "'Barlow', sans-serif",
   fontSize: 14, outline: 'none', width: '100%', boxSizing: 'border-box',
 }
+
+// Firebase keys não podem conter '.' — usado para indexar /loginAlias por email de contato
+const sanitizeEmailKey = (email) => email.trim().toLowerCase().replace(/\./g, ',')
 
 // ── Etapa 1: Login ─────────────────────────────────────────────────────────────
 function FormLogin({ onSintetico }) {
@@ -32,8 +35,21 @@ function FormLogin({ onSintetico }) {
     setErro(null)
     setEntrando(true)
     try {
-      const cred = await loginCapitao(email.trim(), senha)
-      if (emailEhSintetico(cred.user.email)) {
+      const emailDigitado = email.trim()
+      // Se o email digitado for um alias (email de contato cadastrado), traduz
+      // para a chave sintética real usada no Firebase Auth
+      let emailLogin = emailDigitado
+      let viaAlias = false
+      if (!emailEhSintetico(emailDigitado)) {
+        const aliasSnap = await get(ref(db, `/loginAlias/${sanitizeEmailKey(emailDigitado)}`))
+        const alias = aliasSnap.val()
+        if (alias) { emailLogin = alias; viaAlias = true }
+      }
+
+      const cred = await loginCapitao(emailLogin, senha)
+      // Só pede para completar perfil se entrou direto com a chave sintética
+      // (login via alias = perfil já foi completado antes)
+      if (!viaAlias && emailEhSintetico(cred.user.email)) {
         onSintetico(cred.user.email)
       }
     } catch (e) {
@@ -146,11 +162,14 @@ function FormCompletarPerfil({ chaveAtual, capitao, onConcluido }) {
         return
       }
 
-      // 3. Salva email de contato no banco, se informado
+      // 3. Salva email de contato no banco e cria alias de login, se informado
       if (emailContato.trim() && capitao?.teamId) {
+        const contato = emailContato.trim()
         await update(ref(db, `${teamPath(capitao.campeonatoId)}/${capitao.teamId}`), {
-          capitaoEmailContato: emailContato.trim(),
+          capitaoEmailContato: contato,
         })
+        // Permite login com este email no futuro, traduzindo para a chave sintética
+        await set(ref(db, `/loginAlias/${sanitizeEmailKey(contato)}`), chaveAtual)
       }
 
       onConcluido()
