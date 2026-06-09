@@ -3,7 +3,7 @@
  * Detecta automaticamente o melhor identificador disponível no time.
  */
 import { useState, useEffect } from 'react'
-import { ref, onValue, update } from 'firebase/database'
+import { ref, onValue, update, set, remove } from 'firebase/database'
 import { db } from '../firebase/database'
 import { criarContaCapitao, gerarEmailSintetico, gerarEmailSinteticoUnico, emailEhSintetico } from '../firebase/auth'
 import { useCampeonato } from '../contexts/CampeonatoContext'
@@ -85,6 +85,7 @@ export default function AdminCapitaoAcesso() {
     try {
       const uid = await criarContaCapitao(email, senha)
       await update(ref(db, `${teamPath(campeonatoId)}/${teamId}`), { capitaoUid: uid, capitaoEmail: email })
+      await set(ref(db, `/capitoesIndex/${uid}`), { campeonatoId, teamId })
       setSenhas(s => ({ ...s, [teamId]: { email, senha, sintetico } }))
       flash('ok', `Conta criada para ${team.nome}.`)
     } catch (e) {
@@ -95,6 +96,7 @@ export default function AdminCapitaoAcesso() {
           const emailUnico = gerarEmailSinteticoUnico()
           const uid = await criarContaCapitao(emailUnico, senha)
           await update(ref(db, `${teamPath(campeonatoId)}/${teamId}`), { capitaoUid: uid, capitaoEmail: emailUnico })
+          await set(ref(db, `/capitoesIndex/${uid}`), { campeonatoId, teamId })
           setSenhas(s => ({ ...s, [teamId]: { email: emailUnico, senha, sintetico: true } }))
           flash('ok', `Conta criada com nova chave (a anterior ainda existe no Firebase Auth).`)
         } catch (e2) {
@@ -109,6 +111,8 @@ export default function AdminCapitaoAcesso() {
   }
 
   async function handleRemoverAcesso(teamId) {
+    const oldUid = teams[teamId]?.capitaoUid
+    if (oldUid) await remove(ref(db, `/capitoesIndex/${oldUid}`))
     await update(ref(db, `${teamPath(campeonatoId)}/${teamId}`), { capitaoUid: null, capitaoEmail: null })
     setSenhas(s => { const n = { ...s }; delete n[teamId]; return n })
     flash('ok', 'Acesso removido.')

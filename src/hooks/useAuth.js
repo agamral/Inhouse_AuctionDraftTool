@@ -95,18 +95,33 @@ export function useAuth() {
               (t.capitaoUid && t.capitaoUid === firebaseUser.uid) ||
               (t.capitaoEmail && email && t.capitaoEmail === email)
 
+            let found = null
+
+            // Caminho 1: legado — times na raiz /teams (season 1)
             const teamsLeg = await safeGet('/teams')
             const teamsOld = teamsLeg?.val() ?? {}
             const legEntry = Object.entries(teamsOld).find(([, t]) => matchTeam(t))
-
             if (legEntry) {
-              setCapitao({ teamId: legEntry[0], ...legEntry[1] })
-            } else {
+              found = { teamId: legEntry[0], ...legEntry[1] }
+            }
+
+            // Caminho 2: índice /capitoesIndex/{uid} — O(1), não precisa varrer tree
+            if (!found) {
+              const idxSnap = await safeGet(`/capitoesIndex/${firebaseUser.uid}`)
+              const idx = idxSnap?.val()
+              if (idx?.campeonatoId && idx?.teamId) {
+                const teamSnap = await safeGet(`/campeonatos/${idx.campeonatoId}/teams/${idx.teamId}`)
+                const teamData = teamSnap?.val()
+                if (teamData && matchTeam(teamData)) {
+                  found = { teamId: idx.teamId, campeonatoId: idx.campeonatoId, ...teamData }
+                }
+              }
+            }
+
+            // Caminho 3: fallback — varre todos os campeonatos (pode falhar por rules)
+            if (!found) {
               const campSnap = await safeGet('/campeonatos')
               const campeonatos = campSnap?.val() ?? {}
-              let found = null
-              // Procura em TODOS os campeonatos (não só no principal) — capitão
-              // pode estar em qualquer um, especialmente em multi-campeonato
               for (const [cid, camp] of Object.entries(campeonatos)) {
                 const teams = camp.teams ?? {}
                 const entry = Object.entries(teams).find(([, t]) => matchTeam(t))
@@ -115,8 +130,9 @@ export function useAuth() {
                   break
                 }
               }
-              setCapitao(found)
             }
+
+            setCapitao(found)
 
             // Kick: conta de capitão (@copa.inhouse) sem time vinculado = acesso revogado
             if (!isAdm && emailEhSintetico(firebaseUser.email ?? '') && !found) {
