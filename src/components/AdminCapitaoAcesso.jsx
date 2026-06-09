@@ -3,7 +3,7 @@
  * Detecta automaticamente o melhor identificador disponível no time.
  */
 import { useState, useEffect } from 'react'
-import { ref, onValue, update, set, remove } from 'firebase/database'
+import { ref, onValue, update, set, remove, get } from 'firebase/database'
 import { db } from '../firebase/database'
 import { criarContaCapitao, gerarEmailSintetico, gerarEmailSinteticoUnico, emailEhSintetico } from '../firebase/auth'
 import { useCampeonato } from '../contexts/CampeonatoContext'
@@ -65,16 +65,42 @@ function detectarIdentificador(team) {
 
 export default function AdminCapitaoAcesso() {
   const { campeonatoId } = useCampeonato()
-  const [teams,    setTeams]    = useState({})
-  const [senhas,   setSenhas]   = useState({})
-  const [criando,  setCriando]  = useState(null)
-  const [feedback, setFeedback] = useState(null)
+  const [teams,     setTeams]     = useState({})
+  const [senhas,    setSenhas]    = useState({})
+  const [criando,   setCriando]   = useState(null)
+  const [feedback,  setFeedback]  = useState(null)
+  const [migrando,  setMigrando]  = useState(false)
 
   useEffect(() => onValue(ref(db, teamPath(campeonatoId)), snap => setTeams(snap.val() ?? {})), [campeonatoId])
 
   function flash(tipo, msg) {
     setFeedback({ tipo, msg })
     setTimeout(() => setFeedback(null), 6000)
+  }
+
+  async function handleMigrarIndice() {
+    setMigrando(true)
+    try {
+      const campSnap = await get(ref(db, '/campeonatos'))
+      const campeonatos = campSnap.val() ?? {}
+      let total = 0, escritos = 0
+
+      for (const [cid, camp] of Object.entries(campeonatos)) {
+        const teams = camp.teams ?? {}
+        for (const [tid, team] of Object.entries(teams)) {
+          if (!team.capitaoUid) continue
+          total++
+          await set(ref(db, `/capitoesIndex/${team.capitaoUid}`), { campeonatoId: cid, teamId: tid })
+          escritos++
+        }
+      }
+
+      flash('ok', `Migração concluída: ${escritos} de ${total} capitães indexados.`)
+    } catch (e) {
+      flash('erro', `Erro na migração: ${e.message}`)
+    } finally {
+      setMigrando(false)
+    }
   }
 
   async function handleCriarAcesso(teamId, team) {
@@ -138,6 +164,20 @@ export default function AdminCapitaoAcesso() {
             {feedback.msg}
           </div>
         )}
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0 2px' }}>
+          <button
+            className="btn"
+            style={{ fontSize: 12, padding: '5px 14px', borderColor: 'rgba(201,168,76,0.4)', color: 'var(--gold)' }}
+            onClick={handleMigrarIndice}
+            disabled={migrando}
+          >
+            {migrando ? 'Migrando...' : '⟳ Migrar índice (capitães existentes)'}
+          </button>
+          <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: "'Barlow Condensed', sans-serif" }}>
+            Execute uma vez para capitães criados antes de hoje
+          </span>
+        </div>
 
         {todosTeams.length === 0 && (
           <p style={{ color: 'var(--text3)', fontSize: 13 }}>Nenhum time cadastrado.</p>
