@@ -19,18 +19,31 @@ export default async function handler(req, res) {
     return
   }
 
-  try {
-    const r = await fetch(webhookUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content: content.slice(0, 2000) }),
-    })
-    if (!r.ok) {
-      res.status(502).json({ error: 'Falha ao enviar para o Discord' })
-      return
+  const body = JSON.stringify({ content: content.slice(0, 2000) })
+  const tentativas = 3
+
+  for (let tentativa = 1; tentativa <= tentativas; tentativa++) {
+    try {
+      const r = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+      })
+      if (r.ok) {
+        res.status(200).json({ ok: true })
+        return
+      }
+      if (tentativa === tentativas) {
+        res.status(502).json({ error: 'Falha ao enviar para o Discord' })
+        return
+      }
+    } catch (e) {
+      if (tentativa === tentativas) {
+        res.status(500).json({ error: e.message })
+        return
+      }
     }
-    res.status(200).json({ ok: true })
-  } catch (e) {
-    res.status(500).json({ error: e.message })
+    // backoff curto antes de tentar de novo
+    await new Promise(resolve => setTimeout(resolve, 300 * tentativa))
   }
 }
