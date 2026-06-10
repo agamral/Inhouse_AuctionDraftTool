@@ -258,7 +258,13 @@ export default function Agendamento() {
       })
 
       if (meusSlots.length > 0) {
-        notificarDiscord(`🗓️ **${nomeMeu}** marcou disponibilidade — ${nomeA} vs ${nomeB}${rodada ? ` (Rodada ${rodada.numero})` : ''}`)
+        const slotsTexto = meusSlots
+          .map(slot => {
+            const dataSlot = dataDoDia(SLOT_DIA[slot], rodada?.semanaJogos)
+            return `${SLOT_LABEL[slot] ?? slot}${dataSlot ? ` (${dataSlot})` : ''}`
+          })
+          .join(', ')
+        notificarDiscord(`🗓️ **${nomeMeu}** marcou disponibilidade — ${nomeA} vs ${nomeB}${rodada ? ` (Rodada ${rodada.numero})` : ''}\nDisponível em: ${slotsTexto}`)
       }
 
       if (meusSlots.length > 0 && advSlots.length > 0) {
