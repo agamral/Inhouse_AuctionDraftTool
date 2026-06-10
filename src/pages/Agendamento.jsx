@@ -12,7 +12,7 @@ import { notificarDiscord, mencaoTime } from '../utils/notify'
 import {
   SLOTS, SLOTS_PLAYOFF, SLOT_LABEL, SLOT_LABEL_ES, SLOT_DIA, DIA_LABEL, ADJACENT_SLOTS,
   STATUS_CONFRONTO, STATUS_LABEL, STATUS_COR,
-  FUSO_PADRAO, FUSOS, slotLabelFuso, slotHoraLocal, dataDoDia, dataDoDiaEs,
+  FUSO_PADRAO, FUSOS, slotLabelFuso, slotHoraLocal, dataDoDia, dataDoDiaEs, diaJaPassou,
   resolverDisponibilidade, avisaBackToBack, encontrarSlotsEmComum,
 } from '../utils/scheduling'
 import './Agendamento.css'
@@ -540,6 +540,7 @@ export default function Agendamento() {
                       {Object.entries(DIA_LABEL).map(([dia, diaLabel]) => {
                         const slotsHoje = slotsRodada.filter(s => SLOT_DIA[s] === dia)
                         const dataDia   = dataDoDia(dia, rodada?.semanaJogos)
+                        const passou    = diaJaPassou(dia, rodada?.semanaJogos)
                         return (
                           <div key={dia} className="ag-dia">
                             <div className="ag-dia-label">
@@ -572,15 +573,16 @@ export default function Agendamento() {
                                       advMarcou ? 'ag-slot--adv'    : '',
                                       overlap   ? 'ag-slot--ok'     : '',
                                       ocupado   ? 'ag-slot--ocupado': '',
+                                      passou    ? 'ag-slot--passado': '',
                                       backToBack? 'ag-slot--warn'   : '',
                                     ].filter(Boolean).join(' ')}
                                     style={{
                                       '--minha-cor': meuTime?.cor ?? 'var(--blue)',
                                       '--adv-cor':   adv?.cor     ?? 'var(--red)',
                                     }}
-                                    onClick={() => !ocupado && toggleSlot(id, slot)}
-                                    disabled={ocupado}
-                                    title={ocupado ? 'Slot ocupado por outra partida confirmada' : backToBack ? '⚠ Back-to-back com outra partida' : slotLabelFuso(slot, fusoExibicao)}
+                                    onClick={() => !ocupado && !passou && toggleSlot(id, slot)}
+                                    disabled={ocupado || passou}
+                                    title={ocupado ? 'Slot ocupado por outra partida confirmada' : passou ? 'Data já passou' : backToBack ? '⚠ Back-to-back com outra partida' : slotLabelFuso(slot, fusoExibicao)}
                                   >
                                     <span className="ag-slot-hora">
                                       {mostraBRT ? `${horarioLocal}h` : `${horarioBRT}h`}

@@ -96,6 +96,20 @@ export function dataDoDiaEs(dia, semanaJogos) {
   return `${alvo.getDate()} de ${MESES_ES[alvo.getMonth()]}`
 }
 
+/**
+ * True se a data de um dia da semana (dentro da semana de `semanaJogos`) já
+ * passou em relação a hoje. Usado para bloquear marcação retroativa de
+ * disponibilidade.
+ */
+export function diaJaPassou(dia, semanaJogos) {
+  const alvo = dataAlvoDoDia(dia, semanaJogos)
+  if (!alvo) return false
+  const hoje = new Date()
+  hoje.setHours(0, 0, 0, 0)
+  alvo.setHours(0, 0, 0, 0)
+  return alvo < hoje
+}
+
 // Mapa de adjacência — slots que ficam bloqueados quando um horário é confirmado.
 // Usado na fase de playoff pra evitar transmissões consecutivas sem intervalo.
 // Regra: se jogo marcado em X, bloqueia X-1h e X+1h no mesmo dia.

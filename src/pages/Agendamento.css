@@ -380,6 +380,13 @@
   text-decoration: line-through;
 }
 
+/* Slot cuja data já passou — não pode ser marcado */
+.ag-slot--passado {
+  opacity: 0.25;
+  cursor: not-allowed;
+  filter: grayscale(1);
+}
+
 /* Back-to-back warning */
 .ag-slot--warn:not(.ag-slot--meu):not(.ag-slot--adv):not(.ag-slot--ok) {
   border-color: rgba(201,168,76,0.4);
