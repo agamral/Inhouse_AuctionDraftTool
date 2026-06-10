@@ -65,7 +65,7 @@ export const HEROES = [
   { id: 'thebutcher',  nome: 'The Butcher',      role: ROLES.MELEE_ASSASSIN,   universo: UNIVERSOS.DIABLO,     iconeUrl: '/heroes/thebutcher.png'  },
   { id: 'valeera',     nome: 'Valeera',          role: ROLES.MELEE_ASSASSIN,   universo: UNIVERSOS.WARCRAFT,   iconeUrl: '/heroes/valeera.png'     },
   { id: 'zeratul',     nome: 'Zeratul',          role: ROLES.MELEE_ASSASSIN,   universo: UNIVERSOS.STARCRAFT,  iconeUrl: '/heroes/zeratul.png'     },
-  { id: 'genji',       nome: 'Genji',            role: ROLES.MELEE_ASSASSIN,   universo: UNIVERSOS.OVERWATCH,  iconeUrl: '/heroes/genji.png'       },
+  { id: 'genji',       nome: 'Genji',            role: ROLES.RANGED_ASSASSIN,  universo: UNIVERSOS.OVERWATCH,  iconeUrl: '/heroes/genji.png'       },
 
   // ── RANGED ASSASSINS ────────────────────────────────────────────────────────
   { id: 'azmodan',     nome: 'Azmodan',          role: ROLES.RANGED_ASSASSIN,  universo: UNIVERSOS.DIABLO,     iconeUrl: '/heroes/azmodan.png'     },
