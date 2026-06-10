@@ -242,6 +242,11 @@
   letter-spacing: 0.04em;
 }
 
+.tab-partida-data {
+  color: var(--text2);
+  font-weight: 500;
+}
+
 .tab-partida-tipo {
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 10px;

@@ -194,16 +194,44 @@
 .ag-confronto-meta {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   font-family: 'Barlow Condensed', sans-serif;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text2);
   flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.ag-confronto-rodada {
+  font-weight: 700;
+  color: var(--gold2);
+  letter-spacing: 0.04em;
+}
+
+.ag-confronto-formato {
+  font-weight: 600;
+  color: var(--text);
+  padding: 2px 8px;
+  background: var(--gold-dim);
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .ag-status {
   font-weight: 700;
   letter-spacing: 0.04em;
+}
+
+.ag-semana-jogos {
+  width: 100%;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gold2);
+  margin-top: 2px;
 }
 
 /* ── Confirmado ──────────────────────────────────────────────────────────── */
@@ -273,12 +301,23 @@
 }
 
 .ag-dia-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text3);
+}
+
+.ag-dia-data {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--gold2);
 }
 
 .ag-dia-slots {

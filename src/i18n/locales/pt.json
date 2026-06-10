@@ -366,5 +366,8 @@
       "Bruiser Camp": "Bruiser",
       "Boss Camp": "Boss"
     }
+  },
+  "agendamento": {
+    "semanaJogos": "Semana de jogos: {{de}} a {{ate}}"
   }
 }

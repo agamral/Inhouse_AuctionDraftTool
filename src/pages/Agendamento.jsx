@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ref, onValue, set, update } from 'firebase/database'
 import { db } from '../firebase/database'
 import { useEffectiveAuth as useAuth } from '../hooks/useEffectiveAuth'
@@ -142,6 +143,7 @@ function PartidaCard({ c, teams }) {
 
 // ── Componente principal ───────────────────────────────────────────────────────
 export default function Agendamento() {
+  const { t } = useTranslation()
   const { user, isAdmin, capitao } = useAuth()
   const conteudo = useConteudo()
   const modules = useModules()
@@ -433,13 +435,20 @@ export default function Agendamento() {
                     <span style={{ color: adv?.cor ?? 'var(--red)', fontWeight: 700 }}>{adv?.nome ?? 'A definir'}</span>
                   </div>
                   <div className="ag-confronto-meta">
-                    {rodada && <span>Rodada {rodada.numero}</span>}
-                    <span>·</span>
-                    <span>{c.formato}</span>
+                    {rodada && <span className="ag-confronto-rodada">Rodada {rodada.numero}</span>}
+                    <span className="ag-confronto-formato">{c.formato}</span>
                     <span className="ag-status" style={{ color: STATUS_COR[c.status] }}>
                       {STATUS_LABEL[c.status]}
                     </span>
                   </div>
+                  {rodada?.semanaJogos && (
+                    <div className="ag-semana-jogos">
+                      {t('agendamento.semanaJogos', {
+                        de:  dataDoDia('terca', rodada.semanaJogos),
+                        ate: dataDoDia('sabado', rodada.semanaJogos),
+                      })}
+                    </div>
+                  )}
                 </div>
 
                 {c.status === STATUS_CONFRONTO.CONFIRMADO && c.slot && (
@@ -487,7 +496,10 @@ export default function Agendamento() {
                         const dataDia   = dataDoDia(dia, rodada?.semanaJogos)
                         return (
                           <div key={dia} className="ag-dia">
-                            <div className="ag-dia-label">{diaLabel}{dataDia ? ` – ${dataDia}` : ''}</div>
+                            <div className="ag-dia-label">
+                              <span>{diaLabel}</span>
+                              {dataDia && <span className="ag-dia-data">{dataDia}</span>}
+                            </div>
                             <div className="ag-dia-slots">
                               {slotsHoje.map(slot => {
                                 const euMarcei  = meusSlots.includes(slot)

@@ -8,7 +8,7 @@ import PaginaInativa from '../components/PaginaInativa'
 import { teamPath, rodadasPath, confrontosPath } from '../utils/campeonatoPaths'
 import {
   BRACKET_UPPER, BRACKET_LOWER, BRACKET_LABELS,
-  STATUS_CONFRONTO, TIPO_CONFRONTO, SLOT_LABEL,
+  STATUS_CONFRONTO, TIPO_CONFRONTO, SLOT_LABEL, SLOT_DIA, dataDoDia,
 } from '../utils/scheduling'
 import TeamIcon from '../components/TeamIcon'
 import './Chave.css'
@@ -191,14 +191,16 @@ export default function Chave() {
                 <div className="chave-rodada-label">
                   Rodada {rodada?.numero ?? '?'}
                   {rodada?.semanaJogos && (
-                    <span className="chave-rodada-data">{rodada.semanaJogos}</span>
+                    <span className="chave-rodada-data">
+                      {dataDoDia('terca', rodada.semanaJogos)} a {dataDoDia('sabado', rodada.semanaJogos)}
+                    </span>
                   )}
                 </div>
                 <div className="chave-rodada-matches">
                   {matches
                     .sort((a, b) => (a.criadoEm ?? 0) - (b.criadoEm ?? 0))
                     .map((m, i) => (
-                      <MatchCard key={i} match={m} times={times} small timeSel={timeSel} />
+                      <MatchCard key={i} match={m} times={times} small timeSel={timeSel} semanaJogos={rodada?.semanaJogos} />
                     ))
                   }
                 </div>
@@ -344,7 +346,7 @@ function BracketSide({ rounds, labels, times, timeSel }) {
 }
 
 // ── Match Card ─────────────────────────────────────────────────────────────────
-function MatchCard({ match: m, times, destaque = false, small = false, timeSel = '' }) {
+function MatchCard({ match: m, times, destaque = false, small = false, timeSel = '', semanaJogos = null }) {
   if (!m) return null
   const { idPublico } = useCampeonato()
   const tA = times[m.timeA]
@@ -382,7 +384,10 @@ function MatchCard({ match: m, times, destaque = false, small = false, timeSel =
         venceu={vencedorId === m.timeB} perdeu={vencedorId !== null && vencedorId !== m.timeB}
         tipoRes={tipoRes} lado="B" small={small} />
       {confirmado && !realizado && m.slot && (
-        <div className="match-card-slot">{SLOT_LABEL[m.slot] ?? m.slot}</div>
+        <div className="match-card-slot">
+          {SLOT_LABEL[m.slot] ?? m.slot}
+          {dataDoDia(SLOT_DIA[m.slot], semanaJogos) && ` – ${dataDoDia(SLOT_DIA[m.slot], semanaJogos)}`}
+        </div>
       )}
       {m.status === STATUS_CONFRONTO.EMPATE_PENDENTE && (
         <div className="match-card-slot" style={{ color: 'var(--gold)' }}>Empate — Desempate pendente</div>

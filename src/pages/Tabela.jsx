@@ -10,7 +10,7 @@ import TeamIcon from '../components/TeamIcon'
 import {
   calcularClassificacao, calcularPontos,
   STATUS_CONFRONTO, TIPO_CONFRONTO,
-  SLOT_LABEL, formatarResultado, PONTUACAO_PADRAO,
+  SLOT_LABEL, SLOT_DIA, dataDoDia, formatarResultado, PONTUACAO_PADRAO,
 } from '../utils/scheduling'
 import './Tabela.css'
 
@@ -300,6 +300,7 @@ export default function Tabela() {
               const tB = times[c.timeB]
               const realizado = c.status === STATUS_CONFRONTO.REALIZADO || c.status === STATUS_CONFRONTO.EMPATE_PENDENTE
               const detalheUrl = c.confrontoId ? `/campeonatos/${idPublico}/confronto/${c.confrontoId}` : null
+              const dataSlot = c.slot ? dataDoDia(SLOT_DIA[c.slot], rodadas[c.rodadaId]?.semanaJogos) : null
 
               return (
                 <div key={i}
@@ -322,6 +323,7 @@ export default function Tabela() {
                     ) : (
                       <span className="tab-partida-slot">
                         {c.slot ? SLOT_LABEL[c.slot] ?? c.slot : 'A definir'}
+                        {dataSlot && <span className="tab-partida-data"> – {dataSlot}</span>}
                       </span>
                     )}
                     <span className="tab-partida-tipo">{c.tipo} · {c.formato}</span>
