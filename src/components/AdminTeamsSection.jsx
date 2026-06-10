@@ -192,10 +192,11 @@ export default function AdminTeamsSection() {
   function iniciarEdicao(id, time) {
     setEditando(id)
     setEditForm({
-      nome:      time.nome     ?? '',
-      cor:       time.cor      ?? '#4a9eda',
-      fuso:      time.fuso     ?? FUSO_PADRAO,
-      iconUrl:   time.iconUrl  ?? '',
+      nome:          time.nome     ?? '',
+      cor:           time.cor      ?? '#4a9eda',
+      fuso:          time.fuso     ?? FUSO_PADRAO,
+      iconUrl:       time.iconUrl  ?? '',
+      discordRoleId: time.discordRoleId ?? '',
       jogadores: (time.jogadores ?? []).map(j => ({ ...j })),
     })
     setConfirmDelete(null)
@@ -225,10 +226,11 @@ export default function AdminTeamsSection() {
     setSalvando(true)
     try {
       await update(ref(db, `${teamPath(campeonatoId)}/${id}`), {
-        nome:      editForm.nome.trim(),
-        cor:       editForm.cor,
-        fuso:      editForm.fuso,
-        iconUrl:   editForm.iconUrl?.trim() || null,
+        nome:          editForm.nome.trim(),
+        cor:           editForm.cor,
+        fuso:          editForm.fuso,
+        iconUrl:       editForm.iconUrl?.trim() || null,
+        discordRoleId: editForm.discordRoleId?.trim() || null,
         jogadores: editForm.jogadores.map(j => ({
           nome: j.nome.trim(),
           role: j.role,
@@ -666,6 +668,17 @@ export default function AdminTeamsSection() {
                     style={{ ...inputStyle }}>
                     {FUSOS.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
                   </select>
+                </div>
+
+                {/* Cargo do Discord (para menção nas notificações) */}
+                <div>
+                  <FieldLabel label="ID do cargo no Discord" hint="opcional — usado para mencionar (@) o time nas notificações. Ative o Modo Desenvolvedor no Discord, clique com o botão direito no cargo → Copiar ID do Cargo" />
+                  <input
+                    value={editForm.discordRoleId ?? ''}
+                    onChange={e => setEditForm(f => ({ ...f, discordRoleId: e.target.value.replace(/\D/g, '') }))}
+                    placeholder="ex: 123456789012345678"
+                    style={inputStyle}
+                  />
                 </div>
 
                 {/* Jogadores */}

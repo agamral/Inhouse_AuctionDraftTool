@@ -13,13 +13,22 @@ export default async function handler(req, res) {
     return
   }
 
-  const { content } = req.body ?? {}
+  const { content, roles } = req.body ?? {}
   if (!content || typeof content !== 'string') {
     res.status(400).json({ error: 'content é obrigatório' })
     return
   }
 
-  const body = JSON.stringify({ content: content.slice(0, 2000) })
+  const roleIds = Array.isArray(roles) ? roles.filter(r => typeof r === 'string' && r.trim()) : []
+
+  const payload = { content: content.slice(0, 2000) }
+  if (roleIds.length > 0) {
+    payload.allowed_mentions = { parse: [], roles: roleIds }
+  } else {
+    payload.allowed_mentions = { parse: [] }
+  }
+
+  const body = JSON.stringify(payload)
   const tentativas = 3
 
   for (let tentativa = 1; tentativa <= tentativas; tentativa++) {
