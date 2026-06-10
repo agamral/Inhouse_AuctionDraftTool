@@ -42,6 +42,32 @@ export const DIA_LABEL = {
   quinta: 'Quinta-feira', sabado: 'Sábado',
 }
 
+// Distância em dias de cada dia da semana até a segunda-feira da mesma semana
+const DIA_OFFSET_FROM_MONDAY = { terca: 1, quarta: 2, quinta: 3, sabado: 5 }
+
+/**
+ * Retorna a data (DD/MM) de um dia da semana ('terca', 'quarta', ...) dentro
+ * da semana de `semanaJogos` (data 'YYYY-MM-DD' cadastrada na rodada).
+ * A semana é sempre calculada a partir da segunda-feira daquela semana,
+ * independente de qual dia exato `semanaJogos` aponta.
+ * Retorna null se `semanaJogos` não estiver definido.
+ */
+export function dataDoDia(dia, semanaJogos) {
+  if (!semanaJogos) return null
+  const [ano, mes, diaNum] = semanaJogos.split('-').map(Number)
+  if (!ano || !mes || !diaNum) return null
+
+  const ref = new Date(ano, mes - 1, diaNum)
+  const wd = ref.getDay() // 0 = domingo .. 6 = sábado
+  const diffParaSegunda = wd === 0 ? -6 : 1 - wd
+  const offset = DIA_OFFSET_FROM_MONDAY[dia] ?? 0
+
+  const alvo = new Date(ano, mes - 1, diaNum + diffParaSegunda + offset)
+  const dd = String(alvo.getDate()).padStart(2, '0')
+  const mm = String(alvo.getMonth() + 1).padStart(2, '0')
+  return `${dd}/${mm}`
+}
+
 // Mapa de adjacência — slots que ficam bloqueados quando um horário é confirmado.
 // Usado na fase de playoff pra evitar transmissões consecutivas sem intervalo.
 // Regra: se jogo marcado em X, bloqueia X-1h e X+1h no mesmo dia.

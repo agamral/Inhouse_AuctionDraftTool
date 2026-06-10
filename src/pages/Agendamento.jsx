@@ -10,7 +10,7 @@ import HeroDraftAlerta from '../components/HeroDraftAlerta'
 import {
   SLOTS, SLOTS_PLAYOFF, SLOT_LABEL, SLOT_DIA, DIA_LABEL, ADJACENT_SLOTS,
   STATUS_CONFRONTO, STATUS_LABEL, STATUS_COR,
-  FUSO_PADRAO, FUSOS, slotLabelFuso, slotHoraLocal,
+  FUSO_PADRAO, FUSOS, slotLabelFuso, slotHoraLocal, dataDoDia,
   resolverDisponibilidade, avisaBackToBack, encontrarSlotsEmComum,
 } from '../utils/scheduling'
 import './Agendamento.css'
@@ -445,7 +445,13 @@ export default function Agendamento() {
                 {c.status === STATUS_CONFRONTO.CONFIRMADO && c.slot && (
                   <div className="ag-confirmado">
                     <span className="ag-confirmado-icon">✓</span>
-                    Partida confirmada: <strong>{slotLabelFuso(c.slot, fusoExibicao)}</strong>
+                    Partida confirmada: <strong>
+                      {slotLabelFuso(c.slot, fusoExibicao)}
+                      {(() => {
+                        const dataDia = dataDoDia(SLOT_DIA[c.slot], rodada?.semanaJogos)
+                        return dataDia ? ` – ${dataDia}` : ''
+                      })()}
+                    </strong>
                     {adv?.fuso && adv.fuso !== (meuTime?.fuso ?? FUSO_PADRAO) && (
                       <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--text2)' }}>
                         · {slotLabelFuso(c.slot, adv.fuso)} (adversário)
@@ -478,9 +484,10 @@ export default function Agendamento() {
                     <div className="ag-grid">
                       {Object.entries(DIA_LABEL).map(([dia, diaLabel]) => {
                         const slotsHoje = slotsRodada.filter(s => SLOT_DIA[s] === dia)
+                        const dataDia   = dataDoDia(dia, rodada?.semanaJogos)
                         return (
                           <div key={dia} className="ag-dia">
-                            <div className="ag-dia-label">{diaLabel}</div>
+                            <div className="ag-dia-label">{diaLabel}{dataDia ? ` – ${dataDia}` : ''}</div>
                             <div className="ag-dia-slots">
                               {slotsHoje.map(slot => {
                                 const euMarcei  = meusSlots.includes(slot)
