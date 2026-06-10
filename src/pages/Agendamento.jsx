@@ -247,9 +247,9 @@ export default function Agendamento() {
     const advSlots  = dispon[confrontoId]?.[advId]?.slots ?? []
     const slotsAnteriores = dispon[confrontoId]?.[teamSel]?.slots ?? []
     const mudouDisponibilidade = JSON.stringify([...meusSlots].sort()) !== JSON.stringify([...slotsAnteriores].sort())
-    const nomeMeu   = teams[teamSel]?.nome ?? teamSel
     const nomeA     = teams[confronto.timeA]?.nome ?? confronto.timeA
     const nomeB     = teams[confronto.timeB]?.nome ?? confronto.timeB
+    const mencaoMeu = mencaoTime(teams[teamSel], teamSel)
     const mencaoA   = mencaoTime(teams[confronto.timeA], confronto.timeA)
     const mencaoB   = mencaoTime(teams[confronto.timeB], confronto.timeB)
     const rolesAB   = [teams[confronto.timeA]?.discordRoleId, teams[confronto.timeB]?.discordRoleId].filter(Boolean)
@@ -269,7 +269,7 @@ export default function Agendamento() {
             return `${SLOT_LABEL[slot] ?? slot}${dataSlot ? ` (${dataSlot})` : ''}`
           })
           .join(', ')
-        notificarDiscord(`🗓️ **${nomeMeu}** marcou disponibilidade — ${nomeA} vs ${nomeB}${rodada ? ` (Rodada ${rodada.numero})` : ''}\nDisponível em: ${slotsTexto}`, rolesAB)
+        notificarDiscord(`🗓️ ${mencaoMeu} marcou disponibilidade — ${nomeA} vs ${nomeB}${rodada ? ` (Rodada ${rodada.numero})` : ''}\nDisponível em: ${slotsTexto}`, rolesAB)
       }
 
       if (meusSlots.length > 0 && advSlots.length > 0) {
