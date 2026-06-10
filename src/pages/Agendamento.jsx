@@ -8,6 +8,7 @@ import PaginaInativa from '../components/PaginaInativa'
 import { useCampeonato } from '../contexts/CampeonatoContext'
 import { teamPath, rodadasPath, confrontosPath, disponibilidadePath } from '../utils/campeonatoPaths'
 import HeroDraftAlerta from '../components/HeroDraftAlerta'
+import { notificarDiscord } from '../utils/notify'
 import {
   SLOTS, SLOTS_PLAYOFF, SLOT_LABEL, SLOT_DIA, DIA_LABEL, ADJACENT_SLOTS,
   STATUS_CONFRONTO, STATUS_LABEL, STATUS_COR,
@@ -244,6 +245,10 @@ export default function Agendamento() {
     const meusSlots = selecoes[confrontoId] ?? []
     const advId     = confronto.timeA === teamSel ? confronto.timeB : confronto.timeA
     const advSlots  = dispon[confrontoId]?.[advId]?.slots ?? []
+    const nomeMeu   = teams[teamSel]?.nome ?? teamSel
+    const nomeA     = teams[confronto.timeA]?.nome ?? confronto.timeA
+    const nomeB     = teams[confronto.timeB]?.nome ?? confronto.timeB
+    const rodada    = rodadas[confronto.rodadaId]
 
     setSaving(confrontoId)
     try {
@@ -251,6 +256,10 @@ export default function Agendamento() {
         slots: meusSlots,
         registradoEm: Date.now(),
       })
+
+      if (meusSlots.length > 0) {
+        notificarDiscord(`🗓️ **${nomeMeu}** marcou disponibilidade — ${nomeA} vs ${nomeB}${rodada ? ` (Rodada ${rodada.numero})` : ''}`)
+      }
 
       if (meusSlots.length > 0 && advSlots.length > 0) {
         const ocupados   = slotsOcupadosNaRodada(confrontoId)
@@ -264,6 +273,8 @@ export default function Agendamento() {
             atualizadoEm:  Date.now(),
           })
           flash(confrontoId, 'ok', `✓ Confirmado automaticamente! ${SLOT_LABEL[resultado.slot]}`)
+          const dataSlot = dataDoDia(SLOT_DIA[resultado.slot], rodada?.semanaJogos)
+          notificarDiscord(`✅ **Partida confirmada:** ${nomeA} vs ${nomeB} — ${SLOT_LABEL[resultado.slot]}${dataSlot ? ` (${dataSlot})` : ''}${rodada ? ` · Rodada ${rodada.numero}` : ''}`)
         } else {
           await update(ref(db, `${confrontosPath(idPublico)}/${confrontoId}`), {
             status:   STATUS_CONFRONTO.AGENDANDO,
@@ -286,7 +297,7 @@ export default function Agendamento() {
     } finally {
       setSaving(null)
     }
-  }, [confrontos, selecoes, dispon, teamSel]) // eslint-disable-line
+  }, [confrontos, selecoes, dispon, teamSel, teams, rodadas]) // eslint-disable-line
 
   if (!modules.loading && !isAdmin && !capitaoEfetivo && !modules.campeonatoAtivo) {
     return <PaginaInativa icone="📅" titulo="Agenda em preparação" descricao="A agenda de partidas estará disponível quando o campeonato começar." />
