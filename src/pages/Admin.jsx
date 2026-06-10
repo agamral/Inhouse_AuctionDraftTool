@@ -529,6 +529,20 @@ export default function Admin() {
                   </span>
                 </div>
               </div>
+              <div className="admin-number-field">
+                <div className="admin-toggle-label">Volume do som "Sua Vez" (Hero Draft)</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <input
+                    type="range" min={0} max={100} step={5}
+                    value={draft.volumeSonsHeroDraft ?? 80}
+                    onChange={e => { setDraftNum('volumeSonsHeroDraft', Number(e.target.value)); setSaved(false) }}
+                    style={{ width: 120, accentColor: 'var(--gold)', cursor: 'pointer' }}
+                  />
+                  <span style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: 20, fontWeight: 700, color: 'var(--gold2)', minWidth: 44, textAlign: 'right' }}>
+                    {draft.volumeSonsHeroDraft ?? 80}%
+                  </span>
+                </div>
+              </div>
             </div>
           </section>
 

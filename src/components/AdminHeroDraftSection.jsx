@@ -6,7 +6,7 @@ import { teamPath, heroDraftPath } from '../utils/campeonatoPaths'
 import { useHeroDraft } from '../hooks/useHeroDraft'
 import { useServerTimeOffset } from '../hooks/useServerTimeOffset'
 import { HEROES } from '../utils/heroPool'
-import { criarEstadoInicial, expandirSequencia, SEQUENCIA_PADRAO } from '../utils/heroDraft'
+import { criarEstadoInicial, expandirSequencia, SEQUENCIA_PADRAO, bansLogicos } from '../utils/heroDraft'
 import { MAPAS } from '../utils/mapPool'
 
 // ── Sequências predefinidas por nº de bans por time ─────────────────────────
@@ -702,7 +702,7 @@ export default function AdminHeroDraftSection() {
 function TimeCard({ time, label }) {
   if (!time) return null
   const picks = time.picks?.length ?? 0
-  const bans  = time.bans?.length  ?? 0
+  const bans  = bansLogicos(time.bans).length
   return (
     <div style={{
       background: 'var(--bg3)', border: `1px solid ${time.cor ?? 'var(--border)'}22`,

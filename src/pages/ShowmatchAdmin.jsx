@@ -4,7 +4,7 @@ import { ref, onValue, get, set, update, remove } from 'firebase/database'
 import { db } from '../firebase/database'
 import { useHeroDraft } from '../hooks/useHeroDraft'
 import { useServerTimeOffset } from '../hooks/useServerTimeOffset'
-import { criarEstadoInicial, SEQUENCIA_PADRAO, DEFAULT_TIMER_CONFIG } from '../utils/heroDraft'
+import { criarEstadoInicial, expandirSequencia, SEQUENCIA_PADRAO, DEFAULT_TIMER_CONFIG } from '../utils/heroDraft'
 import { calcularMadnessBansOficial } from '../utils/draftRules'
 import { MAPAS } from '../utils/mapPool'
 import { HEROES } from '../utils/heroPool'
@@ -140,6 +140,25 @@ export default function ShowmatchAdmin() {
     setDraftCriado(!!draftEstado)
   }, [draftEstado])
 
+  // Confronto: sincroniza os campos de edição com o draft já criado, para que
+  // o admin possa corrigir configurações ao reabrir/recarregar a página.
+  const syncedConfigRef = useRef(null)
+  useEffect(() => {
+    if (!isConfrontoMode || !draftEstado) return
+    if (syncedConfigRef.current === sessaoId) return
+    syncedConfigRef.current = sessaoId
+    const tc = draftEstado.timerConfig ?? {}
+    setTimerBan(tc.ban ?? DEFAULT_TIMER_CONFIG.ban)
+    setTimerPick(tc.pick ?? DEFAULT_TIMER_CONFIG.pick)
+    setTimerPickDuplo(tc.pickDuplo ?? DEFAULT_TIMER_CONFIG.pickDuplo)
+    setMapaId(draftEstado.mapaId ?? '')
+    setGlobalBans(draftEstado.globalBans ?? [])
+
+    const seq = draftEstado.sequencia ?? []
+    setNumBans(seq.filter(s => s.acao === 'ban' && s.time === 'A').length)
+    setPrimeiroTime(seq[0]?.time ?? 'A')
+  }, [isConfrontoMode, draftEstado, sessaoId]) // eslint-disable-line
+
   // Salva config da sessão em tempo real para o lobby dos capitães ver ao vivo
   useEffect(() => {
     if (!sessaoPath || !sessao) return
@@ -272,8 +291,13 @@ export default function ShowmatchAdmin() {
 
   async function atualizarConfiguracoes() {
     if (!draftEstado) return
+    const seqBase = SEQUENCIAS[numBans] ?? SEQUENCIAS[2]
+    const sequencia = primeiroTime === 'B'
+      ? seqBase.map(s => ({ ...s, time: s.time === 'A' ? 'B' : 'A' }))
+      : seqBase
     const novoEstado = {
       ...draftEstado,
+      sequencia: expandirSequencia(sequencia),
       timerConfig: {
         ban:       Number(timerBan)        || DEFAULT_TIMER_CONFIG.ban,
         pick:      Number(timerPick)       || DEFAULT_TIMER_CONFIG.pick,
@@ -689,8 +713,8 @@ export default function ShowmatchAdmin() {
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
 
-                  {/* Edição de configurações enquanto aguardando (showmatch) */}
-                  {!isConfrontoMode && draftEstado?.status === 'aguardando' && (
+                  {/* Edição de configurações enquanto aguardando */}
+                  {draftEstado?.status === 'aguardando' && (
                     <ConfigEdicao
                       timerBan={timerBan} setTimerBan={setTimerBan}
                       timerPick={timerPick} setTimerPick={setTimerPick}
@@ -790,7 +814,9 @@ export default function ShowmatchAdmin() {
                             Confirmação de presença
                           </div>
                           {['A', 'B'].map(t => {
-                            const confirmado = sessao?.presenca?.[t]?.confirmado === true
+                            const confirmado = isConfrontoMode
+                              ? draftEstado?.presence?.[t]?.confirmado === true
+                              : sessao?.presenca?.[t]?.confirmado === true
                             const online     = !!(draftEstado.presence?.[t]?.onlineEm)
                             const nome       = t === 'A' ? sessao?.timeA?.nome : sessao?.timeB?.nome
                             return (
@@ -815,7 +841,9 @@ export default function ShowmatchAdmin() {
                           })}
                         </div>
                         {(() => {
-                          const ambos = sessao?.presenca?.A?.confirmado && sessao?.presenca?.B?.confirmado
+                          const ambos = isConfrontoMode
+                            ? draftEstado?.presence?.A?.confirmado && draftEstado?.presence?.B?.confirmado
+                            : sessao?.presenca?.A?.confirmado && sessao?.presenca?.B?.confirmado
                           return (
                             <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                               <button className="btn primary"

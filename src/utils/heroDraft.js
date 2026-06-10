@@ -36,6 +36,23 @@ export function parVinculado(heroiId) {
   return PARES_VINCULADOS[heroiId] ?? null
 }
 
+// Agrupa um array de bans em slots lógicos: o par Cho'Gall (2 entradas em
+// `bans[]`, pois banir um bane os dois) é exibido em um único slot.
+export function bansLogicos(bans = []) {
+  const out = []
+  for (let i = 0; i < bans.length; i++) {
+    const id  = bans[i]
+    const par = parVinculado(id)
+    if (par && bans[i + 1] === par) {
+      out.push({ heroiId: id, parId: par })
+      i++
+    } else {
+      out.push({ heroiId: id, parId: null })
+    }
+  }
+  return out
+}
+
 // Verifica se o passo atual é o primeiro de um pick duplo (mesmo time, 2 picks seguidos)
 export function ehInicioDePickDuplo(estado) {
   const idx   = estado.passoAtual

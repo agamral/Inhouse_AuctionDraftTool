@@ -348,6 +348,11 @@ body:has(.hde-root) > * {
   object-position: top;
 }
 
+/* Cho'Gall ocupa um único slot de ban, com os dois retratos lado a lado */
+.hde-hex--duplo .hde-hex-in img {
+  width: 50%;
+}
+
 /* Drop shadow colorido que respeita o contorno (só quando tem herói) */
 .hde-hex--has {
   filter: drop-shadow(0 0 6px var(--c, #4a9eda));

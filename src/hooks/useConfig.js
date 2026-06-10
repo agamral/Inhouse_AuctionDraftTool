@@ -39,6 +39,7 @@ export const DEFAULT_DRAFT = {
   leilaoReservas: false,
   timerDuracao: 60,
   volumeSons:   80,
+  volumeSonsHeroDraft: 80,
 }
 
 export const DEFAULT_CONTEUDO = {

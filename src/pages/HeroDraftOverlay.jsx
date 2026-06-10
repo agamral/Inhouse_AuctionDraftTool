@@ -2,7 +2,7 @@ import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useHeroDraft } from '../hooks/useHeroDraft'
 import { HEROES } from '../utils/heroPool'
-import { passoAtual, ACOES, STATUS_DRAFT } from '../utils/heroDraft'
+import { passoAtual, ACOES, STATUS_DRAFT, bansLogicos } from '../utils/heroDraft'
 import './HeroDraftOverlay.css'
 
 // URL: /hero-draft/overlay?sessao=semifinal-1&obs=1
@@ -35,9 +35,12 @@ export default function HeroDraftOverlay() {
         </div>
 
         <div className="hdo-bans">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <OverlayBan key={i} heroiId={estado.timeA.bans[i]} />
-          ))}
+          {(() => {
+            const bans = bansLogicos(estado.timeA.bans)
+            return Array.from({ length: 3 }).map((_, i) => (
+              <OverlayBan key={i} heroiId={bans[i]?.heroiId} parId={bans[i]?.parId} />
+            ))
+          })()}
         </div>
       </div>
 
@@ -68,9 +71,12 @@ export default function HeroDraftOverlay() {
         </div>
 
         <div className="hdo-bans">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <OverlayBan key={i} heroiId={estado.timeB.bans[i]} />
-          ))}
+          {(() => {
+            const bans = bansLogicos(estado.timeB.bans)
+            return Array.from({ length: 3 }).map((_, i) => (
+              <OverlayBan key={i} heroiId={bans[i]?.heroiId} parId={bans[i]?.parId} />
+            ))
+          })()}
         </div>
       </div>
     </div>
@@ -97,15 +103,20 @@ function OverlaySlot({ heroiId, tipo, cor }) {
   )
 }
 
-function OverlayBan({ heroiId }) {
+function OverlayBan({ heroiId, parId }) {
   const heroi = heroiId ? HEROES.find((h) => h.id === heroiId) : null
+  const par   = parId ? HEROES.find((h) => h.id === parId) : null
 
   return (
-    <div className={`hdo-ban ${heroi ? 'hdo-ban--preenchido' : 'hdo-ban--vazio'}`}>
+    <div className={`hdo-ban ${heroi ? 'hdo-ban--preenchido' : 'hdo-ban--vazio'}${par ? ' hdo-ban--duplo' : ''}`}>
       {heroi && (
         <>
           <img src={heroi.iconeUrl} alt={heroi.nome}
                onError={(e) => { e.target.src = '/heroes/placeholder.png' }} />
+          {par && (
+            <img src={par.iconeUrl} alt={par.nome}
+                 onError={(e) => { e.target.src = '/heroes/placeholder.png' }} />
+          )}
           <span className="hdo-ban-x">✕</span>
         </>
       )}

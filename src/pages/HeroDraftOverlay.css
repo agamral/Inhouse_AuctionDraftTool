@@ -113,6 +113,11 @@
   opacity: 0.65;
 }
 
+/* Cho'Gall ocupa um único slot de ban, com os dois retratos lado a lado */
+.hdo-ban--duplo img {
+  width: 50%;
+}
+
 .hdo-ban-x {
   position: absolute;
   inset: 0;

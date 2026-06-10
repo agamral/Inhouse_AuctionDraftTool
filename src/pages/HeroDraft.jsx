@@ -5,9 +5,10 @@ import { db } from '../firebase/database'
 import { useHeroDraft } from '../hooks/useHeroDraft'
 import { useServerTimeOffset } from '../hooks/useServerTimeOffset'
 import { useCampeonato } from '../contexts/CampeonatoContext'
+import { useDraftConfig } from '../hooks/useConfig'
 import { heroDraftPath } from '../utils/campeonatoPaths'
 import { HEROES, getHeroesByRole, ROLES } from '../utils/heroPool'
-import { passoAtual, heroiBloqueado, getDuracao, ACOES, STATUS_DRAFT, parVinculado, ehInicioDePickDuplo } from '../utils/heroDraft'
+import { passoAtual, heroiBloqueado, getDuracao, ACOES, STATUS_DRAFT, parVinculado, ehInicioDePickDuplo, bansLogicos } from '../utils/heroDraft'
 import { getMapaById } from '../utils/mapPool'
 import { useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -127,11 +128,13 @@ export default function HeroDraft() {
   const turnoAudioRef    = useRef(null)
   const turnoAudioOkRef  = useRef(false)
   const eraMinhaTezRef   = useRef(false)
+  const draftConfig      = useDraftConfig()
+  const volumeSuaVez     = (draftConfig.volumeSonsHeroDraft ?? 80) / 100
 
   useEffect(() => {
     const ping = new Audio('/sounds/ui_bnet_draft_goplayer02.ogg')
     ping.preload = 'auto'
-    ping.volume  = 0.6
+    ping.volume  = volumeSuaVez
     ping.oncanplaythrough = () => { turnoAudioRef.current = ping }
 
     const unlock = () => { turnoAudioOkRef.current = true }
@@ -142,7 +145,11 @@ export default function HeroDraft() {
       document.removeEventListener('click',   unlock)
       document.removeEventListener('keydown', unlock)
     }
-  }, [])
+  }, []) // eslint-disable-line
+
+  useEffect(() => {
+    if (turnoAudioRef.current) turnoAudioRef.current.volume = volumeSuaVez
+  }, [volumeSuaVez])
 
   useEffect(() => {
     const minhaAgora = estado?.status === STATUS_DRAFT.RODANDO && ehMinhaTez()
@@ -497,10 +504,13 @@ function TimePanel({ time, lado, corRealce, maxBans = 3 }) {
       <div className="hd-time-secao">
         <span className="hd-time-label">Bans</span>
         <div className="hd-time-slots hd-time-slots--bans">
-          {Array.from({ length: maxBans }).map((_, i) => {
-            const heroiId = time.bans[i]
-            return <SlotHeroi key={i} heroiId={heroiId} tipo="ban" corTime={corRealce} />
-          })}
+          {(() => {
+            const bans = bansLogicos(time.bans)
+            return Array.from({ length: maxBans }).map((_, i) => {
+              const ban = bans[i]
+              return <SlotHeroi key={i} heroiId={ban?.heroiId} parId={ban?.parId} tipo="ban" corTime={corRealce} />
+            })
+          })()}
         </div>
       </div>
     </div>
@@ -545,15 +555,16 @@ function TurnStrip({ estado, passo, tempoRestante, mapa }) {
   )
 }
 
-function SlotHeroi({ heroiId, tipo, corTime }) {
+function SlotHeroi({ heroiId, parId, tipo, corTime }) {
   const heroi = heroiId ? HEROES.find((h) => h.id === heroiId) : null
+  const par   = parId ? HEROES.find((h) => h.id === parId) : null
   const vazio = !heroi
 
   return (
     <div
-      className={`hd-slot hd-slot--${tipo} ${vazio ? 'hd-slot--vazio' : ''}`}
+      className={`hd-slot hd-slot--${tipo} ${vazio ? 'hd-slot--vazio' : ''} ${par ? 'hd-slot--duplo' : ''}`}
       style={{ '--cor-time': corTime }}
-      title={heroi?.nome ?? ''}
+      title={par ? `${heroi.nome} & ${par.nome}` : heroi?.nome ?? ''}
     >
       {heroi && (
         <>
@@ -562,6 +573,13 @@ function SlotHeroi({ heroiId, tipo, corTime }) {
             alt={heroi.nome}
             onError={(e) => { e.target.style.display = 'none' }}
           />
+          {par && (
+            <img
+              src={par.iconeUrl}
+              alt={par.nome}
+              onError={(e) => { e.target.style.display = 'none' }}
+            />
+          )}
           {tipo === 'ban' && <div className="hd-slot-ban-x">✕</div>}
         </>
       )}

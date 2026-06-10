@@ -8,7 +8,7 @@ import { useCampeonato } from '../contexts/CampeonatoContext'
 import { heroDraftPath } from '../utils/campeonatoPaths'
 import { HEROES } from '../utils/heroPool'
 import { getHeroVideoUrl, getHeroImageUrl } from '../utils/heroVideos'
-import { passoAtual, getDuracao, ACOES, STATUS_DRAFT } from '../utils/heroDraft'
+import { passoAtual, getDuracao, ACOES, STATUS_DRAFT, bansLogicos } from '../utils/heroDraft'
 import { getMapaById } from '../utils/mapPool'
 import { useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -281,9 +281,12 @@ export default function HeroDraftEspectador() {
         {/* Time A: bans na borda, nome aponta para o centro */}
         <div className={`hde-team hde-team--a${isRunning && passo?.time === 'A' ? ' hde-team--ativo' : ''}`}>
           <div className="hde-bans-strip">
-            {Array.from({ length: bansA }, (_, i) => (
-              <HexSlot key={i} heroiId={estado.timeA.bans[i] ?? null} cor={estado.timeA.cor} ban />
-            ))}
+            {(() => {
+              const bans = bansLogicos(estado.timeA.bans)
+              return Array.from({ length: bansA }, (_, i) => (
+                <HexSlot key={i} heroiId={bans[i]?.heroiId ?? null} parId={bans[i]?.parId} cor={estado.timeA.cor} ban />
+              ))
+            })()}
           </div>
           <span className="hde-tnome" style={{ color: estado.timeA.cor }}>
             {estado.timeA.nome}
@@ -327,9 +330,12 @@ export default function HeroDraftEspectador() {
         {/* Time B: bans fluindo para o centro + nome */}
         <div className={`hde-team hde-team--b${isRunning && passo?.time === 'B' ? ' hde-team--ativo' : ''}`}>
           <div className="hde-bans-strip hde-bans-strip--rev">
-            {Array.from({ length: bansB }, (_, i) => (
-              <HexSlot key={i} heroiId={estado.timeB.bans[i] ?? null} cor={estado.timeB.cor} ban />
-            ))}
+            {(() => {
+              const bans = bansLogicos(estado.timeB.bans)
+              return Array.from({ length: bansB }, (_, i) => (
+                <HexSlot key={i} heroiId={bans[i]?.heroiId ?? null} parId={bans[i]?.parId} cor={estado.timeB.cor} ban />
+              ))
+            })()}
           </div>
           <span className="hde-tnome" style={{ color: estado.timeB.cor }}>
             {estado.timeB.nome}
@@ -474,15 +480,17 @@ function FaseDot({ passo, corA, corB, completado = false, ativo = false }) {
 
 // ── Slot hexagonal ─────────────────────────────────────────────────────────────
 
-function HexSlot({ heroiId, cor, large = false, ban = false, nextPick = false }) {
+function HexSlot({ heroiId, parId, cor, large = false, ban = false, nextPick = false }) {
   const { t } = useTranslation()
   const heroi = heroiId ? HEROES.find(h => h.id === heroiId) : null
+  const par   = parId ? HEROES.find(h => h.id === parId) : null
   const cls = [
     'hde-hex',
     large    ? 'hde-hex--l'         : 'hde-hex--s',
     heroi    ? 'hde-hex--has'       : '',
     ban      ? 'hde-hex--ban'       : '',
     nextPick ? 'hde-hex--next-pick' : '',
+    par      ? 'hde-hex--duplo'     : '',
   ].filter(Boolean).join(' ')
 
   return (
@@ -495,6 +503,12 @@ function HexSlot({ heroiId, cor, large = false, ban = false, nextPick = false })
               src={heroi.iconeUrl} alt={heroi.nome}
               onError={e => { e.target.src = '/heroes/placeholder.png' }}
             />
+            {par && (
+              <img
+                src={par.iconeUrl} alt={par.nome}
+                onError={e => { e.target.src = '/heroes/placeholder.png' }}
+              />
+            )}
             {ban   && <div className="hde-hex-ban-x">✕</div>}
             {large && <div className="hde-hex-name">{t('heroes.' + heroi.id, { defaultValue: heroi.nome })}</div>}
           </>
