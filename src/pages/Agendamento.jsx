@@ -10,9 +10,9 @@ import { teamPath, rodadasPath, confrontosPath, disponibilidadePath } from '../u
 import HeroDraftAlerta from '../components/HeroDraftAlerta'
 import { notificarDiscord, mencaoTime } from '../utils/notify'
 import {
-  SLOTS, SLOTS_PLAYOFF, SLOT_LABEL, SLOT_DIA, DIA_LABEL, ADJACENT_SLOTS,
+  SLOTS, SLOTS_PLAYOFF, SLOT_LABEL, SLOT_LABEL_ES, SLOT_DIA, DIA_LABEL, ADJACENT_SLOTS,
   STATUS_CONFRONTO, STATUS_LABEL, STATUS_COR,
-  FUSO_PADRAO, FUSOS, slotLabelFuso, slotHoraLocal, dataDoDia,
+  FUSO_PADRAO, FUSOS, slotLabelFuso, slotHoraLocal, dataDoDia, dataDoDiaEs,
   resolverDisponibilidade, avisaBackToBack, encontrarSlotsEmComum,
 } from '../utils/scheduling'
 import './Agendamento.css'
@@ -267,7 +267,17 @@ export default function Agendamento() {
             return `${SLOT_LABEL[slot] ?? slot}${dataSlot ? ` (${dataSlot})` : ''}`
           })
           .join(', ')
-        notificarDiscord(`🗓️ **${nomeMeu}** marcou disponibilidade — ${mencaoA} vs ${mencaoB}${rodada ? ` (Rodada ${rodada.numero})` : ''}\nDisponível em: ${slotsTexto}`, rolesAB)
+        const slotsTextoEs = meusSlots
+          .map(slot => {
+            const dataSlotEs = dataDoDiaEs(SLOT_DIA[slot], rodada?.semanaJogos)
+            return `${SLOT_LABEL_ES[slot] ?? slot}${dataSlotEs ? ` (${dataSlotEs})` : ''}`
+          })
+          .join(', ')
+        notificarDiscord(
+          `🗓️ **${nomeMeu}** marcou disponibilidade — ${mencaoA} vs ${mencaoB}${rodada ? ` (Rodada ${rodada.numero})` : ''}\nDisponível em: ${slotsTexto}\n\n`
+          + `🇪🇸\n**${nomeMeu}** tiene disponibilidad marcada — ${mencaoA} vs ${mencaoB}${rodada ? ` (Ronda ${rodada.numero})` : ''}\nDisponible el: ${slotsTextoEs}`,
+          rolesAB
+        )
       }
 
       if (meusSlots.length > 0 && advSlots.length > 0) {
@@ -284,8 +294,13 @@ export default function Agendamento() {
           })
           flash(confrontoId, 'ok', `✓ Confirmado automaticamente! ${SLOT_LABEL[resultado.slot]}`)
           if (!jaConfirmadoNesseSlot) {
-            const dataSlot = dataDoDia(SLOT_DIA[resultado.slot], rodada?.semanaJogos)
-            notificarDiscord(`✅ **Partida confirmada:** ${mencaoA} vs ${mencaoB} — ${SLOT_LABEL[resultado.slot]}${dataSlot ? ` (${dataSlot})` : ''}${rodada ? ` · Rodada ${rodada.numero}` : ''}`, rolesAB)
+            const dataSlot   = dataDoDia(SLOT_DIA[resultado.slot], rodada?.semanaJogos)
+            const dataSlotEs = dataDoDiaEs(SLOT_DIA[resultado.slot], rodada?.semanaJogos)
+            notificarDiscord(
+              `✅ **Partida confirmada:** ${mencaoA} vs ${mencaoB} — ${SLOT_LABEL[resultado.slot]}${dataSlot ? ` (${dataSlot})` : ''}${rodada ? ` · Rodada ${rodada.numero}` : ''}\n\n`
+              + `🇪🇸\n✅ **Partida confirmada:** ${mencaoA} vs ${mencaoB} — ${SLOT_LABEL_ES[resultado.slot]}${dataSlotEs ? ` (${dataSlotEs})` : ''}${rodada ? ` · Ronda ${rodada.numero}` : ''}`,
+              rolesAB
+            )
           }
         } else {
           const jaAlertado = !!confronto.alertas?.semOverlap
@@ -296,7 +311,11 @@ export default function Agendamento() {
           })
           flash(confrontoId, 'aviso', 'Nenhum slot em comum com o adversário. O admin foi sinalizado.')
           if (!jaAlertado) {
-            notificarDiscord(`⚠️ **Sem horário em comum:** ${mencaoA} vs ${mencaoB}${rodada ? ` (Rodada ${rodada.numero})` : ''} — os times marcaram disponibilidade mas não há overlap. Intervenção do admin necessária.`, rolesAB)
+            notificarDiscord(
+              `⚠️ **Sem horário em comum:** ${mencaoA} vs ${mencaoB}${rodada ? ` (Rodada ${rodada.numero})` : ''} — os times marcaram disponibilidade mas não há overlap. Intervenção do admin necessária.\n\n`
+              + `🇪🇸\n⚠️ **Sin horario en común:** ${mencaoA} vs ${mencaoB}${rodada ? ` (Ronda ${rodada.numero})` : ''} — los equipos marcaron disponibilidad pero no hay coincidencia. Se necesita intervención del admin.`,
+              rolesAB
+            )
           }
         }
       } else {

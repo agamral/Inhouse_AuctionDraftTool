@@ -42,6 +42,14 @@ export const DIA_LABEL = {
   quinta: 'Quinta-feira', sabado: 'Sábado',
 }
 
+// Labels em espanhol — usados nas notificações bilíngues do Discord
+export const SLOT_LABEL_ES = {
+  'terca-19h':  'Martes 19:00 horas',  'terca-20h':  'Martes 20:00 horas',  'terca-21h':  'Martes 21:00 horas',  'terca-22h':  'Martes 22:00 horas',
+  'quarta-19h': 'Miércoles 19:00 horas', 'quarta-20h': 'Miércoles 20:00 horas', 'quarta-21h': 'Miércoles 21:00 horas', 'quarta-22h': 'Miércoles 22:00 horas',
+  'quinta-19h': 'Jueves 19:00 horas',  'quinta-20h': 'Jueves 20:00 horas',  'quinta-21h': 'Jueves 21:00 horas',  'quinta-22h': 'Jueves 22:00 horas',
+  'sabado-17h': 'Sábado 17:00 horas',  'sabado-18h': 'Sábado 18:00 horas',  'sabado-19h': 'Sábado 19:00 horas',
+}
+
 // Distância em dias de cada dia da semana até a segunda-feira da mesma semana
 const DIA_OFFSET_FROM_MONDAY = { terca: 1, quarta: 2, quinta: 3, sabado: 5 }
 
@@ -52,7 +60,7 @@ const DIA_OFFSET_FROM_MONDAY = { terca: 1, quarta: 2, quinta: 3, sabado: 5 }
  * independente de qual dia exato `semanaJogos` aponta.
  * Retorna null se `semanaJogos` não estiver definido.
  */
-export function dataDoDia(dia, semanaJogos) {
+function dataAlvoDoDia(dia, semanaJogos) {
   if (!semanaJogos) return null
   const [ano, mes, diaNum] = semanaJogos.split('-').map(Number)
   if (!ano || !mes || !diaNum) return null
@@ -62,10 +70,30 @@ export function dataDoDia(dia, semanaJogos) {
   const diffParaSegunda = wd === 0 ? -6 : 1 - wd
   const offset = DIA_OFFSET_FROM_MONDAY[dia] ?? 0
 
-  const alvo = new Date(ano, mes - 1, diaNum + diffParaSegunda + offset)
+  return new Date(ano, mes - 1, diaNum + diffParaSegunda + offset)
+}
+
+export function dataDoDia(dia, semanaJogos) {
+  const alvo = dataAlvoDoDia(dia, semanaJogos)
+  if (!alvo) return null
   const dd = String(alvo.getDate()).padStart(2, '0')
   const mm = String(alvo.getMonth() + 1).padStart(2, '0')
   return `${dd}/${mm}`
+}
+
+const MESES_ES = [
+  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+]
+
+/**
+ * Retorna a data por extenso em espanhol (ex: "10 de junio") do mesmo dia
+ * calculado por `dataDoDia`. Usado nas notificações bilíngues do Discord.
+ */
+export function dataDoDiaEs(dia, semanaJogos) {
+  const alvo = dataAlvoDoDia(dia, semanaJogos)
+  if (!alvo) return null
+  return `${alvo.getDate()} de ${MESES_ES[alvo.getMonth()]}`
 }
 
 // Mapa de adjacência — slots que ficam bloqueados quando um horário é confirmado.
