@@ -285,6 +285,30 @@
 .ag-leg--ok    { color: var(--green); }
 .ag-leg--wait  { color: var(--text3); }
 
+/* ── Divisor entre semanas (janela de agendamento de 2 semanas) ─────────────── */
+.ag-semana-divisor {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0 10px;
+}
+
+.ag-semana-divisor-linha {
+  flex: 1;
+  height: 1px;
+  background: var(--border2);
+}
+
+.ag-semana-divisor-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold2);
+  white-space: nowrap;
+}
+
 /* ── Grid de slots ───────────────────────────────────────────────────────── */
 .ag-grid {
   display: flex;

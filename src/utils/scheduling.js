@@ -11,6 +11,7 @@ export const SLOTS = [
   'terca-20h', 'terca-21h', 'terca-22h',
   'quarta-20h', 'quarta-21h', 'quarta-22h',
   'quinta-20h', 'quinta-21h', 'quinta-22h',
+  'sexta-20h', 'sexta-21h', 'sexta-22h',
   'sabado-17h', 'sabado-18h', 'sabado-19h',
 ]
 
@@ -20,6 +21,7 @@ export const SLOTS_PLAYOFF = [
   'terca-19h', 'terca-20h', 'terca-21h', 'terca-22h',
   'quarta-19h', 'quarta-20h', 'quarta-21h', 'quarta-22h',
   'quinta-19h', 'quinta-20h', 'quinta-21h', 'quinta-22h',
+  'sexta-19h', 'sexta-20h', 'sexta-21h', 'sexta-22h',
   'sabado-17h', 'sabado-18h', 'sabado-19h',
 ]
 
@@ -27,6 +29,7 @@ export const SLOT_LABEL = {
   'terca-19h':  'Terça 19h',  'terca-20h':  'Terça 20h',  'terca-21h':  'Terça 21h',  'terca-22h':  'Terça 22h',
   'quarta-19h': 'Quarta 19h', 'quarta-20h': 'Quarta 20h', 'quarta-21h': 'Quarta 21h', 'quarta-22h': 'Quarta 22h',
   'quinta-19h': 'Quinta 19h', 'quinta-20h': 'Quinta 20h', 'quinta-21h': 'Quinta 21h', 'quinta-22h': 'Quinta 22h',
+  'sexta-19h':  'Sexta 19h',  'sexta-20h':  'Sexta 20h',  'sexta-21h':  'Sexta 21h',  'sexta-22h':  'Sexta 22h',
   'sabado-17h': 'Sábado 17h', 'sabado-18h': 'Sábado 18h', 'sabado-19h': 'Sábado 19h',
 }
 
@@ -34,12 +37,13 @@ export const SLOT_DIA = {
   'terca-19h': 'terca',  'terca-20h': 'terca',  'terca-21h': 'terca',  'terca-22h': 'terca',
   'quarta-19h': 'quarta','quarta-20h': 'quarta', 'quarta-21h': 'quarta','quarta-22h': 'quarta',
   'quinta-19h': 'quinta','quinta-20h': 'quinta', 'quinta-21h': 'quinta','quinta-22h': 'quinta',
+  'sexta-19h': 'sexta',  'sexta-20h': 'sexta',   'sexta-21h': 'sexta',  'sexta-22h': 'sexta',
   'sabado-17h': 'sabado','sabado-18h': 'sabado', 'sabado-19h': 'sabado',
 }
 
 export const DIA_LABEL = {
   terca: 'Terça-feira', quarta: 'Quarta-feira',
-  quinta: 'Quinta-feira', sabado: 'Sábado',
+  quinta: 'Quinta-feira', sexta: 'Sexta-feira', sabado: 'Sábado',
 }
 
 // Labels em espanhol — usados nas notificações bilíngues do Discord
@@ -47,11 +51,12 @@ export const SLOT_LABEL_ES = {
   'terca-19h':  'Martes 19:00 horas',  'terca-20h':  'Martes 20:00 horas',  'terca-21h':  'Martes 21:00 horas',  'terca-22h':  'Martes 22:00 horas',
   'quarta-19h': 'Miércoles 19:00 horas', 'quarta-20h': 'Miércoles 20:00 horas', 'quarta-21h': 'Miércoles 21:00 horas', 'quarta-22h': 'Miércoles 22:00 horas',
   'quinta-19h': 'Jueves 19:00 horas',  'quinta-20h': 'Jueves 20:00 horas',  'quinta-21h': 'Jueves 21:00 horas',  'quinta-22h': 'Jueves 22:00 horas',
+  'sexta-19h':  'Viernes 19:00 horas', 'sexta-20h':  'Viernes 20:00 horas', 'sexta-21h':  'Viernes 21:00 horas', 'sexta-22h':  'Viernes 22:00 horas',
   'sabado-17h': 'Sábado 17:00 horas',  'sabado-18h': 'Sábado 18:00 horas',  'sabado-19h': 'Sábado 19:00 horas',
 }
 
 // Distância em dias de cada dia da semana até a segunda-feira da mesma semana
-const DIA_OFFSET_FROM_MONDAY = { terca: 1, quarta: 2, quinta: 3, sabado: 5 }
+const DIA_OFFSET_FROM_MONDAY = { terca: 1, quarta: 2, quinta: 3, sexta: 4, sabado: 5 }
 
 /**
  * Retorna a data (DD/MM) de um dia da semana ('terca', 'quarta', ...) dentro
@@ -110,6 +115,22 @@ export function diaJaPassou(dia, semanaJogos) {
   return alvo < hoje
 }
 
+/**
+ * Soma (ou subtrai) dias a uma data 'YYYY-MM-DD', retornando o resultado no
+ * mesmo formato. Usado para calcular a segunda semana de uma janela de
+ * agendamento que abrange duas semanas (semanaJogos + 7 dias).
+ */
+export function addDias(dataStr, dias) {
+  if (!dataStr) return null
+  const [ano, mes, dia] = dataStr.split('-').map(Number)
+  if (!ano || !mes || !dia) return null
+  const d = new Date(ano, mes - 1, dia + dias)
+  const yyyy = d.getFullYear()
+  const mm   = String(d.getMonth() + 1).padStart(2, '0')
+  const dd   = String(d.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
+}
+
 // Mapa de adjacência — slots que ficam bloqueados quando um horário é confirmado.
 // Usado na fase de playoff pra evitar transmissões consecutivas sem intervalo.
 // Regra: se jogo marcado em X, bloqueia X-1h e X+1h no mesmo dia.
@@ -126,9 +147,48 @@ export const ADJACENT_SLOTS = {
   'quinta-20h': ['quinta-19h', 'quinta-21h'],
   'quinta-21h': ['quinta-20h', 'quinta-22h'],
   'quinta-22h': ['quinta-21h'],
+  'sexta-19h':  ['sexta-20h'],
+  'sexta-20h':  ['sexta-19h', 'sexta-21h'],
+  'sexta-21h':  ['sexta-20h', 'sexta-22h'],
+  'sexta-22h':  ['sexta-21h'],
   'sabado-17h': ['sabado-18h'],
   'sabado-18h': ['sabado-17h', 'sabado-19h'],
   'sabado-19h': ['sabado-18h'],
+}
+
+/**
+ * Retorna a chave "base" de um slot, removendo o sufixo de segunda semana
+ * (`__sem2`) usado em janelas de agendamento que abrangem duas semanas.
+ * Ex: 'terca-20h__sem2' → 'terca-20h'; 'terca-20h' → 'terca-20h'
+ */
+export function baseSlotKey(slot) {
+  return typeof slot === 'string' ? slot.replace(/__sem2$/, '') : slot
+}
+
+/**
+ * Retorna 1 ou 2 indicando a qual semana da janela de agendamento o slot
+ * pertence (2 = slot da segunda semana, identificado pelo sufixo `__sem2`).
+ */
+export function slotSemana(slot) {
+  return typeof slot === 'string' && slot.endsWith('__sem2') ? 2 : 1
+}
+
+/**
+ * Aplica o sufixo de segunda semana a um slot base, se `semana === 2`.
+ */
+export function slotComSemana(slot, semana) {
+  return semana === 2 ? `${slot}__sem2` : slot
+}
+
+/**
+ * Retorna os slots adjacentes de um slot, preservando o sufixo de segunda
+ * semana (se houver) — para que o bloqueio de slots adjacentes em playoffs
+ * funcione igualmente nas duas semanas.
+ */
+export function slotsAdjacentes(slot) {
+  const base   = baseSlotKey(slot)
+  const semana = slotSemana(slot)
+  return (ADJACENT_SLOTS[base] ?? []).map(s => slotComSemana(s, semana))
 }
 
 // ── Fuso horário ─────────────────────────────────────────────────────────────
@@ -151,9 +211,10 @@ export const FUSOS = [
 
 // Hora BRT de cada slot (referência fixa)
 const SLOT_BRT_HORA = {
-  'terca-20h': 20, 'terca-21h': 21, 'terca-22h': 22,
-  'quarta-20h': 20, 'quarta-21h': 21, 'quarta-22h': 22,
-  'quinta-20h': 20, 'quinta-21h': 21, 'quinta-22h': 22,
+  'terca-19h': 19, 'terca-20h': 20, 'terca-21h': 21, 'terca-22h': 22,
+  'quarta-19h': 19, 'quarta-20h': 20, 'quarta-21h': 21, 'quarta-22h': 22,
+  'quinta-19h': 19, 'quinta-20h': 20, 'quinta-21h': 21, 'quinta-22h': 22,
+  'sexta-19h': 19, 'sexta-20h': 20, 'sexta-21h': 21, 'sexta-22h': 22,
   'sabado-17h': 17, 'sabado-18h': 18, 'sabado-19h': 19,
 }
 
@@ -173,7 +234,7 @@ function offsetVsBRT(fusoId) {
  * Ex: slotHoraLocal('terca-20h', 'America/Santiago') → 19
  */
 export function slotHoraLocal(slot, fusoId) {
-  const horaBRT = SLOT_BRT_HORA[slot] ?? 0
+  const horaBRT = SLOT_BRT_HORA[baseSlotKey(slot)] ?? 0
   const diff    = offsetVsBRT(fusoId)
   return ((horaBRT + diff) % 24 + 24) % 24
 }
@@ -184,14 +245,15 @@ export function slotHoraLocal(slot, fusoId) {
  * Ex: "Terça 19h (CLT) · 20h BRT"
  */
 export function slotLabelFuso(slot, fusoId) {
+  const base = baseSlotKey(slot)
   const diff = offsetVsBRT(fusoId)
-  if (diff === 0) return SLOT_LABEL[slot]
+  if (diff === 0) return SLOT_LABEL[base]
 
   const fusoInfo  = FUSOS.find(f => f.id === fusoId)
   const abrev     = fusoInfo?.abrev ?? fusoId
   const horaLocal = slotHoraLocal(slot, fusoId)
-  const horaBRT   = SLOT_BRT_HORA[slot]
-  const dia       = DIA_LABEL[SLOT_DIA[slot]]?.split('-')[0] ?? ''
+  const horaBRT   = SLOT_BRT_HORA[base]
+  const dia       = DIA_LABEL[SLOT_DIA[base]]?.split('-')[0] ?? ''
 
   return `${dia} ${horaLocal}h (${abrev}) · ${horaBRT}h BRT`
 }
@@ -277,28 +339,34 @@ export const PONTUACAO_PADRAO = {
 
 /**
  * Retorna slots em comum entre dois times na ordem de preferência do campeonato.
+ * `ordemSlots` define o universo e a ordem de preferência considerados — por
+ * padrão `SLOTS`, mas pode incluir slots de uma segunda semana (sufixo
+ * `__sem2`) ou os slots de playoff (`SLOTS_PLAYOFF`).
  */
-export function encontrarSlotsEmComum(slotsA = [], slotsB = []) {
+export function encontrarSlotsEmComum(slotsA = [], slotsB = [], ordemSlots = SLOTS) {
   const setB = new Set(slotsB)
-  return SLOTS.filter(s => slotsA.includes(s) && setB.has(s))
+  return ordemSlots.filter(s => slotsA.includes(s) && setB.has(s))
 }
 
 /**
- * True se dois slots são do mesmo dia.
+ * True se dois slots são do mesmo dia da mesma semana (slots de semanas
+ * diferentes nunca são considerados "do mesmo dia").
  */
 export function mesmodia(slotA, slotB) {
-  return !!slotA && !!slotB && SLOT_DIA[slotA] === SLOT_DIA[slotB]
+  return !!slotA && !!slotB &&
+    slotSemana(slotA) === slotSemana(slotB) &&
+    SLOT_DIA[baseSlotKey(slotA)] === SLOT_DIA[baseSlotKey(slotB)]
 }
 
 /**
- * True se dois slots são imediatamente consecutivos no mesmo dia.
- * Ex: terca-20h e terca-21h → true
- *     terca-20h e terca-22h → false (há intervalo)
+ * True se dois slots são imediatamente consecutivos no mesmo dia (e mesma
+ * semana). Ex: terca-20h e terca-21h → true
+ *              terca-20h e terca-22h → false (há intervalo)
  */
 export function slotsConsecutivos(slotA, slotB) {
   if (!mesmodia(slotA, slotB)) return false
-  const idxA = SLOTS.indexOf(slotA)
-  const idxB = SLOTS.indexOf(slotB)
+  const idxA = SLOTS.indexOf(baseSlotKey(slotA))
+  const idxB = SLOTS.indexOf(baseSlotKey(slotB))
   return idxA !== -1 && idxB !== -1 && Math.abs(idxA - idxB) === 1
 }
 
@@ -330,8 +398,8 @@ export function avisaBackToBack(teamId, slotCandidato, confrontos = []) {
  * sugere o melhor slot (primeiro na ordem de preferência que esteja livre).
  * Retorna o slot sugerido ou null se não há sobreposição viável.
  */
-export function sugerirSlot(slotsA = [], slotsB = [], slotsOcupados = {}) {
-  const emComum = encontrarSlotsEmComum(slotsA, slotsB)
+export function sugerirSlot(slotsA = [], slotsB = [], slotsOcupados = {}, ordemSlots = SLOTS) {
+  const emComum = encontrarSlotsEmComum(slotsA, slotsB, ordemSlots)
   return emComum.find(s => !slotsOcupados[s]) ?? null
 }
 
@@ -339,21 +407,21 @@ export function sugerirSlot(slotsA = [], slotsB = [], slotsOcupados = {}) {
  * True se ambos marcaram disponibilidade mas não há nenhum slot em comum.
  * Indica necessidade de intervenção do admin.
  */
-export function detectarSemOverlap(slotsA = [], slotsB = []) {
+export function detectarSemOverlap(slotsA = [], slotsB = [], ordemSlots = SLOTS) {
   if (!slotsA.length || !slotsB.length) return false // um ainda não marcou
-  return encontrarSlotsEmComum(slotsA, slotsB).length === 0
+  return encontrarSlotsEmComum(slotsA, slotsB, ordemSlots).length === 0
 }
 
 /**
  * Dado que ambos os times acabaram de marcar disponibilidade,
  * retorna o novo status e slot sugerido do confronto.
  */
-export function resolverDisponibilidade(slotsA = [], slotsB = [], slotsOcupados = {}) {
+export function resolverDisponibilidade(slotsA = [], slotsB = [], slotsOcupados = {}, ordemSlots = SLOTS) {
   if (!slotsA.length || !slotsB.length) {
     return { status: STATUS_CONFRONTO.AGENDANDO, slot: null, alertas: {} }
   }
 
-  const slot = sugerirSlot(slotsA, slotsB, slotsOcupados)
+  const slot = sugerirSlot(slotsA, slotsB, slotsOcupados, ordemSlots)
 
   if (slot) {
     return {
