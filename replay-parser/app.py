@@ -16,8 +16,15 @@ import os
 import sys
 import json
 import tempfile
+import threading
 import traceback
 from pathlib import Path
+
+# replay.game.events pode ter centenas de milhares de eventos em partidas
+# muito longas — decodificar isso em Python puro pode estourar o timeout do
+# gunicorn no Render free tier. Limitamos esse passo (usado só para talentos)
+# a um tempo máximo; se estourar, o resto do resultado ainda é devolvido.
+GAME_EVENTS_TIMEOUT = 45  # segundos
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -95,16 +102,35 @@ def _run_parse(filepath: str) -> dict:
             app.logger.warning("Aviso ao ler %s: %s", filename, exc)
 
     # tracker.events e game.events retornam generators — materializar antes de passar
-    for filename, decoder, handler in [
-        ("replay.tracker.events", protocol.decode_replay_tracker_events, parse_tracker_events),
-        ("replay.game.events",    protocol.decode_replay_game_events,    parse_game_events),
-    ]:
-        try:
-            raw    = archive.read_file(filename)
-            events = list(decoder(raw))
-            handler(events, result)
-        except Exception as exc:
-            app.logger.warning("Aviso ao ler %s: %s", filename, exc)
+    try:
+        raw    = archive.read_file("replay.tracker.events")
+        events = list(protocol.decode_replay_tracker_events(raw))
+        parse_tracker_events(events, result)
+    except Exception as exc:
+        app.logger.warning("Aviso ao ler replay.tracker.events: %s", exc)
+
+    # replay.game.events (talentos) — em partidas muito longas isso pode ter
+    # centenas de milhares de eventos e demorar demais; roda com limite de
+    # tempo numa thread separada para não travar a resposta inteira.
+    try:
+        raw = archive.read_file("replay.game.events")
+        decoded = {}
+
+        def _decode_game_events():
+            decoded["events"] = list(protocol.decode_replay_game_events(raw))
+
+        t = threading.Thread(target=_decode_game_events, daemon=True)
+        t.start()
+        t.join(GAME_EVENTS_TIMEOUT)
+        if "events" in decoded:
+            parse_game_events(decoded["events"], result)
+        else:
+            app.logger.warning(
+                "replay.game.events demorou mais de %ss — talentos não disponíveis",
+                GAME_EVENTS_TIMEOUT,
+            )
+    except Exception as exc:
+        app.logger.warning("Aviso ao ler replay.game.events: %s", exc)
 
     return result
 

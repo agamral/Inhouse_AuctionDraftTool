@@ -199,6 +199,7 @@ def parse_details(details, result):
         hero_name = decode_str(p.get("m_hero", b""))
         player = {
             "slot":          i,
+            "_wss":          p.get("m_workingSetSlotId"),
             "battletag":     decode_str(p.get("m_name", b"")),
             "hero":          hero_name,
             "heroIcon":      _canonical_hero_name(hero_name),
@@ -467,15 +468,26 @@ def parse_tracker_events(tracker_events, result):
         result["match"]["duration_seconds"] = None
         result["match"]["duration"] = None
 
+    # m_values do SScoreResultEvent é indexado por m_workingSetSlotId, não pela
+    # ordem de m_playerList — mapeia working-set-slot → índice em players.
+    wss_to_idx = {
+        p["_wss"]: i for i, p in enumerate(players) if p.get("_wss") is not None
+    }
+
     # Aplicar estatísticas a cada jogador pelo slot
     for slot_idx, stats in score_stats.items():
-        if slot_idx >= len(players):
+        idx = wss_to_idx.get(slot_idx, slot_idx)
+        if idx >= len(players):
             continue
-        p = players[slot_idx]
+        p = players[idx]
         for tracker_key, player_key in STAT_MAP.items():
             val = stats.get(tracker_key)
             if val is not None:
                 p[player_key] = val
+
+    # Remove campo interno usado só para o mapeamento acima
+    for p in players:
+        p.pop("_wss", None)
 
     # Totais por time
     for team_num in (1, 2):
