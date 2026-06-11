@@ -168,6 +168,11 @@
     "status_ended": "Ended",
     "status_waiting": "Waiting",
     "cta_view": "View championship →",
+    "cta_featured": "🔥 Enter the championship →",
+    "featured_teams": "{{count}} team formed",
+    "featured_teams_plural": "{{count}} teams formed",
+    "featured_players": "{{count}} player registered",
+    "featured_players_plural": "{{count}} players registered",
     "cta_history": "View history →",
     "history_link": "See all previous editions →",
     "empty": "No championships available yet."

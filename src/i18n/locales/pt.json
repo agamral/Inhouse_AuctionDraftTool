@@ -168,6 +168,11 @@
     "status_ended": "Encerrado",
     "status_waiting": "Aguardando",
     "cta_view": "Ver campeonato →",
+    "cta_featured": "🔥 Entrar no campeonato →",
+    "featured_teams": "{{count}} time formado",
+    "featured_teams_plural": "{{count}} times formados",
+    "featured_players": "{{count}} jogador inscrito",
+    "featured_players_plural": "{{count}} jogadores inscritos",
     "cta_history": "Ver histórico →",
     "history_link": "Ver todas as edições anteriores →",
     "empty": "Nenhum campeonato disponível ainda."

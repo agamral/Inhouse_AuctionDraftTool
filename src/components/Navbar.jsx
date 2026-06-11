@@ -9,6 +9,7 @@ import { useViewAs } from '../contexts/ViewAsContext'
 import { useAuth as useRealAuth } from '../hooks/useAuth'
 import { useCampeonato as useCampeonatoCtx } from '../contexts/CampeonatoContext'
 import { useModules, useConteudo } from '../hooks/useConfig'
+import { useCaptainNotifications } from '../hooks/useCaptainNotifications'
 import { logout } from '../firebase/auth'
 import './Navbar.css'
 
@@ -126,6 +127,137 @@ function MenuItem({ label, active, color, onClick }) {
   )
 }
 
+// ── UserMenu — dropdown do avatar (perfil + sair) ─────────────────────────────
+//
+// Antes, clicar no avatar deslogava direto — fácil de acionar sem querer.
+// Agora abre um menu com "Meu perfil" e "Sair" como ações explícitas.
+function UserMenu({ avatar, nome, email, color, onLogout }) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <button
+        className="navbar-avatar"
+        onClick={() => setOpen(v => !v)}
+        title={nome ?? email}
+        style={color ? { background: `${color}22`, borderColor: color } : undefined}
+      >
+        {avatar}
+      </button>
+
+      {open && (
+        <>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 998 }} onClick={() => setOpen(false)} />
+          <div style={{
+            position: 'absolute', right: 0, top: 'calc(100% + 6px)', zIndex: 999,
+            background: 'var(--bg2)', border: '1px solid var(--border2)',
+            borderRadius: 8, padding: 6, minWidth: 200,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+            display: 'flex', flexDirection: 'column', gap: 2,
+          }}>
+            {(nome || email) && (
+              <div style={{ padding: '6px 10px 8px', borderBottom: '1px solid var(--border)', marginBottom: 2 }}>
+                {nome && (
+                  <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>
+                    {nome}
+                  </div>
+                )}
+                {email && (
+                  <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 11, color: 'var(--text3)' }}>
+                    {email}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <Link to="/meu-perfil" onClick={() => setOpen(false)} style={{
+              display: 'block', width: '100%', textAlign: 'left', textDecoration: 'none', boxSizing: 'border-box',
+              padding: '6px 10px', borderRadius: 5,
+              color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif", fontSize: 12,
+            }}>
+              👤 Meu perfil
+            </Link>
+
+            <button onClick={() => { setOpen(false); onLogout() }} style={{
+              display: 'block', width: '100%', textAlign: 'left',
+              padding: '6px 10px', borderRadius: 5, cursor: 'pointer', border: 'none', background: 'transparent',
+              color: 'var(--red)', fontFamily: "'Barlow Condensed', sans-serif", fontSize: 12,
+            }}>
+              ↪ Sair da conta
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+// ── NotificationBell — agenda pendente e confrontos finalizados (capitão) ────
+function NotificationBell({ items, unreadCount, onItemClick }) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <button
+        className="navbar-avatar"
+        onClick={() => setOpen(v => !v)}
+        title="Notificações"
+        style={{ position: 'relative' }}
+      >
+        🔔
+        {unreadCount > 0 && (
+          <span style={{
+            position: 'absolute', top: -4, right: -4, minWidth: 16, height: 16, padding: '0 3px',
+            borderRadius: 8, background: 'var(--red)', color: '#fff',
+            fontFamily: "'Barlow Condensed', sans-serif", fontSize: 10, fontWeight: 700,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
+          }}>
+            {unreadCount}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 998 }} onClick={() => setOpen(false)} />
+          <div style={{
+            position: 'absolute', right: 0, top: 'calc(100% + 6px)', zIndex: 999,
+            background: 'var(--bg2)', border: '1px solid var(--border2)',
+            borderRadius: 8, padding: 6, minWidth: 280, maxWidth: 340,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+            display: 'flex', flexDirection: 'column', gap: 2,
+          }}>
+            <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.12em', textTransform: 'uppercase', padding: '4px 8px 6px' }}>
+              Notificações
+            </div>
+
+            {items.length === 0 ? (
+              <div style={{ padding: '6px 10px 10px', color: 'var(--text3)', fontFamily: "'Barlow Condensed', sans-serif", fontSize: 12 }}>
+                Nenhuma notificação por aqui.
+              </div>
+            ) : items.map(item => (
+              <button
+                key={item.key}
+                onClick={() => { onItemClick(item); setOpen(false) }}
+                style={{
+                  display: 'flex', alignItems: 'flex-start', gap: 8, width: '100%', textAlign: 'left',
+                  padding: '8px 10px', borderRadius: 5, cursor: 'pointer', border: 'none',
+                  background: item.lida ? 'transparent' : 'rgba(201,168,76,0.08)',
+                  color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif", fontSize: 12,
+                }}
+              >
+                <span style={{ fontSize: 14, lineHeight: 1.3 }}>{item.icone}</span>
+                <span style={{ flex: 1, color: item.lida ? 'var(--text2)' : 'var(--text)' }}>{item.titulo}</span>
+                {!item.lida && <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--gold)', marginTop: 4, flexShrink: 0 }} />}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 export default function Navbar() {
   const { t, i18n } = useTranslation()
   const { user, isAdmin, isSuperAdmin, adminCampeonatoIds, capitao } = useAuth()
@@ -150,6 +282,12 @@ export default function Navbar() {
   const modules = useModules()
   const conteudo = useConteudo()
   const navigate = useNavigate()
+  const { items: notifItems, unreadCount: notifUnread, marcarLida: marcarNotifLida } = useCaptainNotifications(capitao, user)
+
+  function handleNotifClick(item) {
+    if (item.tipo === 'confronto') marcarNotifLida(item.key)
+    navigate(item.link)
+  }
   const inCampeonato = useMatch('/campeonatos/:campeonatoId/*')
   const base = inCampeonato ? `/campeonatos/${inCampeonato.params.campeonatoId}` : ''
   const location = useLocation()
@@ -293,22 +431,28 @@ export default function Navbar() {
             >
               ⚙ Admin
             </NavLink>
-            <button className="navbar-avatar" onClick={handleLogout} title={`Sair (${user.email})`}>
-              {user.photoURL
+            <UserMenu
+              avatar={user.photoURL
                 ? <img src={user.photoURL} alt={user.displayName} referrerPolicy="no-referrer" />
                 : <span>{user.email[0].toUpperCase()}</span>
               }
-            </button>
+              email={user.email}
+              onLogout={handleLogout}
+            />
           </div>
         ) : capitao ? (
           <div className="navbar-admin-area">
             <span style={{ fontSize: 12, color: capitao.cor ?? 'var(--blue)', fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700 }}>
               {capitao.nome}
             </span>
-            <button className="navbar-avatar" onClick={handleLogout} title={`Sair (${user?.email})`}
-              style={{ background: `${capitao.cor ?? 'var(--blue)'}22`, borderColor: capitao.cor ?? 'var(--blue)' }}>
-              <span style={{ color: capitao.cor ?? 'var(--blue)' }}>⚔</span>
-            </button>
+            <NotificationBell items={notifItems} unreadCount={notifUnread} onItemClick={handleNotifClick} />
+            <UserMenu
+              avatar={<span style={{ color: capitao.cor ?? 'var(--blue)' }}>⚔</span>}
+              nome={capitao.nome}
+              email={user?.email}
+              color={capitao.cor ?? 'var(--blue)'}
+              onLogout={handleLogout}
+            />
           </div>
         ) : user ? (
           <NavLink to="/meu-perfil" className="navbar-avatar" title={user.email}>
