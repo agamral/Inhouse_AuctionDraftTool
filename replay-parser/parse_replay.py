@@ -359,12 +359,25 @@ def _build_event_timeline(stat_events, player_id_to_slot, players):
             # Objetivos de mapa — tenta múltiplas chaves usadas por mapas diferentes
             winning = None
 
-            # Infernal Shrine / Dragon Shire / Alterac Pass: time em intData
-            for team_key in ("Winning Team", "Team", "CapturingTeam", "Owning Team"):
+            # Infernal Shrine / Dragon Shire / Alterac Pass / Torres da Perdição
+            # (Altar Captured) / Sky Temple / etc: time em intData
+            for team_key in ("Winning Team", "Team", "CapturingTeam", "Owning Team", "Firing Team"):
                 v = ints.get(team_key)
                 if v is not None and int(v) in (1, 2):
                     winning = int(v)
                     break
+
+            # Torres da Perdição — "Town Captured": New Owner vem como 11/12 (time + 10)
+            if winning is None:
+                new_owner = ints.get("New Owner")
+                if new_owner is not None and int(new_owner) - 10 in (1, 2):
+                    winning = int(new_owner) - 10
+
+            # Condado do Dragão — "DragonKnightActivated": time em fixedData TeamID
+            if winning is None:
+                team_id = fixs.get("TeamID")
+                if team_id is not None and int(round(team_id)) in (1, 2):
+                    winning = int(round(team_id))
 
             # Braxis Holdout e mapas com barra de progresso em fixedData:
             # TeamOrderProgress=100 → time 1, TeamChaosProgress=100 → time 2
@@ -397,6 +410,9 @@ def parse_tracker_events(tracker_events, result):
     # player_id (1-based do tracker) → slot (0-based do details)
     player_id_to_slot: dict[int, int] = {}
 
+    # user_id (usado nos game events) → slot (0-based do details)
+    user_id_to_slot: dict[int, int] = {}
+
     # Acumulador de stats: slot → {campo: valor}
     score_stats: dict[int, dict] = {}
 
@@ -410,8 +426,11 @@ def parse_tracker_events(tracker_events, result):
         if etype == "NNet.Replay.Tracker.SPlayerSetupEvent":
             pid = event.get("m_playerId")
             sid = event.get("m_slotId")
+            uid = event.get("m_userId")
             if pid is not None and sid is not None:
                 player_id_to_slot[pid] = sid
+            if uid is not None and sid is not None:
+                user_id_to_slot[uid] = sid
 
         # Duração: último loop antes de GameEnd
         elif etype in (
@@ -508,6 +527,9 @@ def parse_tracker_events(tracker_events, result):
     result["xpTimeline"]    = _build_xp_timeline(xp_events)
     result["eventTimeline"] = _build_event_timeline(all_stat_events, player_id_to_slot, players)
 
+    # Repassa o mapeamento user_id → slot para parse_game_events (removido depois de usado)
+    result["_user_id_to_slot"] = user_id_to_slot
+
 
 def parse_game_events(game_events, result):
     """
@@ -519,6 +541,9 @@ def parse_game_events(game_events, result):
     players = result["players"]
     talent_counters = [0] * len(players)
 
+    # m_userId (game events) → slot (0-based, mesma ordem de m_playerList)
+    user_id_to_slot = result.pop("_user_id_to_slot", {})
+
     for event in game_events:
         etype = event.get("_event", "")
 
@@ -528,8 +553,12 @@ def parse_game_events(game_events, result):
             if "Talent" not in etype and "talent" not in etype:
                 continue
 
-        user_id = safe_get(event, "_userid", "m_userId")
-        if user_id is None or user_id >= len(players):
+        raw_user_id = safe_get(event, "_userid", "m_userId")
+        if raw_user_id is None:
+            continue
+
+        user_id = user_id_to_slot.get(raw_user_id, raw_user_id)
+        if user_id >= len(players):
             continue
 
         tier_index = talent_counters[user_id]
@@ -733,6 +762,8 @@ def main():
         parse_game_events(game_events, result)
     except Exception as exc:
         print(f"Aviso: Não foi possível ler replay.game.events: {exc}", file=sys.stderr)
+
+    result.pop("_user_id_to_slot", None)
 
     # Salvar JSON
     output_path = Path(__file__).parent / "resultado.json"

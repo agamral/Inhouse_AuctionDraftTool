@@ -132,6 +132,7 @@ def _run_parse(filepath: str) -> dict:
     except Exception as exc:
         app.logger.warning("Aviso ao ler replay.game.events: %s", exc)
 
+    result.pop("_user_id_to_slot", None)
     return result
 
 
