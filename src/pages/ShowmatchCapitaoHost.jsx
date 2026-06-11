@@ -609,6 +609,19 @@ function PartidaCard({ num, partida: p, sessao, sessaoId, scrimPath, campeonatoI
   const [primeiroTime, setPrimeiroTime] = useState(p.config?.primeiroTime ?? 'A')
   const [globalBans,   setGlobalBans]   = useState(p.config?.globalBans?.length ? p.config.globalBans : madnessBansInicial)
   const [buscaBan,     setBuscaBan]     = useState('')
+
+  // madnessBansInicial pode chegar vazio no primeiro render (ex: este card já
+  // estava montado quando a partida anterior ainda não tinha vencedor/draft
+  // salvos). Quando os bans do Madness ficam disponíveis depois, aplica-os
+  // uma única vez — sem sobrescrever se a config já foi salva pelo host.
+  const madnessAplicadoRef = useRef(false)
+  useEffect(() => {
+    if (madnessAplicadoRef.current) return
+    if (p.config?.globalBans?.length) { madnessAplicadoRef.current = true; return }
+    if (madnessBansInicial.length === 0) return
+    madnessAplicadoRef.current = true
+    setGlobalBans(prev => [...new Set([...prev, ...madnessBansInicial])])
+  }, [madnessBansInicial]) // eslint-disable-line
   const [criando,      setCriando]      = useState(false)
   const [salvandoVenc, setSalvandoVenc] = useState(false)
   const [copiado,      setCopiado]      = useState(null)

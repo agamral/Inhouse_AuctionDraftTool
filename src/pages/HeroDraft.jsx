@@ -3,6 +3,8 @@ import { useSearchParams } from 'react-router-dom'
 import { ref, set, remove, onValue, update } from 'firebase/database'
 import { db } from '../firebase/database'
 import { useHeroDraft } from '../hooks/useHeroDraft'
+import { useAuth } from '../hooks/useAuth'
+import { loginCapitao, logout } from '../firebase/auth'
 import { useServerTimeOffset } from '../hooks/useServerTimeOffset'
 import { useCampeonato } from '../contexts/CampeonatoContext'
 import { useDraftConfig } from '../hooks/useConfig'
@@ -37,6 +39,20 @@ export default function HeroDraft() {
   const { estado, loading, erro, ehMinhaTez, agir, iniciar } = useHeroDraft(
     isShowmatch ? null : sessaoId, timeLocal, pathOverride
   )
+
+  // ── Verificação de identidade do capitão (confronto oficial) ────────────────
+  // Garante que quem está acessando ?time=A/B é realmente o capitão daquele
+  // time logado na conta correta — evita que um capitão deslogado/com a conta
+  // errada trave o draft (writes rejeitados pelas rules viram um loop de
+  // ban entrando/saindo na tela).
+  const { user: authUser, loading: authLoading } = useAuth()
+  const meuTimeKey   = timeLocal === 'A' ? 'timeA' : timeLocal === 'B' ? 'timeB' : null
+  const meuTime      = meuTimeKey ? estado?.[meuTimeKey] : null
+  const exigeIdentidade = !isShowmatch && !!meuTime && (!!meuTime.capitaoUid || !!meuTime.capitaoEmail)
+  const identidadeOk = !exigeIdentidade || (!!authUser && (
+    (meuTime.capitaoUid   && authUser.uid   === meuTime.capitaoUid) ||
+    (meuTime.capitaoEmail && authUser.email === meuTime.capitaoEmail)
+  ))
 
   // ── Presença do capitão ────────────────────────────────────────────────────
   // Usa update() em vez de set() pra não sobrescrever a flag `confirmado`
@@ -304,6 +320,20 @@ export default function HeroDraft() {
         confirmado={confirmado}
         outroConfirmou={outroConf}
         onConfirmar={confirmarPresenca}
+      />
+    )
+  }
+
+  // Confronto oficial: exige que o capitão esteja logado com a conta correta
+  // antes de mostrar a sala de espera ou o draft em si.
+  if (exigeIdentidade && authLoading) {
+    return <div className="hd-loading">{t('hero_draft.loading')}</div>
+  }
+  if (exigeIdentidade && !identidadeOk) {
+    return (
+      <CaptainAccessGate
+        nomeTime={meuTime?.nome ?? (timeLocal === 'A' ? 'Time A' : 'Time B')}
+        currentUser={authUser}
       />
     )
   }
@@ -793,6 +823,128 @@ function ShowmatchPreDraft({ sessaoData, timeLocal, draftPronto, confirmado, out
         <style>{`@keyframes hd-pulse { 0%,100%{opacity:.4} 50%{opacity:1} }`}</style>
       </div>
     </main>
+  )
+}
+
+// ── Verificação de identidade do capitão ──────────────────────────────────────
+//
+// Bloqueia o acesso ao confronto até o capitão estar autenticado com a conta
+// correta. Guia o capitão passo a passo: se a conta logada é de outra pessoa,
+// pede para sair e trocar; se ninguém está logado, mostra o login direto na
+// tela. Assim que a conta certa for autenticada, o componente desaparece
+// automaticamente (useAuth reage à mudança e o fluxo normal continua).
+
+const captainGateInputCss = {
+  background: 'var(--bg)', border: '1px solid var(--border2)', borderRadius: 6,
+  padding: '10px 14px', color: 'var(--text)', fontFamily: "'Barlow', sans-serif",
+  fontSize: 14, outline: 'none', width: '100%', boxSizing: 'border-box',
+}
+
+function CaptainAccessGate({ nomeTime, currentUser }) {
+  return (
+    <main className="hero-draft-page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#050612', padding: 24 }}>
+      <div style={{ maxWidth: 420, width: '100%', display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 32, marginBottom: 8 }}>🔒</div>
+          <div style={{ fontSize: 11, fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.2em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', marginBottom: 10 }}>
+            VERIFICAÇÃO NECESSÁRIA
+          </div>
+          <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 24, color: '#fff' }}>
+            Confirme seu acesso como capitão do {nomeTime}
+          </div>
+        </div>
+
+        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {currentUser ? (
+            <CaptainAccessWrongAccount nomeTime={nomeTime} currentUser={currentUser} />
+          ) : (
+            <CaptainAccessLogin nomeTime={nomeTime} />
+          )}
+        </div>
+
+        <div style={{ textAlign: 'center', fontSize: 12, color: 'rgba(255,255,255,0.3)', fontFamily: "'Barlow Condensed', sans-serif", lineHeight: 1.6 }}>
+          Depois de entrar com a conta correta, você voltará automaticamente para a sala de espera.
+        </div>
+      </div>
+    </main>
+  )
+}
+
+function CaptainAccessWrongAccount({ nomeTime, currentUser }) {
+  const [saindo, setSaindo] = useState(false)
+
+  async function handleLogout() {
+    setSaindo(true)
+    try {
+      await logout()
+    } finally {
+      setSaindo(false)
+    }
+  }
+
+  return (
+    <>
+      <p style={{ fontSize: 14, color: 'var(--text)', margin: 0, lineHeight: 1.6 }}>
+        Você está logado como <strong style={{ color: 'var(--gold2)' }}>{currentUser.email}</strong>,
+        mas esta sala é a do capitão do <strong>{nomeTime}</strong>.
+      </p>
+      <p style={{ fontSize: 13, color: 'var(--text2)', margin: 0, lineHeight: 1.6 }}>
+        Saia desta conta e entre novamente com o login do capitão correto para continuar.
+      </p>
+      <button onClick={handleLogout} disabled={saindo} className="btn primary" style={{ padding: 11, fontSize: 14 }}>
+        {saindo ? 'Saindo...' : 'Sair e trocar de conta'}
+      </button>
+    </>
+  )
+}
+
+function CaptainAccessLogin({ nomeTime }) {
+  const [email,    setEmail]    = useState('')
+  const [senha,    setSenha]    = useState('')
+  const [erro,     setErro]     = useState(null)
+  const [entrando, setEntrando] = useState(false)
+
+  async function handleLogin(e) {
+    e.preventDefault()
+    setErro(null)
+    setEntrando(true)
+    try {
+      await loginCapitao(email.trim(), senha)
+      // Sucesso: useAuth atualiza authUser automaticamente e a tela
+      // volta sozinha para a sala de espera.
+    } catch (e) {
+      const msgs = {
+        'auth/user-not-found':     'Acesso não encontrado.',
+        'auth/wrong-password':     'Senha incorreta.',
+        'auth/invalid-email':      'Email ou chave inválida.',
+        'auth/too-many-requests':  'Muitas tentativas. Aguarde alguns minutos.',
+        'auth/invalid-credential': 'Credenciais inválidas.',
+      }
+      setErro(msgs[e.code] ?? 'Erro ao entrar. Verifique seus dados.')
+    } finally {
+      setEntrando(false)
+    }
+  }
+
+  return (
+    <>
+      <p style={{ fontSize: 14, color: 'var(--text)', margin: 0, lineHeight: 1.6 }}>
+        Você não está logado. Entre com a conta do capitão do <strong>{nomeTime}</strong> para acessar a sala de espera.
+      </p>
+      <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <input type="email" placeholder="Email ou chave de acesso"
+          autoComplete="username"
+          value={email} onChange={e => setEmail(e.target.value)} required style={captainGateInputCss} />
+        <input type="password" placeholder="Senha"
+          autoComplete="current-password"
+          value={senha} onChange={e => setSenha(e.target.value)} required style={captainGateInputCss} />
+        {erro && <p style={{ color: 'var(--red)', fontSize: 13, margin: 0 }}>{erro}</p>}
+        <button type="submit" className="btn primary" disabled={entrando} style={{ padding: 11, fontSize: 14, marginTop: 4 }}>
+          {entrando ? 'Entrando...' : 'Entrar'}
+        </button>
+      </form>
+    </>
   )
 }
 

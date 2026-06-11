@@ -150,12 +150,16 @@ export function criarEstadoInicial({ timeA, timeB, sequencia = SEQUENCIA_PADRAO,
     timeA: {
       nome:  timeA.nome,
       cor:   timeA.cor   ?? '#4a9eda',
+      ...(timeA.capitaoUid   ? { capitaoUid:   timeA.capitaoUid }   : {}),
+      ...(timeA.capitaoEmail ? { capitaoEmail: timeA.capitaoEmail } : {}),
       picks: [],
       bans:  [],
     },
     timeB: {
       nome:  timeB.nome,
       cor:   timeB.cor   ?? '#e05555',
+      ...(timeB.capitaoUid   ? { capitaoUid:   timeB.capitaoUid }   : {}),
+      ...(timeB.capitaoEmail ? { capitaoEmail: timeB.capitaoEmail } : {}),
       picks: [],
       bans:  [],
     },
@@ -282,6 +286,41 @@ export function desfazerUltimaAcao(estado) {
 
 export function encerrarDraft(estado) {
   return { ...deepClone(estado), status: STATUS_DRAFT.ENCERRADO }
+}
+
+// ── Reiniciar draft (admin) ──────────────────────────────────────────────────
+//
+// Volta o draft para 'aguardando', preservando configuração (sequência,
+// timer, mapa, global bans, nomes/cores dos times) mas limpando picks, bans,
+// histórico e marcadores de turno/contagem — útil quando o admin precisa
+// corrigir algo antes de iniciar de novo, sem recriar o Hero Draft inteiro.
+
+export function reiniciarDraft(estado) {
+  const clone = deepClone(estado)
+  delete clone.countdownEndsAt
+  delete clone.countdownStartedAt
+  delete clone.countdownSecs
+  delete clone.turnoIniciadoEm
+
+  // Exige que os capitães confirmem presença de novo — garante que ainda
+  // estão na sala antes do admin iniciar o draft outra vez.
+  const presence = clone.presence ?? {}
+  for (const t of ['A', 'B']) {
+    if (presence[t]) {
+      presence[t] = { ...presence[t], confirmado: false }
+      delete presence[t].confirmedEm
+    }
+  }
+
+  return {
+    ...clone,
+    status:     STATUS_DRAFT.AGUARDANDO,
+    passoAtual: 0,
+    historico:  [],
+    presence,
+    timeA: { ...clone.timeA, picks: [], bans: [] },
+    timeB: { ...clone.timeB, picks: [], bans: [] },
+  }
 }
 
 // ── Iniciar draft ────────────────────────────────────────────────────────────

@@ -6,6 +6,7 @@ import {
   executarAcao,
   desfazerUltimaAcao,
   encerrarDraft,
+  reiniciarDraft,
   iniciarDraft,
   SEQUENCIA_PADRAO,
   STATUS_DRAFT,
@@ -144,6 +145,20 @@ export function useHeroDraft(sessionId, timeLocal = null, pathOverride = null) {
     }
   }, [estado, path])
 
+  // ── Reiniciar draft (admin) — volta para 'aguardando' sem recriar ──────────
+  const reiniciar = useCallback(async () => {
+    if (!estado) return { ok: false, erro: 'Estado não carregado' }
+
+    const novoEstado = reiniciarDraft(estado)
+
+    try {
+      await set(ref(db, path), novoEstado)
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, erro: e.message }
+    }
+  }, [estado, path])
+
   // ── Criar nova sessão (admin) ──────────────────────────────────────────────
   const criarSessao = useCallback(async ({ timeA, timeB, sequencia, globalBans }) => {
     const novoEstado = criarEstadoInicial({
@@ -181,6 +196,7 @@ export function useHeroDraft(sessionId, timeLocal = null, pathOverride = null) {
     iniciar,
     iniciarComContagem,
     encerrar,
+    reiniciar,
     criarSessao,
     atualizarGlobalBans,
   }
