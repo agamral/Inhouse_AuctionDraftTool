@@ -373,6 +373,8 @@
     }
   },
   "agendamento": {
-    "semanaJogos": "Games week: {{de}} to {{ate}}"
+    "semanaJogos": "Games week: {{de}} to {{ate}}",
+    "semanaSeguinte": "Week of {{de}}",
+    "janelaFechada": "The deadline to mark availability for this round has passed. Contact the organizers if you need to reschedule."
   }
 }

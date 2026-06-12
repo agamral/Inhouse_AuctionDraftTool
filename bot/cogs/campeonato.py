@@ -15,6 +15,7 @@ SLOT_LABEL = {
     'terca-20h':  'Terça 20h',  'terca-21h':  'Terça 21h',  'terca-22h':  'Terça 22h',
     'quarta-20h': 'Quarta 20h', 'quarta-21h': 'Quarta 21h', 'quarta-22h': 'Quarta 22h',
     'quinta-20h': 'Quinta 20h', 'quinta-21h': 'Quinta 21h', 'quinta-22h': 'Quinta 22h',
+    'sexta-20h':  'Sexta 20h',  'sexta-21h':  'Sexta 21h',  'sexta-22h':  'Sexta 22h',
     'sabado-17h': 'Sábado 17h', 'sabado-18h': 'Sábado 18h', 'sabado-19h': 'Sábado 19h',
 }
 

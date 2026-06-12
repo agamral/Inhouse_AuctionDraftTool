@@ -373,6 +373,8 @@
     }
   },
   "agendamento": {
-    "semanaJogos": "Semana de partidos: {{de}} al {{ate}}"
+    "semanaJogos": "Semana de partidos: {{de}} al {{ate}}",
+    "semanaSeguinte": "Semana de {{de}}",
+    "janelaFechada": "El plazo para marcar disponibilidad de esta ronda ya finalizó. Contacta a la organización si necesitas reprogramar."
   }
 }

@@ -373,6 +373,8 @@
     }
   },
   "agendamento": {
-    "semanaJogos": "Semana de jogos: {{de}} a {{ate}}"
+    "semanaJogos": "Semana de jogos: {{de}} a {{ate}}",
+    "semanaSeguinte": "Semana de {{de}}",
+    "janelaFechada": "O prazo para marcar disponibilidade desta rodada já encerrou. Entre em contato com a organização caso precise reagendar."
   }
 }

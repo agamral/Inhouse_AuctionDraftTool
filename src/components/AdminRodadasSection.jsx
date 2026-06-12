@@ -72,17 +72,29 @@ export default function AdminRodadasSection() {
 
   // ── Criar rodada ──────────────────────────────────────────────────────────────
 
-  async function criarRodada({ numero, semanaAnuncio, semanaJogos }) {
+  async function criarRodada({ numero, semanaAnuncio, semanaJogos, janelaFechaEm, duasSemanas }) {
     try {
       const id = push(ref(db, rodadasPath(campeonatoId))).key
       await set(ref(db, `${rodadasPath(campeonatoId)}/${id}`), {
         numero, semanaAnuncio, semanaJogos,
+        janelaFechaEm: janelaFechaEm || null,
+        duasSemanas: !!duasSemanas,
         status: 'configurando',
         criadaEm: Date.now(),
       })
       setRodadaSel(id)
       setModalNovaRodada(false)
       flash('ok', `Rodada ${numero} criada.`)
+    } catch (e) {
+      flash('erro', e.message)
+    }
+  }
+
+  // ── Atualizar campos da rodada (janela de fechamento, duas semanas, etc.) ────
+
+  async function atualizarRodada(rodadaId, campos) {
+    try {
+      await update(ref(db, `${rodadasPath(campeonatoId)}/${rodadaId}`), campos)
     } catch (e) {
       flash('erro', e.message)
     }
@@ -378,7 +390,7 @@ export default function AdminRodadasSection() {
         {/* Rodada selecionada */}
         {rodadaAtual && (
           <>
-            <RodadaHeader rodada={rodadaAtual} rodadaId={rodadaSel} onChange={mudarStatus} />
+            <RodadaHeader rodada={rodadaAtual} rodadaId={rodadaSel} onChange={mudarStatus} onAtualizar={atualizarRodada} />
 
             {/* Confrontos */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -461,33 +473,55 @@ export default function AdminRodadasSection() {
 
 // ── Subcomponentes ─────────────────────────────────────────────────────────────
 
-function RodadaHeader({ rodada, rodadaId, onChange }) {
+function RodadaHeader({ rodada, rodadaId, onChange, onAtualizar }) {
   const STATUS_RODADA = ['configurando', 'agendamento', 'jogando', 'encerrada']
   return (
-    <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-      <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 15, color: 'var(--gold)' }}>
-        Rodada {rodada.numero}
-      </span>
-      {rodada.semanaJogos && (
-        <span style={{ fontSize: 12, color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif" }}>
-          Semana de jogos: {rodada.semanaJogos}
+    <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 15, color: 'var(--gold)' }}>
+          Rodada {rodada.numero}
         </span>
-      )}
-      <div style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>
-        {STATUS_RODADA.map(s => (
-          <button key={s}
-            onClick={() => onChange && onChange(rodadaId, s)}
-            style={{
-              padding: '4px 10px', borderRadius: 4, fontSize: 11, cursor: 'pointer',
-              fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, textTransform: 'uppercase',
-              border: `1px solid ${rodada.status === s ? 'var(--gold)' : 'var(--border)'}`,
-              background: rodada.status === s ? 'rgba(201,168,76,0.12)' : 'transparent',
-              color: rodada.status === s ? 'var(--gold)' : 'var(--text3)',
-            }}
-          >
-            {s}
-          </button>
-        ))}
+        {rodada.semanaJogos && (
+          <span style={{ fontSize: 12, color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif" }}>
+            Semana de jogos: {rodada.semanaJogos}
+          </span>
+        )}
+        <div style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>
+          {STATUS_RODADA.map(s => (
+            <button key={s}
+              onClick={() => onChange && onChange(rodadaId, s)}
+              style={{
+                padding: '4px 10px', borderRadius: 4, fontSize: 11, cursor: 'pointer',
+                fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, textTransform: 'uppercase',
+                border: `1px solid ${rodada.status === s ? 'var(--gold)' : 'var(--border)'}`,
+                background: rodada.status === s ? 'rgba(201,168,76,0.12)' : 'transparent',
+                color: rodada.status === s ? 'var(--gold)' : 'var(--text3)',
+              }}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif", cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={!!rodada.duasSemanas}
+            onChange={e => onAtualizar && onAtualizar(rodadaId, { duasSemanas: e.target.checked })}
+          />
+          Janela de agendamento abrange 2 semanas
+        </label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif" }}>
+          Janela fecha em:
+          <input
+            type="date"
+            value={rodada.janelaFechaEm ?? ''}
+            onChange={e => onAtualizar && onAtualizar(rodadaId, { janelaFechaEm: e.target.value || null })}
+            style={{ ...inputStyle, width: 'auto', padding: '3px 8px', fontSize: 12 }}
+          />
+        </label>
       </div>
     </div>
   )
@@ -837,7 +871,7 @@ function ModalEditarTimesBracket({ confronto: c, confrontoId, times, onSalvar, o
 }
 
 function ModalNovaRodada({ onSalvar, onFechar }) {
-  const [form, setForm] = useState({ numero: '', semanaAnuncio: '', semanaJogos: '' })
+  const [form, setForm] = useState({ numero: '', semanaAnuncio: '', semanaJogos: '', janelaFechaEm: '', duasSemanas: false })
 
   return (
     <Modal titulo="Nova Rodada" onFechar={onFechar}>
@@ -849,10 +883,23 @@ function ModalNovaRodada({ onSalvar, onFechar }) {
         style={{ ...inputStyle, marginBottom: 12 }} />
       <FieldLabel label="Semana de jogos" hint="ex: 2025-05-12" />
       <input type="date" value={form.semanaJogos} onChange={e => setForm(f => ({ ...f, semanaJogos: e.target.value }))}
-        style={{ ...inputStyle, marginBottom: 16 }} />
+        style={{ ...inputStyle, marginBottom: 12 }} />
+      <FieldLabel label="Janela fecha em" hint="opcional — após essa data, capitães não podem mais marcar disponibilidade" />
+      <input type="date" value={form.janelaFechaEm} onChange={e => setForm(f => ({ ...f, janelaFechaEm: e.target.value }))}
+        style={{ ...inputStyle, marginBottom: 12 }} />
+      <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text2)', fontFamily: "'Barlow', sans-serif", marginBottom: 16, cursor: 'pointer' }}>
+        <input type="checkbox" checked={form.duasSemanas} onChange={e => setForm(f => ({ ...f, duasSemanas: e.target.checked }))} />
+        Janela de agendamento abrange 2 semanas
+      </label>
       <div style={{ display: 'flex', gap: 8 }}>
         <button className="btn primary" style={{ fontSize: 13 }}
-          onClick={() => onSalvar({ numero: parseInt(form.numero) || 1, semanaAnuncio: form.semanaAnuncio, semanaJogos: form.semanaJogos })}>
+          onClick={() => onSalvar({
+            numero: parseInt(form.numero) || 1,
+            semanaAnuncio: form.semanaAnuncio,
+            semanaJogos: form.semanaJogos,
+            janelaFechaEm: form.janelaFechaEm,
+            duasSemanas: form.duasSemanas,
+          })}>
           Criar
         </button>
         <button className="btn" style={{ fontSize: 13 }} onClick={onFechar}>Cancelar</button>

@@ -10,10 +10,11 @@ import { teamPath, rodadasPath, confrontosPath, disponibilidadePath } from '../u
 import HeroDraftAlerta from '../components/HeroDraftAlerta'
 import { notificarDiscord, mencaoTime } from '../utils/notify'
 import {
-  SLOTS, SLOTS_PLAYOFF, SLOT_LABEL, SLOT_LABEL_ES, SLOT_DIA, DIA_LABEL, ADJACENT_SLOTS,
+  SLOTS, SLOTS_PLAYOFF, SLOT_LABEL, SLOT_LABEL_ES, SLOT_DIA, DIA_LABEL,
   STATUS_CONFRONTO, STATUS_LABEL, STATUS_COR,
-  FUSO_PADRAO, FUSOS, slotLabelFuso, slotHoraLocal, dataDoDia, dataDoDiaEs, diaJaPassou,
+  FUSO_PADRAO, FUSOS, slotLabelFuso, slotHoraLocal, dataDoDia, dataDoDiaEs, diaJaPassou, addDias,
   resolverDisponibilidade, avisaBackToBack, encontrarSlotsEmComum,
+  baseSlotKey, slotComSemana, slotSemana, slotsAdjacentes,
 } from '../utils/scheduling'
 import './Agendamento.css'
 
@@ -86,7 +87,10 @@ function AgendaPublica({ teams, confrontos, rodadas }) {
             <div className="ag-rodada-label">Rodada {rodada.numero}</div>
             <div className="ag-partidas-list">
               {confrontosRodada
-                .sort((a, b) => SLOTS_PLAYOFF.indexOf(a.slot) - SLOTS_PLAYOFF.indexOf(b.slot))
+                .sort((a, b) =>
+                  (slotSemana(a.slot) - slotSemana(b.slot)) ||
+                  (SLOTS_PLAYOFF.indexOf(baseSlotKey(a.slot)) - SLOTS_PLAYOFF.indexOf(baseSlotKey(b.slot)))
+                )
                 .map(c => (
                   <PartidaCard key={c.id} c={c} teams={teams} />
                 ))}
@@ -118,7 +122,7 @@ function PartidaCard({ c, teams }) {
   return (
     <div className={`ag-partida-card${isRealizado ? ' ag-partida-card--realizado' : ''}`}>
       <div className="ag-partida-slot">
-        {c.slot ? SLOT_LABEL[c.slot] : '—'}
+        {c.slot ? SLOT_LABEL[baseSlotKey(c.slot)] : '—'}
       </div>
       <div className="ag-partida-times">
         <span style={{ color: tA?.cor ?? 'var(--text)', fontWeight: 700 }}>{tA?.nome ?? 'Time A'}</span>
@@ -232,7 +236,7 @@ export default function Agendamento() {
       .forEach(([, oc]) => {
         ocupados[oc.slot] = true
         if (ehPlayoff) {
-          ADJACENT_SLOTS[oc.slot]?.forEach(adj => { ocupados[adj] = true })
+          slotsAdjacentes(oc.slot).forEach(adj => { ocupados[adj] = true })
         }
       })
     return ocupados
@@ -252,6 +256,15 @@ export default function Agendamento() {
     const mencaoB   = mencaoTime(teams[confronto.timeB], confronto.timeB)
     const rolesAB   = [teams[confronto.timeA]?.discordRoleId, teams[confronto.timeB]?.discordRoleId].filter(Boolean)
     const rodada    = rodadas[confronto.rodadaId]
+    const ehPlayoff = String(rodada?.numero ?? '').startsWith('P')
+    const slotsRodada = ehPlayoff ? SLOTS_PLAYOFF : SLOTS
+    const ordemSlots  = rodada?.duasSemanas
+      ? [...slotsRodada, ...slotsRodada.map(s => slotComSemana(s, 2))]
+      : slotsRodada
+
+    // Resolve a "semana de jogos" de referência de um slot — slots da segunda
+    // semana (sufixo __sem2) usam semanaJogos + 7 dias.
+    const semanaDoSlot = slot => slotSemana(slot) === 2 ? addDias(rodada?.semanaJogos, 7) : rodada?.semanaJogos
 
     setSaving(confrontoId)
     try {
@@ -263,14 +276,16 @@ export default function Agendamento() {
       if (meusSlots.length > 0 && mudouDisponibilidade) {
         const slotsTexto = meusSlots
           .map(slot => {
-            const dataSlot = dataDoDia(SLOT_DIA[slot], rodada?.semanaJogos)
-            return `${SLOT_LABEL[slot] ?? slot}${dataSlot ? ` (${dataSlot})` : ''}`
+            const base     = baseSlotKey(slot)
+            const dataSlot = dataDoDia(SLOT_DIA[base], semanaDoSlot(slot))
+            return `${SLOT_LABEL[base] ?? slot}${dataSlot ? ` (${dataSlot})` : ''}`
           })
           .join(', ')
         const slotsTextoEs = meusSlots
           .map(slot => {
-            const dataSlotEs = dataDoDiaEs(SLOT_DIA[slot], rodada?.semanaJogos)
-            return `${SLOT_LABEL_ES[slot] ?? slot}${dataSlotEs ? ` (${dataSlotEs})` : ''}`
+            const base       = baseSlotKey(slot)
+            const dataSlotEs = dataDoDiaEs(SLOT_DIA[base], semanaDoSlot(slot))
+            return `${SLOT_LABEL_ES[base] ?? slot}${dataSlotEs ? ` (${dataSlotEs})` : ''}`
           })
           .join(', ')
         notificarDiscord(
@@ -282,9 +297,10 @@ export default function Agendamento() {
 
       if (meusSlots.length > 0 && advSlots.length > 0) {
         const ocupados   = slotsOcupadosNaRodada(confrontoId)
-        const resultado  = resolverDisponibilidade(meusSlots, advSlots, ocupados)
+        const resultado  = resolverDisponibilidade(meusSlots, advSlots, ocupados, ordemSlots)
 
         if (resultado.slot) {
+          const baseResultado = baseSlotKey(resultado.slot)
           const jaConfirmadoNesseSlot = confronto.status === STATUS_CONFRONTO.CONFIRMADO && confronto.slot === resultado.slot
           await update(ref(db, `${confrontosPath(idPublico)}/${confrontoId}`), {
             slot:          resultado.slot,
@@ -292,13 +308,13 @@ export default function Agendamento() {
             alertas:       {},
             atualizadoEm:  Date.now(),
           })
-          flash(confrontoId, 'ok', `✓ Confirmado automaticamente! ${SLOT_LABEL[resultado.slot]}`)
+          flash(confrontoId, 'ok', `✓ Confirmado automaticamente! ${SLOT_LABEL[baseResultado]}`)
           if (!jaConfirmadoNesseSlot) {
-            const dataSlot   = dataDoDia(SLOT_DIA[resultado.slot], rodada?.semanaJogos)
-            const dataSlotEs = dataDoDiaEs(SLOT_DIA[resultado.slot], rodada?.semanaJogos)
+            const dataSlot   = dataDoDia(SLOT_DIA[baseResultado], semanaDoSlot(resultado.slot))
+            const dataSlotEs = dataDoDiaEs(SLOT_DIA[baseResultado], semanaDoSlot(resultado.slot))
             notificarDiscord(
-              `✅ **Partida confirmada:** ${mencaoA} vs ${mencaoB} — ${SLOT_LABEL[resultado.slot]}${dataSlot ? ` (${dataSlot})` : ''}${rodada ? ` · Rodada ${rodada.numero}` : ''}\n\n`
-              + `🇪🇸\n✅ **Partida confirmada:** ${mencaoA} vs ${mencaoB} — ${SLOT_LABEL_ES[resultado.slot]}${dataSlotEs ? ` (${dataSlotEs})` : ''}${rodada ? ` · Ronda ${rodada.numero}` : ''}`,
+              `✅ **Partida confirmada:** ${mencaoA} vs ${mencaoB} — ${SLOT_LABEL[baseResultado]}${dataSlot ? ` (${dataSlot})` : ''}${rodada ? ` · Rodada ${rodada.numero}` : ''}\n\n`
+              + `🇪🇸\n✅ **Partida confirmada:** ${mencaoA} vs ${mencaoB} — ${SLOT_LABEL_ES[baseResultado]}${dataSlotEs ? ` (${dataSlotEs})` : ''}${rodada ? ` · Ronda ${rodada.numero}` : ''}`,
               rolesAB
             )
           }
@@ -344,6 +360,13 @@ export default function Agendamento() {
   const meuTime      = teams[teamSel]
   // Admin pode sobrescrever o fuso de exibição para testes; capitão usa o fuso do time
   const fusoExibicao = fusoTeste || meuTime?.fuso || FUSO_PADRAO
+
+  // Data de hoje em 'YYYY-MM-DD' — usada para verificar se a janela de
+  // agendamento de uma rodada (rodada.janelaFechaEm) já fechou.
+  const hojeStr = (() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  })()
 
   return (
     <div className="ag-root page">
@@ -465,11 +488,18 @@ export default function Agendamento() {
                     const rodada    = rodadas[c.rodadaId]
             const ehPlayoff = String(rodada?.numero ?? '').startsWith('P')
             const slotsRodada = ehPlayoff ? SLOTS_PLAYOFF : SLOTS
+            const ordemSlots = rodada?.duasSemanas
+              ? [...slotsRodada, ...slotsRodada.map(s => slotComSemana(s, 2))]
+              : slotsRodada
             const meusSlots = selecoes[id] ?? []
             const advSlots  = dispon[id]?.[advId]?.slots ?? []
-            const emComum   = encontrarSlotsEmComum(meusSlots, advSlots)
+            const emComum   = encontrarSlotsEmComum(meusSlots, advSlots, ordemSlots)
             const ocupados  = slotsOcupadosNaRodada(id)
             const fb        = feedback[id]
+            const janelaFechada = !!(rodada?.janelaFechaEm && rodada.janelaFechaEm < hojeStr)
+            const semanas = rodada?.duasSemanas
+              ? [{ semana: 1, ref: rodada?.semanaJogos }, { semana: 2, ref: addDias(rodada?.semanaJogos, 7) }]
+              : [{ semana: 1, ref: rodada?.semanaJogos }]
 
             return (
               <div key={id} className={`ag-confronto${c.status === STATUS_CONFRONTO.CONFIRMADO ? ' ag-confronto--ok' : ''}`}>
@@ -503,7 +533,8 @@ export default function Agendamento() {
                     Partida confirmada: <strong>
                       {slotLabelFuso(c.slot, fusoExibicao)}
                       {(() => {
-                        const dataDia = dataDoDia(SLOT_DIA[c.slot], rodada?.semanaJogos)
+                        const semanaRef = slotSemana(c.slot) === 2 ? addDias(rodada?.semanaJogos, 7) : rodada?.semanaJogos
+                        const dataDia   = dataDoDia(SLOT_DIA[baseSlotKey(c.slot)], semanaRef)
                         return dataDia ? ` – ${dataDia}` : ''
                       })()}
                     </strong>
@@ -515,7 +546,13 @@ export default function Agendamento() {
                   </div>
                 )}
 
-                {c.status !== STATUS_CONFRONTO.CONFIRMADO && (
+                {c.status !== STATUS_CONFRONTO.CONFIRMADO && janelaFechada && (
+                  <div className="ag-aviso" style={{ fontSize: 13 }}>
+                    {t('agendamento.janelaFechada')}
+                  </div>
+                )}
+
+                {c.status !== STATUS_CONFRONTO.CONFIRMADO && !janelaFechada && (
                   <>
                     <div className="ag-legenda">
                       <span className="ag-leg ag-leg--meu" style={{ '--c': meuTime?.cor ?? 'var(--blue)' }}>Minha disponibilidade</span>
@@ -536,71 +573,84 @@ export default function Agendamento() {
                       )}
                     </div>
 
-                    <div className="ag-grid">
-                      {Object.entries(DIA_LABEL).map(([dia, diaLabel]) => {
-                        const slotsHoje = slotsRodada.filter(s => SLOT_DIA[s] === dia)
-                        const dataDia   = dataDoDia(dia, rodada?.semanaJogos)
-                        const passou    = diaJaPassou(dia, rodada?.semanaJogos)
-                        return (
-                          <div key={dia} className="ag-dia">
-                            <div className="ag-dia-label">
-                              <span>{diaLabel}</span>
-                              {dataDia && <span className="ag-dia-data">{dataDia}</span>}
-                            </div>
-                            <div className="ag-dia-slots">
-                              {slotsHoje.map(slot => {
-                                const euMarcei  = meusSlots.includes(slot)
-                                const advMarcou = advSlots.includes(slot)
-                                const overlap   = emComum.includes(slot)
-                                const ocupado   = !!ocupados[slot]
-                                const backToBack = !ocupado && !euMarcei && avisaBackToBack(teamSel, slot,
-                                  Object.values(confrontos).filter(cc =>
-                                    cc.status === STATUS_CONFRONTO.CONFIRMADO &&
-                                    cc.rodadaId === c.rodadaId &&
-                                    (cc.timeA === teamSel || cc.timeB === teamSel)
-                                  )
-                                )
-                                const horarioLocal = slotHoraLocal(slot, fusoExibicao)
-                                const horarioBRT   = slot.split('-')[1].replace(/h$/, '')
-                                const mostraBRT    = fusoExibicao !== FUSO_PADRAO
-
-                                return (
-                                  <button
-                                    key={slot}
-                                    className={[
-                                      'ag-slot',
-                                      euMarcei  ? 'ag-slot--meu'    : '',
-                                      advMarcou ? 'ag-slot--adv'    : '',
-                                      overlap   ? 'ag-slot--ok'     : '',
-                                      ocupado   ? 'ag-slot--ocupado': '',
-                                      passou    ? 'ag-slot--passado': '',
-                                      backToBack? 'ag-slot--warn'   : '',
-                                    ].filter(Boolean).join(' ')}
-                                    style={{
-                                      '--minha-cor': meuTime?.cor ?? 'var(--blue)',
-                                      '--adv-cor':   adv?.cor     ?? 'var(--red)',
-                                    }}
-                                    onClick={() => !ocupado && !passou && toggleSlot(id, slot)}
-                                    disabled={ocupado || passou}
-                                    title={ocupado ? 'Slot ocupado por outra partida confirmada' : passou ? 'Data já passou' : backToBack ? '⚠ Back-to-back com outra partida' : slotLabelFuso(slot, fusoExibicao)}
-                                  >
-                                    <span className="ag-slot-hora">
-                                      {mostraBRT ? `${horarioLocal}h` : `${horarioBRT}h`}
-                                    </span>
-                                    {mostraBRT && (
-                                      <span style={{ fontSize: 9, opacity: 0.55, display: 'block', lineHeight: 1 }}>
-                                        {horarioBRT}h BRT
-                                      </span>
-                                    )}
-                                    {backToBack && !euMarcei && <span className="ag-slot-warn">!</span>}
-                                  </button>
-                                )
-                              })}
-                            </div>
+                    {semanas.map(({ semana, ref: semanaRef }, semIdx) => (
+                      <div key={semana}>
+                        {semIdx === 1 && (
+                          <div className="ag-semana-divisor">
+                            <span className="ag-semana-divisor-linha" />
+                            <span className="ag-semana-divisor-label">
+                              {t('agendamento.semanaSeguinte', { de: dataDoDia('terca', semanaRef) })}
+                            </span>
+                            <span className="ag-semana-divisor-linha" />
                           </div>
-                        )
-                      })}
-                    </div>
+                        )}
+                        <div className="ag-grid">
+                          {Object.entries(DIA_LABEL).map(([dia, diaLabel]) => {
+                            const slotsHoje = slotsRodada.filter(s => SLOT_DIA[s] === dia).map(s => slotComSemana(s, semana))
+                            const dataDia   = dataDoDia(dia, semanaRef)
+                            const passou    = diaJaPassou(dia, semanaRef)
+                            return (
+                              <div key={`${semana}-${dia}`} className="ag-dia">
+                                <div className="ag-dia-label">
+                                  <span>{diaLabel}</span>
+                                  {dataDia && <span className="ag-dia-data">{dataDia}</span>}
+                                </div>
+                                <div className="ag-dia-slots">
+                                  {slotsHoje.map(slot => {
+                                    const euMarcei  = meusSlots.includes(slot)
+                                    const advMarcou = advSlots.includes(slot)
+                                    const overlap   = emComum.includes(slot)
+                                    const ocupado   = !!ocupados[slot]
+                                    const backToBack = !ocupado && !euMarcei && avisaBackToBack(teamSel, slot,
+                                      Object.values(confrontos).filter(cc =>
+                                        cc.status === STATUS_CONFRONTO.CONFIRMADO &&
+                                        cc.rodadaId === c.rodadaId &&
+                                        (cc.timeA === teamSel || cc.timeB === teamSel)
+                                      )
+                                    )
+                                    const horarioLocal = slotHoraLocal(slot, fusoExibicao)
+                                    const horarioBRT   = baseSlotKey(slot).split('-')[1].replace(/h$/, '')
+                                    const mostraBRT    = fusoExibicao !== FUSO_PADRAO
+
+                                    return (
+                                      <button
+                                        key={slot}
+                                        className={[
+                                          'ag-slot',
+                                          euMarcei  ? 'ag-slot--meu'    : '',
+                                          advMarcou ? 'ag-slot--adv'    : '',
+                                          overlap   ? 'ag-slot--ok'     : '',
+                                          ocupado   ? 'ag-slot--ocupado': '',
+                                          passou    ? 'ag-slot--passado': '',
+                                          backToBack? 'ag-slot--warn'   : '',
+                                        ].filter(Boolean).join(' ')}
+                                        style={{
+                                          '--minha-cor': meuTime?.cor ?? 'var(--blue)',
+                                          '--adv-cor':   adv?.cor     ?? 'var(--red)',
+                                        }}
+                                        onClick={() => !ocupado && !passou && toggleSlot(id, slot)}
+                                        disabled={ocupado || passou}
+                                        title={ocupado ? 'Slot ocupado por outra partida confirmada' : passou ? 'Data já passou' : backToBack ? '⚠ Back-to-back com outra partida' : slotLabelFuso(slot, fusoExibicao)}
+                                      >
+                                        <span className="ag-slot-hora">
+                                          {mostraBRT ? `${horarioLocal}h` : `${horarioBRT}h`}
+                                        </span>
+                                        {mostraBRT && (
+                                          <span style={{ fontSize: 9, opacity: 0.55, display: 'block', lineHeight: 1 }}>
+                                            {horarioBRT}h BRT
+                                          </span>
+                                        )}
+                                        {backToBack && !euMarcei && <span className="ag-slot-warn">!</span>}
+                                      </button>
+                                    )
+                                  })}
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    ))}
 
                     <div className="ag-resumo">
                       <span>{meusSlots.length} slot{meusSlots.length !== 1 ? 's' : ''} selecionado{meusSlots.length !== 1 ? 's' : ''}</span>
@@ -640,7 +690,7 @@ export default function Agendamento() {
                       <button
                         className="btn"
                         style={{ fontSize: 12 }}
-                        onClick={() => setSelecoes(s => ({ ...s, [id]: slotsRodada }))}
+                        onClick={() => setSelecoes(s => ({ ...s, [id]: ordemSlots }))}
                         title="Marcar todos os slots disponíveis"
                       >
                         Disponível sempre
