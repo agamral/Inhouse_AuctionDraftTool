@@ -13,6 +13,7 @@ import {
   TIPO_CONFRONTO, FORMATO_SERIE, BRACKET_LABELS,
   TIPO_RESULTADO, PONTUACAO_PADRAO,
   encontrarSlotsEmComum, calcularPontos, formatarResultado, confrontosComAlertas,
+  baseSlotKey, slotSemana,
 } from '../utils/scheduling'
 
 // Labels legíveis pra tipos de confronto no card admin
@@ -236,6 +237,23 @@ export default function AdminRodadasSection() {
     }
   }
 
+  // ── Resetar agendamento (libera o slot e volta ao estado anterior à escolha) ──
+
+  async function resetarAgendamento(confrontoId) {
+    try {
+      await remove(ref(db, `${disponibilidadePath(campeonatoId)}/${confrontoId}`))
+      await update(ref(db, `${confrontosPath(campeonatoId)}/${confrontoId}`), {
+        status: STATUS_CONFRONTO.PENDENTE,
+        slot: null,
+        alertas: {},
+        atualizadoEm: Date.now(),
+      })
+      flash('ok', 'Agendamento resetado — horário liberado e disponibilidades apagadas.')
+    } catch (e) {
+      flash('erro', e.message)
+    }
+  }
+
   // ── Deletar rodada (e todos os confrontos dela) ──────────────────────────────
 
   async function deletarRodada(rodadaId) {
@@ -406,6 +424,7 @@ export default function AdminRodadasSection() {
                   onForcarSlot={() => setModalSlot(id)}
                   onEditarTimes={c.bracketSlot ? () => setModalEditarTimes(id) : undefined}
                   onMudarStatus={(status, extras) => mudarStatus(id, status, extras)}
+                  onResetarAgendamento={() => resetarAgendamento(id)}
                   onAgendarDesempate={() => agendarDesempate(id)}
                   onDeletar={() => setConfirmDelete(id)}
                   confirmandoDelete={confirmDelete === id}
@@ -527,7 +546,7 @@ function RodadaHeader({ rodada, rodadaId, onChange, onAtualizar }) {
   )
 }
 
-function ConfrontoCard({ confrontoId, confronto: c, campeonatoId, times, disponibilidade, onRegistrarResultado, onForcarSlot, onEditarTimes, onMudarStatus, onAgendarDesempate, onDeletar, confirmandoDelete, onConfirmarDelete, onCancelarDelete, onIniciarDraft }) {
+function ConfrontoCard({ confrontoId, confronto: c, campeonatoId, times, disponibilidade, onRegistrarResultado, onForcarSlot, onEditarTimes, onMudarStatus, onResetarAgendamento, onAgendarDesempate, onDeletar, confirmandoDelete, onConfirmarDelete, onCancelarDelete, onIniciarDraft }) {
   const tA = times[c.timeA]
   const tB = times[c.timeB]
   const dispA = disponibilidade[c.timeA]?.slots ?? []
@@ -594,7 +613,7 @@ function ConfrontoCard({ confrontoId, confronto: c, campeonatoId, times, disponi
       <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif", marginBottom: 8 }}>
         <span>
           Slot: <strong style={{ color: c.slot ? 'var(--green)' : 'var(--text3)' }}>
-            {c.slot ? SLOT_LABEL[c.slot] ?? c.slot : '—'}
+            {c.slot ? `${SLOT_LABEL[baseSlotKey(c.slot)] ?? c.slot}${slotSemana(c.slot) === 2 ? ' (semana 2)' : ''}` : '—'}
           </strong>
         </span>
         <span>
@@ -775,6 +794,13 @@ function ConfrontoCard({ confrontoId, confronto: c, campeonatoId, times, disponi
           <button className="btn" style={{ fontSize: 11, padding: '4px 10px', borderColor: 'var(--gold)', color: 'var(--gold)' }}
             onClick={onAgendarDesempate}>
             ⚔ Agendar desempate MD3
+          </button>
+        )}
+        {(c.status === STATUS_CONFRONTO.CONFIRMADO || c.status === STATUS_CONFRONTO.AGENDANDO || c.status === STATUS_CONFRONTO.WO_PENDENTE) && (
+          <button className="btn" style={{ fontSize: 11, padding: '4px 10px', borderColor: 'rgba(74,158,218,0.4)', color: 'var(--blue)' }}
+            title="Libera o horário e apaga as disponibilidades marcadas pelos times, voltando o confronto ao estado anterior ao agendamento"
+            onClick={onResetarAgendamento}>
+            ↺ Resetar agendamento
           </button>
         )}
         {c.status !== STATUS_CONFRONTO.CANCELADO && (
