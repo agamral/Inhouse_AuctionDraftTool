@@ -375,6 +375,12 @@
   "agendamento": {
     "semanaJogos": "Semana de partidos: {{de}} al {{ate}}",
     "semanaSeguinte": "Semana de {{de}}",
-    "janelaFechada": "El plazo para marcar disponibilidad de esta ronda ya finalizó. Contacta a la organización si necesitas reprogramar."
+    "janelaFechada": "El plazo para marcar disponibilidad de esta ronda ya finalizó. Contacta a la organización si necesitas reprogramar.",
+    "tooltipOcupado": "Slot ocupado por otra partida confirmada",
+    "tooltipPassou": "La fecha ya pasó",
+    "tooltipFechado": "El plazo para marcar este horario ya finalizó (1h30 de anticipación)",
+    "tooltipBackToBack": "⚠ Back-to-back con otra partida",
+    "tooltipLimparSelecao": "Quitar todos los horarios seleccionados",
+    "tooltipDisponivelSempre": "Marcar todos los horarios disponibles"
   }
 }

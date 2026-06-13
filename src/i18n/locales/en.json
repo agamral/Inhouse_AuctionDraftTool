@@ -375,6 +375,12 @@
   "agendamento": {
     "semanaJogos": "Games week: {{de}} to {{ate}}",
     "semanaSeguinte": "Week of {{de}}",
-    "janelaFechada": "The deadline to mark availability for this round has passed. Contact the organizers if you need to reschedule."
+    "janelaFechada": "The deadline to mark availability for this round has passed. Contact the organizers if you need to reschedule.",
+    "tooltipOcupado": "Slot taken by another confirmed match",
+    "tooltipPassou": "Date has already passed",
+    "tooltipFechado": "The deadline to book this time slot has passed (1h30 notice required)",
+    "tooltipBackToBack": "⚠ Back-to-back with another match",
+    "tooltipLimparSelecao": "Remove all selected slots",
+    "tooltipDisponivelSempre": "Mark all available slots"
   }
 }

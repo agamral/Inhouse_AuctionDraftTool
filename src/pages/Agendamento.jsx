@@ -632,7 +632,7 @@ export default function Agendamento() {
                                         }}
                                         onClick={() => !ocupado && !bloqueado && toggleSlot(id, slot)}
                                         disabled={ocupado || bloqueado}
-                                        title={ocupado ? 'Slot ocupado por outra partida confirmada' : passou ? 'Data já passou' : fechado ? 'Prazo para marcar esse horário já encerrou (1h30 de antecedência)' : backToBack ? '⚠ Back-to-back com outra partida' : slotLabelFuso(slot, fusoExibicao)}
+                                        title={ocupado ? t('agendamento.tooltipOcupado') : passou ? t('agendamento.tooltipPassou') : fechado ? t('agendamento.tooltipFechado') : backToBack ? t('agendamento.tooltipBackToBack') : slotLabelFuso(slot, fusoExibicao)}
                                       >
                                         <span className="ag-slot-hora">
                                           {mostraBRT ? `${horarioLocal}h` : `${horarioBRT}h`}
@@ -684,7 +684,7 @@ export default function Agendamento() {
                           className="btn"
                           style={{ fontSize: 12, color: 'var(--red)', borderColor: 'rgba(224,85,85,0.35)' }}
                           onClick={() => setSelecoes(s => ({ ...s, [id]: [] }))}
-                          title="Remover todos os slots selecionados"
+                          title={t('agendamento.tooltipLimparSelecao')}
                         >
                           ✕ Limpar seleção
                         </button>
@@ -693,7 +693,7 @@ export default function Agendamento() {
                         className="btn"
                         style={{ fontSize: 12 }}
                         onClick={() => setSelecoes(s => ({ ...s, [id]: ordemSlots.filter(slot => !slotJaFechado(slot, rodada?.semanaJogos)) }))}
-                        title="Marcar todos os slots disponíveis"
+                        title={t('agendamento.tooltipDisponivelSempre')}
                       >
                         Disponível sempre
                       </button>
