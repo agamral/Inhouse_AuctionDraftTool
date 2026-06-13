@@ -12,7 +12,7 @@ import { notificarDiscord, mencaoTime } from '../utils/notify'
 import {
   SLOTS, SLOTS_PLAYOFF, SLOT_LABEL, SLOT_LABEL_ES, SLOT_DIA, DIA_LABEL,
   STATUS_CONFRONTO, STATUS_LABEL, STATUS_COR,
-  FUSO_PADRAO, FUSOS, slotLabelFuso, slotHoraLocal, dataDoDia, dataDoDiaEs, diaJaPassou, addDias,
+  FUSO_PADRAO, FUSOS, slotLabelFuso, slotHoraLocal, dataDoDia, dataDoDiaEs, diaJaPassou, slotJaFechado, addDias,
   resolverDisponibilidade, avisaBackToBack, encontrarSlotsEmComum,
   baseSlotKey, slotComSemana, slotSemana, slotsAdjacentes,
 } from '../utils/scheduling'
@@ -611,6 +611,8 @@ export default function Agendamento() {
                                     const horarioLocal = slotHoraLocal(slot, fusoExibicao)
                                     const horarioBRT   = baseSlotKey(slot).split('-')[1].replace(/h$/, '')
                                     const mostraBRT    = fusoExibicao !== FUSO_PADRAO
+                                    const fechado      = !passou && slotJaFechado(slot, semanaRef)
+                                    const bloqueado    = passou || fechado
 
                                     return (
                                       <button
@@ -621,16 +623,16 @@ export default function Agendamento() {
                                           advMarcou ? 'ag-slot--adv'    : '',
                                           overlap   ? 'ag-slot--ok'     : '',
                                           ocupado   ? 'ag-slot--ocupado': '',
-                                          passou    ? 'ag-slot--passado': '',
+                                          bloqueado ? 'ag-slot--passado': '',
                                           backToBack? 'ag-slot--warn'   : '',
                                         ].filter(Boolean).join(' ')}
                                         style={{
                                           '--minha-cor': meuTime?.cor ?? 'var(--blue)',
                                           '--adv-cor':   adv?.cor     ?? 'var(--red)',
                                         }}
-                                        onClick={() => !ocupado && !passou && toggleSlot(id, slot)}
-                                        disabled={ocupado || passou}
-                                        title={ocupado ? 'Slot ocupado por outra partida confirmada' : passou ? 'Data já passou' : backToBack ? '⚠ Back-to-back com outra partida' : slotLabelFuso(slot, fusoExibicao)}
+                                        onClick={() => !ocupado && !bloqueado && toggleSlot(id, slot)}
+                                        disabled={ocupado || bloqueado}
+                                        title={ocupado ? 'Slot ocupado por outra partida confirmada' : passou ? 'Data já passou' : fechado ? 'Prazo para marcar esse horário já encerrou (1h30 de antecedência)' : backToBack ? '⚠ Back-to-back com outra partida' : slotLabelFuso(slot, fusoExibicao)}
                                       >
                                         <span className="ag-slot-hora">
                                           {mostraBRT ? `${horarioLocal}h` : `${horarioBRT}h`}
@@ -690,7 +692,7 @@ export default function Agendamento() {
                       <button
                         className="btn"
                         style={{ fontSize: 12 }}
-                        onClick={() => setSelecoes(s => ({ ...s, [id]: ordemSlots }))}
+                        onClick={() => setSelecoes(s => ({ ...s, [id]: ordemSlots.filter(slot => !slotJaFechado(slot, rodada?.semanaJogos)) }))}
                         title="Marcar todos os slots disponíveis"
                       >
                         Disponível sempre

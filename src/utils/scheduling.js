@@ -115,6 +115,29 @@ export function diaJaPassou(dia, semanaJogos) {
   return alvo < hoje
 }
 
+// Antecedência mínima (em minutos) para marcar disponibilidade em um slot —
+// evita acordos de horário decididos faltando poucos minutos para o jogo.
+const ANTECEDENCIA_MIN_SLOT = 90
+
+/**
+ * True se já estamos a menos de `ANTECEDENCIA_MIN_SLOT` minutos do horário do
+ * slot (ou o horário já passou), considerando a data/hora real do slot em
+ * BRT (UTC-3, fixo — Brasil não observa horário de verão desde 2019). Usado
+ * para bloquear marcação de disponibilidade muito próxima do horário do jogo.
+ */
+export function slotJaFechado(slot, semanaJogos) {
+  const base = baseSlotKey(slot)
+  const semanaRef = slotSemana(slot) === 2 ? addDias(semanaJogos, 7) : semanaJogos
+  const alvo = dataAlvoDoDia(SLOT_DIA[base], semanaRef)
+  if (!alvo) return false
+
+  const horaBRT  = SLOT_BRT_HORA[base] ?? 0
+  const slotUTC  = Date.UTC(alvo.getFullYear(), alvo.getMonth(), alvo.getDate(), horaBRT + 3, 0, 0)
+  const limiteMs = slotUTC - ANTECEDENCIA_MIN_SLOT * 60 * 1000
+
+  return Date.now() >= limiteMs
+}
+
 /**
  * Soma (ou subtrai) dias a uma data 'YYYY-MM-DD', retornando o resultado no
  * mesmo formato. Usado para calcular a segunda semana de uma janela de
