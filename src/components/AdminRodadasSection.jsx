@@ -14,6 +14,7 @@ import {
   TIPO_RESULTADO, PONTUACAO_PADRAO,
   encontrarSlotsEmComum, calcularPontos, formatarResultado, confrontosComAlertas,
   baseSlotKey, slotSemana,
+  semanasRodada, calcularNumSemanas, dataDoDia,
 } from '../utils/scheduling'
 
 // Labels legíveis pra tipos de confronto no card admin
@@ -47,6 +48,7 @@ export default function AdminRodadasSection() {
   // Modais
   const [confirmDeleteRodada, setConfirmDeleteRodada] = useState(false)
   const [modalNovaRodada, setModalNovaRodada]         = useState(false)
+  const [modalEstenderRodada, setModalEstenderRodada] = useState(false)
   const [modalNovoConfr, setModalNovoConfr]       = useState(false)
   const [modalResultado, setModalResultado]       = useState(null) // confrontoId
   const [modalSlot, setModalSlot]                 = useState(null) // confrontoId
@@ -96,6 +98,23 @@ export default function AdminRodadasSection() {
   async function atualizarRodada(rodadaId, campos) {
     try {
       await update(ref(db, `${rodadasPath(campeonatoId)}/${rodadaId}`), campos)
+    } catch (e) {
+      flash('erro', e.message)
+    }
+  }
+
+  // ── Estender rodada (prorroga o término sem criar uma nova rodada) ──────────
+
+  async function estenderRodada(rodadaId, novoTermino) {
+    try {
+      const rodada = rodadas[rodadaId]
+      const numSemanas = calcularNumSemanas(rodada?.semanaJogos, novoTermino)
+      await update(ref(db, `${rodadasPath(campeonatoId)}/${rodadaId}`), {
+        numSemanas,
+        janelaFechaEm: novoTermino,
+      })
+      setModalEstenderRodada(false)
+      flash('ok', `Rodada estendida até ${novoTermino} (${numSemanas} semana${numSemanas > 1 ? 's' : ''} de agendamento).`)
     } catch (e) {
       flash('erro', e.message)
     }
@@ -408,7 +427,7 @@ export default function AdminRodadasSection() {
         {/* Rodada selecionada */}
         {rodadaAtual && (
           <>
-            <RodadaHeader rodada={rodadaAtual} rodadaId={rodadaSel} onChange={mudarStatus} onAtualizar={atualizarRodada} />
+            <RodadaHeader rodada={rodadaAtual} rodadaId={rodadaSel} onChange={mudarStatus} onAtualizar={atualizarRodada} onEstender={() => setModalEstenderRodada(true)} />
 
             {/* Confrontos */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -455,6 +474,9 @@ export default function AdminRodadasSection() {
       {modalNovaRodada && (
         <ModalNovaRodada onSalvar={criarRodada} onFechar={() => setModalNovaRodada(false)} />
       )}
+      {modalEstenderRodada && rodadaAtual && (
+        <ModalEstenderRodada rodada={rodadaAtual} rodadaId={rodadaSel} onSalvar={estenderRodada} onFechar={() => setModalEstenderRodada(false)} />
+      )}
       {modalNovoConfr && (
         <ModalNovoConfronto times={times} onSalvar={criarConfrontoNaRodada} onFechar={() => setModalNovoConfr(false)} />
       )}
@@ -492,8 +514,10 @@ export default function AdminRodadasSection() {
 
 // ── Subcomponentes ─────────────────────────────────────────────────────────────
 
-function RodadaHeader({ rodada, rodadaId, onChange, onAtualizar }) {
+function RodadaHeader({ rodada, rodadaId, onChange, onAtualizar, onEstender }) {
   const STATUS_RODADA = ['configurando', 'agendamento', 'jogando', 'encerrada']
+  const semanas = semanasRodada(rodada)
+  const terminoAtual = dataDoDia('sabado', semanas[semanas.length - 1]?.ref)
   return (
     <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
@@ -503,6 +527,7 @@ function RodadaHeader({ rodada, rodadaId, onChange, onAtualizar }) {
         {rodada.semanaJogos && (
           <span style={{ fontSize: 12, color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif" }}>
             Semana de jogos: {rodada.semanaJogos}
+            {semanas.length > 1 && ` · ${semanas.length} semanas · até ${terminoAtual}`}
           </span>
         )}
         <div style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>
@@ -541,6 +566,13 @@ function RodadaHeader({ rodada, rodadaId, onChange, onAtualizar }) {
             style={{ ...inputStyle, width: 'auto', padding: '3px 8px', fontSize: 12 }}
           />
         </label>
+        <button
+          className="btn"
+          style={{ fontSize: 12, padding: '4px 10px', borderColor: 'rgba(201,168,76,0.4)', color: 'var(--gold)', marginLeft: 'auto' }}
+          onClick={onEstender}
+        >
+          ⏳ Estender rodada
+        </button>
       </div>
     </div>
   )
@@ -613,7 +645,7 @@ function ConfrontoCard({ confrontoId, confronto: c, campeonatoId, times, disponi
       <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif", marginBottom: 8 }}>
         <span>
           Slot: <strong style={{ color: c.slot ? 'var(--green)' : 'var(--text3)' }}>
-            {c.slot ? `${SLOT_LABEL[baseSlotKey(c.slot)] ?? c.slot}${slotSemana(c.slot) === 2 ? ' (semana 2)' : ''}` : '—'}
+            {c.slot ? `${SLOT_LABEL[baseSlotKey(c.slot)] ?? c.slot}${slotSemana(c.slot) > 1 ? ` (semana ${slotSemana(c.slot)})` : ''}` : '—'}
           </strong>
         </span>
         <span>
@@ -889,6 +921,43 @@ function ModalEditarTimesBracket({ confronto: c, confrontoId, times, onSalvar, o
           disabled={timeA === timeB && timeA !== ''}
           onClick={() => onSalvar(confrontoId, { timeA, timeB })}>
           Salvar
+        </button>
+        <button className="btn" style={{ fontSize: 13 }} onClick={onFechar}>Cancelar</button>
+      </div>
+    </Modal>
+  )
+}
+
+function ModalEstenderRodada({ rodada, rodadaId, onSalvar, onFechar }) {
+  const semanas = semanasRodada(rodada)
+  const inicioAtual   = dataDoDia('terca', rodada?.semanaJogos)
+  const terminoAtual  = dataDoDia('sabado', semanas[semanas.length - 1]?.ref)
+  const [novoTermino, setNovoTermino] = useState(rodada?.janelaFechaEm ?? '')
+
+  const previewValido = novoTermino && calcularNumSemanas(rodada?.semanaJogos, novoTermino)
+
+  return (
+    <Modal titulo={`Estender Rodada ${rodada.numero}`} onFechar={onFechar}>
+      <div style={{ fontSize: 12, color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif", marginBottom: 14 }}>
+        Prorroga o prazo da rodada sem criar uma nova. A rodada continua começando em <strong>{inicioAtual}</strong>, mas o grid de agendamento dos capitães passa a exibir semanas até a nova data de término.
+      </div>
+      <FieldLabel label="Início da rodada" />
+      <div style={{ ...inputStyle, marginBottom: 12, color: 'var(--text2)' }}>{inicioAtual ?? '—'}</div>
+      <FieldLabel label="Término atual" />
+      <div style={{ ...inputStyle, marginBottom: 12, color: 'var(--text2)' }}>{terminoAtual ?? '—'}</div>
+      <FieldLabel label="Novo término" hint="data até quando o agendamento deve ficar aberto" />
+      <input type="date" value={novoTermino} onChange={e => setNovoTermino(e.target.value)}
+        style={{ ...inputStyle, marginBottom: 12 }} />
+      {previewValido > 0 && (
+        <div style={{ fontSize: 12, color: 'var(--gold)', fontFamily: "'Barlow Condensed', sans-serif", marginBottom: 16 }}>
+          A janela passará a abranger {previewValido} semana{previewValido > 1 ? 's' : ''}.
+        </div>
+      )}
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button className="btn primary" style={{ fontSize: 13 }}
+          disabled={!novoTermino}
+          onClick={() => onSalvar(rodadaId, novoTermino)}>
+          Estender
         </button>
         <button className="btn" style={{ fontSize: 13 }} onClick={onFechar}>Cancelar</button>
       </div>

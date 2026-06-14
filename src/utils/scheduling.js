@@ -127,7 +127,8 @@ const ANTECEDENCIA_MIN_SLOT = 90
  */
 export function slotJaFechado(slot, semanaJogos) {
   const base = baseSlotKey(slot)
-  const semanaRef = slotSemana(slot) === 2 ? addDias(semanaJogos, 7) : semanaJogos
+  const semana = slotSemana(slot)
+  const semanaRef = semana > 1 ? addDias(semanaJogos, (semana - 1) * 7) : semanaJogos
   const alvo = dataAlvoDoDia(SLOT_DIA[base], semanaRef)
   if (!alvo) return false
 
@@ -180,27 +181,110 @@ export const ADJACENT_SLOTS = {
 }
 
 /**
- * Retorna a chave "base" de um slot, removendo o sufixo de segunda semana
- * (`__sem2`) usado em janelas de agendamento que abrangem duas semanas.
- * Ex: 'terca-20h__sem2' → 'terca-20h'; 'terca-20h' → 'terca-20h'
+ * Retorna a chave "base" de um slot, removendo o sufixo de semana extra
+ * (`__semN`, N >= 2) usado em janelas de agendamento que abrangem várias
+ * semanas. Ex: 'terca-20h__sem2' → 'terca-20h'; 'terca-20h' → 'terca-20h'
  */
 export function baseSlotKey(slot) {
-  return typeof slot === 'string' ? slot.replace(/__sem2$/, '') : slot
+  return typeof slot === 'string' ? slot.replace(/__sem\d+$/, '') : slot
 }
 
 /**
- * Retorna 1 ou 2 indicando a qual semana da janela de agendamento o slot
- * pertence (2 = slot da segunda semana, identificado pelo sufixo `__sem2`).
+ * Retorna o número da semana da janela de agendamento à qual o slot
+ * pertence (1 = semana de `semanaJogos`, 2+ = semanas seguintes,
+ * identificadas pelo sufixo `__semN`).
  */
 export function slotSemana(slot) {
-  return typeof slot === 'string' && slot.endsWith('__sem2') ? 2 : 1
+  if (typeof slot !== 'string') return 1
+  const m = slot.match(/__sem(\d+)$/)
+  return m ? Number(m[1]) : 1
 }
 
 /**
- * Aplica o sufixo de segunda semana a um slot base, se `semana === 2`.
+ * Aplica o sufixo de semana extra a um slot base, se `semana > 1`.
  */
 export function slotComSemana(slot, semana) {
-  return semana === 2 ? `${slot}__sem2` : slot
+  return semana > 1 ? `${slot}__sem${semana}` : slot
+}
+
+/**
+ * Retorna o número de semanas que a janela de agendamento de uma rodada
+ * abrange. Usa `numSemanas` se definido (rodadas estendidas), com fallback
+ * para o campo legado `duasSemanas` (true → 2, false/ausente → 1).
+ */
+export function numSemanasRodada(rodada) {
+  return rodada?.numSemanas ?? (rodada?.duasSemanas ? 2 : 1)
+}
+
+/**
+ * Retorna a lista de semanas da janela de agendamento de uma rodada, cada
+ * uma com seu número (1..N) e a data de referência (`semanaJogos` para a
+ * semana 1, +7 dias por semana adicional).
+ */
+export function semanasRodada(rodada) {
+  const n = numSemanasRodada(rodada)
+  const semanas = []
+  for (let semana = 1; semana <= n; semana++) {
+    semanas.push({
+      semana,
+      ref: semana === 1 ? rodada?.semanaJogos : addDias(rodada?.semanaJogos, (semana - 1) * 7),
+    })
+  }
+  return semanas
+}
+
+/**
+ * Retorna todos os slots (com sufixo de semana aplicado) da janela de
+ * agendamento de uma rodada, na ordem de preferência.
+ */
+export function ordemSlotsRodada(rodada, ehPlayoff = false) {
+  const slotsRodada = ehPlayoff ? SLOTS_PLAYOFF : SLOTS
+  const semanas = semanasRodada(rodada)
+  return semanas.flatMap(({ semana }) => slotsRodada.map(s => slotComSemana(s, semana)))
+}
+
+/**
+ * True se todos os dias de uma semana (terça a sábado) já passaram —
+ * usado para ocultar semanas inteiras já encerradas no grid de agendamento.
+ */
+export function semanaJaPassou(semanaRef) {
+  return diaJaPassou('sabado', semanaRef)
+}
+
+/**
+ * Calcula quantas semanas (a partir de `semanaJogos`) são necessárias para
+ * que `novoTermino` caia dentro da janela. Usado pela ação "Estender
+ * rodada" do admin — converte uma nova data de término em `numSemanas`.
+ */
+export function calcularNumSemanas(semanaJogos, novoTermino) {
+  if (!semanaJogos || !novoTermino) return 1
+  const [ano, mes, dia] = semanaJogos.split('-').map(Number)
+  if (!ano || !mes || !dia) return 1
+
+  const ref = new Date(ano, mes - 1, dia)
+  const wd = ref.getDay()
+  const diffParaSegunda = wd === 0 ? -6 : 1 - wd
+  const segunda = new Date(ano, mes - 1, dia + diffParaSegunda)
+
+  const [anoF, mesF, diaF] = novoTermino.split('-').map(Number)
+  if (!anoF || !mesF || !diaF) return 1
+  const fim = new Date(anoF, mesF - 1, diaF)
+
+  const diffDias = Math.round((fim - segunda) / (1000 * 60 * 60 * 24))
+  return Math.max(1, Math.ceil((diffDias + 1) / 7))
+}
+
+/**
+ * Retorna a data (DD/MM) de um slot, considerando a semana correta da
+ * janela de agendamento (slots com sufixo `__semN` usam semanaJogos + 7*(N-1)
+ * dias). Ex: dataDoSlot('terca-20h__sem2', '2025-06-08') → data da terça da
+ * semana seguinte a 08/06.
+ */
+export function dataDoSlot(slot, semanaJogos) {
+  const base   = baseSlotKey(slot)
+  const semana = slotSemana(slot)
+  const ref    = semana > 1 ? addDias(semanaJogos, (semana - 1) * 7) : semanaJogos
+  return dataDoDia(SLOT_DIA[base], ref)
 }
 
 /**

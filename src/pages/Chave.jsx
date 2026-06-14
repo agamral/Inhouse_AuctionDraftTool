@@ -8,7 +8,7 @@ import PaginaInativa from '../components/PaginaInativa'
 import { teamPath, rodadasPath, confrontosPath } from '../utils/campeonatoPaths'
 import {
   BRACKET_UPPER, BRACKET_LOWER, BRACKET_LABELS,
-  STATUS_CONFRONTO, TIPO_CONFRONTO, SLOT_LABEL, SLOT_DIA, dataDoDia,
+  STATUS_CONFRONTO, TIPO_CONFRONTO, SLOT_LABEL, dataDoDia, dataDoSlot, baseSlotKey,
 } from '../utils/scheduling'
 import TeamIcon from '../components/TeamIcon'
 import './Chave.css'
@@ -385,8 +385,8 @@ function MatchCard({ match: m, times, destaque = false, small = false, timeSel =
         tipoRes={tipoRes} lado="B" small={small} />
       {confirmado && !realizado && m.slot && (
         <div className="match-card-slot">
-          {SLOT_LABEL[m.slot] ?? m.slot}
-          {dataDoDia(SLOT_DIA[m.slot], semanaJogos) && ` – ${dataDoDia(SLOT_DIA[m.slot], semanaJogos)}`}
+          {SLOT_LABEL[baseSlotKey(m.slot)] ?? m.slot}
+          {dataDoSlot(m.slot, semanaJogos) && ` – ${dataDoSlot(m.slot, semanaJogos)}`}
         </div>
       )}
       {m.status === STATUS_CONFRONTO.EMPATE_PENDENTE && (

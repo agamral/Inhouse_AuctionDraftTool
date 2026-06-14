@@ -15,6 +15,7 @@ import {
   FUSO_PADRAO, FUSOS, slotLabelFuso, slotHoraLocal, dataDoDia, dataDoDiaEs, diaJaPassou, slotJaFechado, addDias,
   resolverDisponibilidade, avisaBackToBack, encontrarSlotsEmComum,
   baseSlotKey, slotComSemana, slotSemana, slotsAdjacentes,
+  ordemSlotsRodada, semanasRodada, semanaJaPassou, dataDoSlot,
 } from '../utils/scheduling'
 import './Agendamento.css'
 
@@ -257,14 +258,11 @@ export default function Agendamento() {
     const rolesAB   = [teams[confronto.timeA]?.discordRoleId, teams[confronto.timeB]?.discordRoleId].filter(Boolean)
     const rodada    = rodadas[confronto.rodadaId]
     const ehPlayoff = String(rodada?.numero ?? '').startsWith('P')
-    const slotsRodada = ehPlayoff ? SLOTS_PLAYOFF : SLOTS
-    const ordemSlots  = rodada?.duasSemanas
-      ? [...slotsRodada, ...slotsRodada.map(s => slotComSemana(s, 2))]
-      : slotsRodada
+    const ordemSlots = ordemSlotsRodada(rodada, ehPlayoff)
 
-    // Resolve a "semana de jogos" de referência de um slot — slots da segunda
-    // semana (sufixo __sem2) usam semanaJogos + 7 dias.
-    const semanaDoSlot = slot => slotSemana(slot) === 2 ? addDias(rodada?.semanaJogos, 7) : rodada?.semanaJogos
+    // Resolve a "semana de jogos" de referência de um slot — slots de semanas
+    // seguintes (sufixo __semN) usam semanaJogos + 7*(N-1) dias.
+    const semanaDoSlot = slot => slotSemana(slot) > 1 ? addDias(rodada?.semanaJogos, (slotSemana(slot) - 1) * 7) : rodada?.semanaJogos
 
     setSaving(confrontoId)
     try {
@@ -488,18 +486,19 @@ export default function Agendamento() {
                     const rodada    = rodadas[c.rodadaId]
             const ehPlayoff = String(rodada?.numero ?? '').startsWith('P')
             const slotsRodada = ehPlayoff ? SLOTS_PLAYOFF : SLOTS
-            const ordemSlots = rodada?.duasSemanas
-              ? [...slotsRodada, ...slotsRodada.map(s => slotComSemana(s, 2))]
-              : slotsRodada
+            const ordemSlots = ordemSlotsRodada(rodada, ehPlayoff)
             const meusSlots = selecoes[id] ?? []
             const advSlots  = dispon[id]?.[advId]?.slots ?? []
             const emComum   = encontrarSlotsEmComum(meusSlots, advSlots, ordemSlots)
             const ocupados  = slotsOcupadosNaRodada(id)
             const fb        = feedback[id]
             const janelaFechada = !!(rodada?.janelaFechaEm && rodada.janelaFechaEm < hojeStr)
-            const semanas = rodada?.duasSemanas
-              ? [{ semana: 1, ref: rodada?.semanaJogos }, { semana: 2, ref: addDias(rodada?.semanaJogos, 7) }]
-              : [{ semana: 1, ref: rodada?.semanaJogos }]
+            // Oculta semanas inteiras já encerradas (todas marcadas pra rodadas
+            // estendidas — ex: rodada que começou na semana 1 mas só teve o
+            // prazo prorrogado pra uma semana mais à frente).
+            const todasSemanas = semanasRodada(rodada)
+            const semanasFuturas = todasSemanas.filter(({ ref }) => !semanaJaPassou(ref))
+            const semanas = semanasFuturas.length > 0 ? semanasFuturas : todasSemanas.slice(-1)
 
             return (
               <div key={id} className={`ag-confronto${c.status === STATUS_CONFRONTO.CONFIRMADO ? ' ag-confronto--ok' : ''}`}>
@@ -533,8 +532,7 @@ export default function Agendamento() {
                     Partida confirmada: <strong>
                       {slotLabelFuso(c.slot, fusoExibicao)}
                       {(() => {
-                        const semanaRef = slotSemana(c.slot) === 2 ? addDias(rodada?.semanaJogos, 7) : rodada?.semanaJogos
-                        const dataDia   = dataDoDia(SLOT_DIA[baseSlotKey(c.slot)], semanaRef)
+                        const dataDia = dataDoSlot(c.slot, rodada?.semanaJogos)
                         return dataDia ? ` – ${dataDia}` : ''
                       })()}
                     </strong>
@@ -575,7 +573,7 @@ export default function Agendamento() {
 
                     {semanas.map(({ semana, ref: semanaRef }, semIdx) => (
                       <div key={semana}>
-                        {semIdx === 1 && (
+                        {semIdx > 0 && (
                           <div className="ag-semana-divisor">
                             <span className="ag-semana-divisor-linha" />
                             <span className="ag-semana-divisor-label">
