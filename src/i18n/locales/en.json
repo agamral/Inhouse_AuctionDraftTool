@@ -381,6 +381,13 @@
     "tooltipFechado": "The deadline to book this time slot has passed (1h30 notice required)",
     "tooltipBackToBack": "⚠ Back-to-back with another match",
     "tooltipLimparSelecao": "Remove all selected slots",
-    "tooltipDisponivelSempre": "Mark all available slots"
+    "tooltipDisponivelSempre": "Mark all available slots",
+    "dias": {
+      "terca": "Tuesday",
+      "quarta": "Wednesday",
+      "quinta": "Thursday",
+      "sexta": "Friday",
+      "sabado": "Saturday"
+    }
   }
 }

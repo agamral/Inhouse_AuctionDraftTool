@@ -381,6 +381,13 @@
     "tooltipFechado": "El plazo para marcar este horario ya finalizó (1h30 de anticipación)",
     "tooltipBackToBack": "⚠ Back-to-back con otra partida",
     "tooltipLimparSelecao": "Quitar todos los horarios seleccionados",
-    "tooltipDisponivelSempre": "Marcar todos los horarios disponibles"
+    "tooltipDisponivelSempre": "Marcar todos los horarios disponibles",
+    "dias": {
+      "terca": "Martes",
+      "quarta": "Miércoles",
+      "quinta": "Jueves",
+      "sexta": "Viernes",
+      "sabado": "Sábado"
+    }
   }
 }

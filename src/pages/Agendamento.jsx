@@ -519,8 +519,8 @@ export default function Agendamento() {
                   {rodada?.semanaJogos && (
                     <div className="ag-semana-jogos">
                       {t('agendamento.semanaJogos', {
-                        de:  dataDoDia('terca', rodada.semanaJogos),
-                        ate: dataDoDia('sabado', rodada.semanaJogos),
+                        de:  dataDoDia('terca', semanas[0]?.ref),
+                        ate: dataDoDia('sabado', semanas[semanas.length - 1]?.ref),
                       })}
                     </div>
                   )}
@@ -583,14 +583,14 @@ export default function Agendamento() {
                           </div>
                         )}
                         <div className="ag-grid">
-                          {Object.entries(DIA_LABEL).map(([dia, diaLabel]) => {
+                          {Object.keys(DIA_LABEL).map(dia => {
                             const slotsHoje = slotsRodada.filter(s => SLOT_DIA[s] === dia).map(s => slotComSemana(s, semana))
                             const dataDia   = dataDoDia(dia, semanaRef)
                             const passou    = diaJaPassou(dia, semanaRef)
                             return (
                               <div key={`${semana}-${dia}`} className="ag-dia">
                                 <div className="ag-dia-label">
-                                  <span>{diaLabel}</span>
+                                  <span>{t(`agendamento.dias.${dia}`)}</span>
                                   {dataDia && <span className="ag-dia-data">{dataDia}</span>}
                                 </div>
                                 <div className="ag-dia-slots">

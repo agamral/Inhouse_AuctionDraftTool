@@ -381,6 +381,13 @@
     "tooltipFechado": "Prazo para marcar esse horário já encerrou (1h30 de antecedência)",
     "tooltipBackToBack": "⚠ Back-to-back com outra partida",
     "tooltipLimparSelecao": "Remover todos os slots selecionados",
-    "tooltipDisponivelSempre": "Marcar todos os slots disponíveis"
+    "tooltipDisponivelSempre": "Marcar todos os slots disponíveis",
+    "dias": {
+      "terca": "Terça-feira",
+      "quarta": "Quarta-feira",
+      "quinta": "Quinta-feira",
+      "sexta": "Sexta-feira",
+      "sabado": "Sábado"
+    }
   }
 }
