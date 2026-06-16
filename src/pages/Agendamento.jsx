@@ -609,7 +609,7 @@ export default function Agendamento() {
                                     const horarioLocal = slotHoraLocal(slot, fusoExibicao)
                                     const horarioBRT   = baseSlotKey(slot).split('-')[1].replace(/h$/, '')
                                     const mostraBRT    = fusoExibicao !== FUSO_PADRAO
-                                    const fechado      = !passou && slotJaFechado(slot, semanaRef)
+                                    const fechado      = !passou && slotJaFechado(slot, rodada?.semanaJogos)
                                     const bloqueado    = passou || fechado
 
                                     return (
