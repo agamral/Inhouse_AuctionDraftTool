@@ -45,13 +45,17 @@ export default function HeroDraft() {
   // time logado na conta correta — evita que um capitão deslogado/com a conta
   // errada trave o draft (writes rejeitados pelas rules viram um loop de
   // ban entrando/saindo na tela).
-  const { user: authUser, loading: authLoading } = useAuth()
+  const { user: authUser, loading: authLoading, capitao } = useAuth()
   const meuTimeKey   = timeLocal === 'A' ? 'timeA' : timeLocal === 'B' ? 'timeB' : null
   const meuTime      = meuTimeKey ? estado?.[meuTimeKey] : null
   const exigeIdentidade = !isShowmatch && !!meuTime && (!!meuTime.capitaoUid || !!meuTime.capitaoEmail)
   const identidadeOk = !exigeIdentidade || (!!authUser && (
     (meuTime.capitaoUid   && authUser.uid   === meuTime.capitaoUid) ||
-    (meuTime.capitaoEmail && authUser.email === meuTime.capitaoEmail)
+    (meuTime.capitaoEmail && authUser.email === meuTime.capitaoEmail) ||
+    // Fallback: credenciais no draft podem estar desatualizadas (conta recriada).
+    // Se useAuth confirmou que este usuário é capitão deste campeonato e time,
+    // confia nos dados ao vivo do Firebase em vez do snapshot do draft.
+    (capitao && capitao.campeonatoId === idPublico && capitao.nome === meuTime.nome)
   ))
 
   // ── Presença do capitão ────────────────────────────────────────────────────
