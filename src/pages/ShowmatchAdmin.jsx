@@ -405,6 +405,10 @@ export default function ShowmatchAdmin() {
 
   async function iniciarProximaPartida() {
     const novoId = gerarSessaoId()
+    // Marca o novoId como já sincronizado ANTES de mudar o sessaoId — evita que o
+    // syncedConfigRef useEffect processe o draftEstado stale da partida anterior
+    // e sobrescreva os bans do madness com globalBans = [].
+    syncedConfigRef.current = novoId
     setSessaoId(novoId)
     setDraftCriado(false)
     setMapaId('')
