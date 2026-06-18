@@ -162,6 +162,26 @@ export default function ShowmatchAdmin() {
     setPrimeiroTime(seq[0]?.time ?? 'A')
   }, [isConfrontoMode, draftEstado, sessaoId]) // eslint-disable-line
 
+  // Aplica madness bans automaticamente ao reabrir a página entre partidas.
+  // Cobre o caso onde draftEstado é null (sem draft ativo) mas há partidas
+  // concluídas no Firebase — o botão "Iniciar Próxima Partida" nunca aparece
+  // nesse estado, então os bans precisam ser calculados aqui.
+  const madnessBansInitRef = useRef(null)
+  useEffect(() => {
+    if (!isConfrontoMode || draftCriado) return
+    if (madnessBansInitRef.current === sessaoId) return
+    const madness = confrontoCtx?.conf?.madness
+    if (!madness || madness === 'desativado') return
+    const temConcluida = Object.values(partidas).some(p => p.vencedor && p.picks)
+    if (!temConcluida) return
+    const temEmDraft = Object.values(partidas).some(p => p.status === 'em_draft')
+    if (temEmDraft) return
+    const bansMadness = calcularMadnessBansOficial(partidas, madness)
+    if (bansMadness.length === 0) return
+    madnessBansInitRef.current = sessaoId
+    setGlobalBans(bansMadness)
+  }, [isConfrontoMode, draftCriado, confrontoCtx, partidas, sessaoId]) // eslint-disable-line
+
   // Salva config da sessão em tempo real para o lobby dos capitães ver ao vivo
   useEffect(() => {
     if (!sessaoPath || !sessao) return
