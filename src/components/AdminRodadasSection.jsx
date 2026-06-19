@@ -54,6 +54,7 @@ export default function AdminRodadasSection() {
   const [modalSlot, setModalSlot]                 = useState(null) // confrontoId
   const [modalEditarTimes, setModalEditarTimes]   = useState(null) // confrontoId (só bracket)
   const [confirmDelete, setConfirmDelete]         = useState(null) // confrontoId
+  const [confirmReset, setConfirmReset]           = useState(null) // confrontoId
 
   useEffect(() => onValue(ref(db, rodadasPath(campeonatoId)),         snap => setRodadas(snap.val()    ?? {})), [campeonatoId])
   useEffect(() => onValue(ref(db, confrontosPath(campeonatoId)),      snap => setConfrontos(snap.val() ?? {})), [campeonatoId])
@@ -304,6 +305,31 @@ export default function AdminRodadasSection() {
     }
   }
 
+  // ── Resetar confronto ────────────────────────────────────────────────────────
+  // Remove resultado, partidas e pontos, revertendo ao estado pré-resultado.
+  // Mantém slot (volta a 'confirmado') ou, sem slot, volta a 'agendando'.
+
+  async function resetarConfronto(confrontoId) {
+    const c = confrontos[confrontoId]
+    const novoStatus = c?.slot ? STATUS_CONFRONTO.CONFIRMADO : STATUS_CONFRONTO.AGENDANDO
+    const base = `${confrontosPath(campeonatoId)}/${confrontoId}`
+    try {
+      await update(ref(db), {
+        [`${base}/status`]:       novoStatus,
+        [`${base}/resultado`]:    null,
+        [`${base}/observacoes`]:  null,
+        [`${base}/pontosTabela`]: null,
+        [`${base}/alertas`]:      {},
+        [`${base}/partidas`]:     null,
+        [`${base}/atualizadoEm`]: Date.now(),
+      })
+      setConfirmReset(null)
+      flash('ok', `Confronto revertido para ${novoStatus === STATUS_CONFRONTO.CONFIRMADO ? 'agendado (slot mantido)' : 'agendamento'}.`)
+    } catch (e) {
+      flash('erro', e.message)
+    }
+  }
+
   // ── Agendar desempate MD3 ────────────────────────────────────────────────────
 
   async function agendarDesempate(confrontoOriginalId) {
@@ -449,6 +475,10 @@ export default function AdminRodadasSection() {
                   confirmandoDelete={confirmDelete === id}
                   onConfirmarDelete={() => deletarConfronto(id)}
                   onCancelarDelete={() => setConfirmDelete(null)}
+                  onResetarConfronto={() => setConfirmReset(id)}
+                  confirmandoReset={confirmReset === id}
+                  onConfirmarReset={() => resetarConfronto(id)}
+                  onCancelarReset={() => setConfirmReset(null)}
                   onIniciarDraft={() => navigate(`/showmatch?confronto=${id}&campeonato=${campeonatoId}`)}
                 />
               ))}
@@ -578,7 +608,7 @@ function RodadaHeader({ rodada, rodadaId, onChange, onAtualizar, onEstender }) {
   )
 }
 
-function ConfrontoCard({ confrontoId, confronto: c, campeonatoId, times, disponibilidade, onRegistrarResultado, onForcarSlot, onEditarTimes, onMudarStatus, onResetarAgendamento, onAgendarDesempate, onDeletar, confirmandoDelete, onConfirmarDelete, onCancelarDelete, onIniciarDraft }) {
+function ConfrontoCard({ confrontoId, confronto: c, campeonatoId, times, disponibilidade, onRegistrarResultado, onForcarSlot, onEditarTimes, onMudarStatus, onResetarAgendamento, onAgendarDesempate, onDeletar, confirmandoDelete, onConfirmarDelete, onCancelarDelete, onIniciarDraft, onResetarConfronto, confirmandoReset, onConfirmarReset, onCancelarReset }) {
   const tA = times[c.timeA]
   const tB = times[c.timeB]
   const dispA = disponibilidade[c.timeA]?.slots ?? []
@@ -834,6 +864,26 @@ function ConfrontoCard({ confrontoId, confronto: c, campeonatoId, times, disponi
             onClick={onResetarAgendamento}>
             ↺ Resetar agendamento
           </button>
+        )}
+        {[STATUS_CONFRONTO.REALIZADO, STATUS_CONFRONTO.EMPATE_PENDENTE, STATUS_CONFRONTO.WO_PENDENTE].includes(c.status) && !confirmandoReset && (
+          <button className="btn" style={{ fontSize: 11, padding: '4px 10px', borderColor: 'rgba(224,85,85,0.5)', color: 'var(--red)' }}
+            title="Remove resultado e partidas, revertendo o confronto para o estado pré-resultado. Slot confirmado é mantido."
+            onClick={onResetarConfronto}>
+            ↺ Resetar confronto
+          </button>
+        )}
+        {confirmandoReset && (
+          <>
+            <span style={{ fontSize: 11, color: 'var(--text2)' }}>Remover resultado e reverter?</span>
+            <button className="btn" style={{ fontSize: 11, padding: '4px 10px', background: 'var(--red)', color: '#fff', borderColor: 'var(--red)' }}
+              onClick={onConfirmarReset}>
+              Confirmar
+            </button>
+            <button className="btn" style={{ fontSize: 11, padding: '4px 8px' }}
+              onClick={onCancelarReset}>
+              Cancelar
+            </button>
+          </>
         )}
         {c.status !== STATUS_CONFRONTO.CANCELADO && (
           <button className="btn" style={{ fontSize: 11, padding: '4px 10px', borderColor: 'rgba(224,85,85,0.4)', color: 'var(--text2)' }}
