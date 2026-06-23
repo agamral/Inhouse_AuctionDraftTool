@@ -45,10 +45,10 @@ export default function HeroDraft() {
   // time logado na conta correta — evita que um capitão deslogado/com a conta
   // errada trave o draft (writes rejeitados pelas rules viram um loop de
   // ban entrando/saindo na tela).
-  const { user: authUser, loading: authLoading, capitao } = useAuth()
+  const { user: authUser, loading: authLoading, capitao, isAdmin } = useAuth()
   const meuTimeKey   = timeLocal === 'A' ? 'timeA' : timeLocal === 'B' ? 'timeB' : null
   const meuTime      = meuTimeKey ? estado?.[meuTimeKey] : null
-  const exigeIdentidade = !isShowmatch && !!meuTime && (!!meuTime.capitaoUid || !!meuTime.capitaoEmail)
+  const exigeIdentidade = !isShowmatch && !isAdmin && !!meuTime && (!!meuTime.capitaoUid || !!meuTime.capitaoEmail)
   const identidadeOk = !exigeIdentidade || (!!authUser && (
     (meuTime.capitaoUid   && authUser.uid   === meuTime.capitaoUid) ||
     (meuTime.capitaoEmail && authUser.email === meuTime.capitaoEmail) ||
