@@ -10,16 +10,16 @@ import { MAPAS } from '../utils/mapPool'
 
 function outroTime(time) { return time === 'A' ? 'B' : 'A' }
 
-function getFase(sessao) {
-  if (!sessao)                                 return 'loading'
-  if (sessao.encerrada)                        return 'encerrado'
-  if (!sessao.resultado)                       return 'coin'
-  if (!sessao.preferencia)                     return 'escolhendo'
-  if ((sessao.bans ?? []).length < 4)          return 'banindo'
-  if (!sessao.mapaEscolhido)                  return 'escolhendo_mapa'
-  if (!sessao.perdedorProxima)                return 'partida_pronta'
-  if (!sessao.proximaPreferencia)             return 'proxima_escolhendo'
-  if (!sessao.proximaMapa)                    return 'proxima_escolhendo_mapa'
+export function getFase(sessao) {
+  if (!sessao)                                return 'loading'
+  if (sessao.encerrada)                       return 'encerrado'
+  if (!sessao.resultado)                      return 'coin'
+  if (!sessao.preferencia)                    return 'escolhendo'
+  if ((sessao.bans ?? []).length < 4)         return 'banindo'
+  if (!sessao.mapaEscolhido)                 return 'escolhendo_mapa'
+  if (!sessao.perdedorProxima)               return 'partida_pronta'
+  if (!sessao.proximaPreferencia)            return 'proxima_escolhendo'
+  if (!sessao.proximaMapa)                   return 'proxima_escolhendo_mapa'
   return 'proxima_pronta'
 }
 
@@ -105,70 +105,59 @@ function MapaGrid({ mapas, bans, jogados, mapaAtual, meuTurno, onSelect, pendent
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(148px, 1fr))', gap: 10 }}>
       {mapas.map(m => {
-        const banido  = bans.includes(m.id)
-        const jogado  = jogados.includes(m.id)
-        const atual   = m.id === mapaAtual && !jogado  // mapa da partida atual
-        const isPend  = m.id === pendente
+        const banido      = bans.includes(m.id)
+        const jogado      = jogados.includes(m.id)
+        const atual       = m.id === mapaAtual && !jogado
+        const isPend      = m.id === pendente
         const indisponivel = banido || jogado
         const clicavel    = meuTurno && !indisponivel && !atual && !pendente
 
         let borderColor = 'transparent'
-        let bgColor = 'var(--bg3)'
-        let textColor = 'var(--text2)'
-        if (isPend)   { borderColor = 'var(--gold)';  bgColor = 'rgba(201,168,76,0.08)' }
-        else if (atual){ borderColor = 'var(--green)'; bgColor = 'rgba(76,175,125,0.08)' }
-        else if (meuTurno && !indisponivel && !pendente) { borderColor = 'rgba(255,255,255,0.1)' }
+        if (isPend)  borderColor = 'var(--gold)'
+        else if (atual) borderColor = 'var(--green)'
+        else if (meuTurno && !indisponivel && !pendente) borderColor = 'rgba(255,255,255,0.1)'
 
         return (
-          <div key={m.id}
-            onClick={() => clicavel && onSelect(m.id)}
-            style={{
-              position: 'relative', borderRadius: 8, overflow: 'hidden',
-              cursor: clicavel ? 'pointer' : 'default',
-              opacity: indisponivel ? 0.28 : 1,
-              filter: indisponivel ? 'grayscale(100%)' : 'none',
-              border: `2px solid ${borderColor}`,
-              background: bgColor,
-              transition: 'all 0.22s',
-              boxShadow: isPend ? '0 0 14px rgba(201,168,76,0.4)' : atual ? '0 0 14px rgba(76,175,125,0.3)' : 'none',
-            }}>
+          <div key={m.id} onClick={() => clicavel && onSelect(m.id)} style={{
+            position: 'relative', borderRadius: 8, overflow: 'hidden',
+            cursor: clicavel ? 'pointer' : 'default',
+            opacity: indisponivel ? 0.28 : 1,
+            filter: indisponivel ? 'grayscale(100%)' : 'none',
+            border: `2px solid ${borderColor}`,
+            background: isPend ? 'rgba(201,168,76,0.08)' : atual ? 'rgba(76,175,125,0.08)' : 'var(--bg3)',
+            transition: 'all 0.22s',
+            boxShadow: isPend ? '0 0 14px rgba(201,168,76,0.4)' : atual ? '0 0 14px rgba(76,175,125,0.3)' : 'none',
+          }}>
             <img src={m.splashUrl} alt={m.nome}
               onError={e => { e.target.style.background = 'var(--bg3)'; e.target.style.minHeight = '80px' }}
               style={{ width: '100%', height: 86, objectFit: 'cover', display: 'block' }} />
             <div style={{
-              padding: '5px 8px', fontSize: 11,
-              fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700,
-              color: isPend ? 'var(--gold2)' : atual ? 'var(--green)' : indisponivel ? 'rgba(150,150,150,0.6)' : textColor,
+              padding: '5px 8px', fontSize: 11, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700,
+              color: isPend ? 'var(--gold2)' : atual ? 'var(--green)' : indisponivel ? 'rgba(150,150,150,0.5)' : 'var(--text2)',
               textAlign: 'center',
             }}>
               {m.nome}
             </div>
 
-            {/* Ban overlay */}
             {banido && (
               <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-                <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(224,85,85,0.88)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, color: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.5)' }}>✕</div>
+                <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(224,85,85,0.88)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, color: '#fff' }}>✕</div>
               </div>
             )}
-
-            {/* Jogado overlay */}
             {jogado && (
               <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-                <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(201,168,76,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, color: '#0a0c10', boxShadow: '0 2px 8px rgba(0,0,0,0.5)' }}>⚔</div>
+                <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(201,168,76,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, color: '#0a0c10' }}>⚔</div>
               </div>
             )}
-
-            {/* Escolhido atual */}
             {atual && (
               <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-                <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(76,175,125,0.88)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, color: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.5)' }}>✓</div>
+                <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(76,175,125,0.88)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, color: '#fff' }}>✓</div>
               </div>
             )}
           </div>
         )
       })}
 
-      {/* Confirmação flutuante */}
       {pendente && (
         <div style={{
           position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
@@ -188,9 +177,9 @@ function MapaGrid({ mapas, bans, jogados, mapaAtual, meuTurno, onSelect, pendent
   )
 }
 
-// ── Bloco de escolha FP / Mapa ────────────────────────────────────────────────
+// ── Escolha FP / Mapa ─────────────────────────────────────────────────────────
 
-function EscolhaPreferencia({ meuNome, adversarioNome, onEscolher }) {
+function EscolhaPreferencia({ onEscolher }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
       <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 22, color: 'var(--text)' }}>
@@ -225,8 +214,6 @@ function EscolhaPreferencia({ meuNome, adversarioNome, onEscolher }) {
   )
 }
 
-// ── Aguardando genérico ───────────────────────────────────────────────────────
-
 function Aguardando({ msg, sub }) {
   return (
     <div style={{ textAlign: 'center', padding: '28px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
@@ -252,6 +239,8 @@ export default function MapPick() {
   const animJaFezRef            = useRef(false)
   const prevResultadoRef        = useRef(null)
 
+  // ── Listener Firebase ─────────────────────────────────────────────────────
+
   useEffect(() => {
     if (!idPublico || !sessaoId) return
     return onValue(ref(db, `${mapPickPath(idPublico)}/${sessaoId}`), snap => {
@@ -267,48 +256,64 @@ export default function MapPick() {
     })
   }, [idPublico, sessaoId])
 
-  // ── Ações ─────────────────────────────────────────────────────────────────
+  // ── Presença — heartbeat a cada 30s, limpa ao sair ───────────────────────
+
+  useEffect(() => {
+    if (!timeLocal || !idPublico || !sessaoId) return
+    const presRef = ref(db, `${mapPickPath(idPublico)}/${sessaoId}/presence/${timeLocal}`)
+    const escrever = () => update(presRef, { onlineEm: Date.now() })
+    escrever()
+    const hb = setInterval(escrever, 30000)
+    const onUnload = () => update(presRef, { onlineEm: null })
+    window.addEventListener('beforeunload', onUnload)
+    return () => {
+      clearInterval(hb)
+      update(presRef, { onlineEm: null })
+      window.removeEventListener('beforeunload', onUnload)
+    }
+  }, [idPublico, sessaoId, timeLocal]) // eslint-disable-line
+
+  // ── Ações dos capitães ────────────────────────────────────────────────────
+
+  const ts = () => ({ atualizadoEm: Date.now() })
 
   async function handleEscolherFace(face) {
     if (!sessao || animando) return
     const resultado = Math.random() < 0.5 ? 'cara' : 'coroa'
     const vencedor  = resultado === face ? sessao.escolhedor : outroTime(sessao.escolhedor)
-    await update(ref(db, `${mapPickPath(idPublico)}/${sessaoId}`), { escolha: face, resultado, vencedor })
+    await update(ref(db, `${mapPickPath(idPublico)}/${sessaoId}`), { escolha: face, resultado, vencedor, ...ts() })
   }
 
   async function handleEscolherPreferencia(pref) {
     if (!sessao?.vencedor) return
-    const mapTime      = pref === 'mapa' ? sessao.vencedor : outroTime(sessao.vencedor)
+    const mapTime       = pref === 'mapa' ? sessao.vencedor : outroTime(sessao.vencedor)
     const firstPickTime = outroTime(mapTime)
-    await update(ref(db, `${mapPickPath(idPublico)}/${sessaoId}`), { preferencia: pref, mapTime, firstPickTime })
+    await update(ref(db, `${mapPickPath(idPublico)}/${sessaoId}`), { preferencia: pref, mapTime, firstPickTime, ...ts() })
   }
 
   async function handleBanir(mapaId) {
     const bans = [...(sessao.bans ?? []), mapaId]
-    await update(ref(db, `${mapPickPath(idPublico)}/${sessaoId}`), { bans })
+    await update(ref(db, `${mapPickPath(idPublico)}/${sessaoId}`), { bans, ...ts() })
     setPendente(null)
   }
 
   async function handleEscolherMapa(mapaId) {
-    await update(ref(db, `${mapPickPath(idPublico)}/${sessaoId}`), { mapaEscolhido: mapaId })
+    await update(ref(db, `${mapPickPath(idPublico)}/${sessaoId}`), { mapaEscolhido: mapaId, ...ts() })
     setPendente(null)
   }
 
-  // Próxima partida: perdedor escolhe FP ou Mapa
   async function handleProximaPreferencia(pref) {
     if (!sessao?.perdedorProxima) return
-    const perdedor     = sessao.perdedorProxima
-    const mapTime      = pref === 'mapa' ? perdedor : outroTime(perdedor)
+    const perdedor      = sessao.perdedorProxima
+    const mapTime       = pref === 'mapa' ? perdedor : outroTime(perdedor)
     const firstPickTime = outroTime(mapTime)
     await update(ref(db, `${mapPickPath(idPublico)}/${sessaoId}`), {
-      proximaPreferencia:  pref,
-      proximaMapTime:      mapTime,
-      proximaFirstPickTime: firstPickTime,
+      proximaPreferencia: pref, proximaMapTime: mapTime, proximaFirstPickTime: firstPickTime, ...ts(),
     })
   }
 
   async function handleProximaMapa(mapaId) {
-    await update(ref(db, `${mapPickPath(idPublico)}/${sessaoId}`), { proximaMapa: mapaId })
+    await update(ref(db, `${mapPickPath(idPublico)}/${sessaoId}`), { proximaMapa: mapaId, ...ts() })
     setPendente(null)
   }
 
@@ -336,16 +341,13 @@ export default function MapPick() {
   const vencedorNome = sessao.vencedor === 'A' ? nomeA : nomeB
   const vencedorCor  = sessao.vencedor === 'A' ? corA  : corB
 
-  // Mapas disponíveis para escolha de próxima partida
-  const mapasDisponiveisProxima = pool.filter(m => !bans.includes(m.id) && !jogados.includes(m.id))
-
-  // Quem está fazendo a escolha da próxima partida
   const perdedorNome = sessao.perdedorProxima === 'A' ? nomeA : nomeB
   const perdedorCor  = sessao.perdedorProxima === 'A' ? corA  : corB
   const ehPerdedor   = timeLocal === sessao.perdedorProxima
 
-  const proximaMapTime      = sessao.proximaMapTime
+  const proximaMapTime       = sessao.proximaMapTime
   const proximaFirstPickTime = sessao.proximaFirstPickTime
+  const mapasDisponiveisProxima = pool.filter(m => !bans.includes(m.id) && !jogados.includes(m.id))
 
   return (
     <main style={{
@@ -367,7 +369,6 @@ export default function MapPick() {
             Você: <span style={{ color: minhaCor, fontWeight: 700 }}>{meuNome}</span>
           </div>
         )}
-        {/* Mapas jogados */}
         {jogados.length > 0 && (
           <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap', marginTop: 4 }}>
             {jogados.map((id, i) => {
@@ -380,18 +381,11 @@ export default function MapPick() {
 
       <div style={{ width: '100%', maxWidth: 860, display: 'flex', flexDirection: 'column', gap: 32 }}>
 
-        {/* ── Cara ou coroa ─────────────────────────────────────────────── */}
+        {/* Cara ou coroa */}
         {(fase === 'coin' || (animando && fase === 'escolhendo')) && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24 }}>
-            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--text3)' }}>
-              CARA OU COROA
-            </div>
-            <Moeda
-              resultado={animando ? null : sessao.resultado}
-              animando={animando}
-              ehEscolhedor={timeLocal === sessao.escolhedor}
-              onEscolha={handleEscolherFace}
-            />
+            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--text3)' }}>CARA OU COROA</div>
+            <Moeda resultado={animando ? null : sessao.resultado} animando={animando} ehEscolhedor={timeLocal === sessao.escolhedor} onEscolha={handleEscolherFace} />
             {sessao.resultado && !animando && (
               <div style={{ textAlign: 'center', animation: 'fadeInUp 0.4s ease-out', display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <div style={{ fontSize: 26, fontFamily: "'Rajdhani', sans-serif", fontWeight: 900, color: 'var(--gold2)' }}>
@@ -409,7 +403,7 @@ export default function MapPick() {
           </div>
         )}
 
-        {/* ── Escolher preferência (1ª partida) ─────────────────────────── */}
+        {/* Escolher preferência (1ª partida) */}
         {fase === 'escolhendo' && !animando && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24 }}>
             <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 20px', fontSize: 13, color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif" }}>
@@ -423,11 +417,9 @@ export default function MapPick() {
           </div>
         )}
 
-        {/* ── Fase de bans + escolha de mapa ────────────────────────────── */}
+        {/* Bans + escolha de mapa */}
         {(fase === 'banindo' || fase === 'escolhendo_mapa') && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-
-            {/* Resumo de prioridades */}
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
               <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 8, padding: '7px 14px', fontSize: 13, fontFamily: "'Barlow Condensed', sans-serif", color: 'var(--text2)' }}>
                 🗺 <span style={{ color: mapTime === 'A' ? corA : corB, fontWeight: 700 }}>{mapTime === 'A' ? nomeA : nomeB}</span> escolhe o mapa
@@ -437,12 +429,9 @@ export default function MapPick() {
               </div>
             </div>
 
-            {/* Progresso bans */}
             {fase === 'banindo' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
-                <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--text3)' }}>
-                  Bans — {bans.length}/4
-                </div>
+                <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--text3)' }}>Bans — {bans.length}/4</div>
                 <div style={{ display: 'flex', gap: 6 }}>
                   {[0, 1, 2, 3].map(i => {
                     const banTeam = i % 2 === 0 ? mapTime : outroTime(mapTime)
@@ -464,50 +453,34 @@ export default function MapPick() {
                     )
                   })}
                 </div>
-                {timeLocal && (
-                  <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 15, color: timeLocal === turnoBan ? 'var(--gold2)' : 'var(--text3)' }}>
-                    {timeLocal === turnoBan ? '⚡ Sua vez de banir' : `Aguardando ${turnoBan === 'A' ? nomeA : nomeB} banir...`}
-                  </div>
-                )}
+                {timeLocal && <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 15, color: timeLocal === turnoBan ? 'var(--gold2)' : 'var(--text3)' }}>{timeLocal === turnoBan ? '⚡ Sua vez de banir' : `Aguardando ${turnoBan === 'A' ? nomeA : nomeB} banir...`}</div>}
                 {ehEspectador && <div style={{ fontSize: 13, color: turnoBan === 'A' ? corA : corB, fontFamily: "'Rajdhani', sans-serif", fontWeight: 700 }}>Vez de {turnoBan === 'A' ? nomeA : nomeB} banir</div>}
               </div>
             )}
 
             {fase === 'escolhendo_mapa' && (
               <div style={{ textAlign: 'center', fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 17 }}>
-                {timeLocal === mapTime
-                  ? <span style={{ color: 'var(--gold2)' }}>🗺 Escolha o mapa!</span>
-                  : <span style={{ color: 'var(--text2)' }}>Aguardando {mapTime === 'A' ? nomeA : nomeB} escolher o mapa...</span>}
-                {ehEspectador && <span style={{ color: 'var(--text2)' }}>{mapTime === 'A' ? nomeA : nomeB} está escolhendo o mapa...</span>}
+                {timeLocal === mapTime ? <span style={{ color: 'var(--gold2)' }}>🗺 Escolha o mapa!</span> : <span style={{ color: 'var(--text2)' }}>Aguardando {mapTime === 'A' ? nomeA : nomeB} escolher o mapa...</span>}
+                {ehEspectador && <span style={{ color: 'var(--text2)' }}>{mapTime === 'A' ? nomeA : nomeB} está escolhendo...</span>}
               </div>
             )}
 
-            <MapaGrid
-              mapas={pool}
-              bans={bans}
-              jogados={jogados}
-              mapaAtual={sessao.mapaEscolhido ?? null}
-              meuTurno={
-                (fase === 'banindo' && timeLocal === turnoBan) ||
-                (fase === 'escolhendo_mapa' && timeLocal === mapTime)
-              }
-              onSelect={id => setPendente(id)}
-              pendente={pendente}
+            <MapaGrid mapas={pool} bans={bans} jogados={jogados} mapaAtual={sessao.mapaEscolhido ?? null}
+              meuTurno={(fase === 'banindo' && timeLocal === turnoBan) || (fase === 'escolhendo_mapa' && timeLocal === mapTime)}
+              onSelect={id => setPendente(id)} pendente={pendente}
               onConfirmar={() => fase === 'banindo' ? handleBanir(pendente) : handleEscolherMapa(pendente)}
-              onCancelar={() => setPendente(null)}
-            />
+              onCancelar={() => setPendente(null)} />
           </div>
         )}
 
-        {/* ── Partida pronta (aguardando admin registrar resultado) ──────── */}
+        {/* Partida pronta */}
         {fase === 'partida_pronta' && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20, textAlign: 'center' }}>
             {(() => {
               const m = pool.find(x => x.id === sessao.mapaEscolhido)
               return m ? (
                 <div style={{ maxWidth: 320, width: '100%' }}>
-                  <img src={m.splashUrl} alt={m.nome} style={{ width: '100%', borderRadius: 10, border: '2px solid var(--green)', display: 'block', boxShadow: '0 6px 24px rgba(0,0,0,0.4)' }}
-                    onError={e => { e.target.style.display = 'none' }} />
+                  <img src={m.splashUrl} alt={m.nome} style={{ width: '100%', borderRadius: 10, border: '2px solid var(--green)', display: 'block', boxShadow: '0 6px 24px rgba(0,0,0,0.4)' }} onError={e => { e.target.style.display = 'none' }} />
                   <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 900, fontSize: 24, color: 'var(--green)', marginTop: 10 }}>{m.nome}</div>
                   <div style={{ fontSize: 13, color: 'var(--text2)' }}>⚡ First pick: <strong style={{ color: sessao.firstPickTime === 'A' ? corA : corB }}>{sessao.firstPickTime === 'A' ? nomeA : nomeB}</strong></div>
                 </div>
@@ -517,32 +490,20 @@ export default function MapPick() {
           </div>
         )}
 
-        {/* ── Próxima partida: perdedor escolhe FP ou Mapa ──────────────── */}
+        {/* Próxima partida */}
         {(fase === 'proxima_escolhendo' || fase === 'proxima_escolhendo_mapa' || fase === 'proxima_pronta') && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-
-            {/* Banner: quem perdeu e o que está acontecendo */}
             <div style={{ background: 'var(--bg2)', border: `1px solid ${perdedorCor}44`, borderRadius: 8, padding: '10px 18px', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
               <span style={{ fontSize: 13, fontFamily: "'Barlow Condensed', sans-serif", color: 'var(--text2)' }}>
                 <span style={{ color: perdedorCor, fontWeight: 700 }}>{perdedorNome}</span> perdeu a última partida e escolhe para a próxima
               </span>
-              {sessao.bans.length > 0 && (
-                <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: "'Barlow Condensed', sans-serif", marginLeft: 'auto' }}>
-                  {mapasDisponiveisProxima.length} mapas disponíveis
-                </span>
-              )}
+              {bans.length > 0 && <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: "'Barlow Condensed', sans-serif", marginLeft: 'auto' }}>{mapasDisponiveisProxima.length} mapas disponíveis</span>}
             </div>
 
-            {/* Escolha de FP ou Mapa */}
             {fase === 'proxima_escolhendo' && (
-              ehPerdedor ? (
-                <EscolhaPreferencia onEscolher={handleProximaPreferencia} />
-              ) : (
-                <Aguardando msg={`Aguardando ${perdedorNome} escolher...`} sub="Mapa ou First Pick" />
-              )
+              ehPerdedor ? <EscolhaPreferencia onEscolher={handleProximaPreferencia} /> : <Aguardando msg={`Aguardando ${perdedorNome} escolher...`} sub="Mapa ou First Pick" />
             )}
 
-            {/* Resumo da escolha + grid de mapas para próxima */}
             {(fase === 'proxima_escolhendo_mapa' || fase === 'proxima_pronta') && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
@@ -555,47 +516,36 @@ export default function MapPick() {
                 </div>
 
                 {fase === 'proxima_escolhendo_mapa' && (
-                  <div style={{ textAlign: 'center', fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 17 }}>
-                    {timeLocal === proximaMapTime
-                      ? <span style={{ color: 'var(--gold2)' }}>🗺 Escolha o mapa da próxima partida!</span>
-                      : <span style={{ color: 'var(--text2)' }}>Aguardando {proximaMapTime === 'A' ? nomeA : nomeB} escolher...</span>}
-                    {ehEspectador && <span style={{ color: 'var(--text2)' }}>{proximaMapTime === 'A' ? nomeA : nomeB} está escolhendo...</span>}
-                  </div>
+                  <>
+                    <div style={{ textAlign: 'center', fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 17 }}>
+                      {timeLocal === proximaMapTime ? <span style={{ color: 'var(--gold2)' }}>🗺 Escolha o mapa da próxima partida!</span> : <span style={{ color: 'var(--text2)' }}>Aguardando {proximaMapTime === 'A' ? nomeA : nomeB} escolher...</span>}
+                      {ehEspectador && <span style={{ color: 'var(--text2)' }}>{proximaMapTime === 'A' ? nomeA : nomeB} está escolhendo...</span>}
+                    </div>
+                    <MapaGrid mapas={pool} bans={bans} jogados={jogados} mapaAtual={sessao.proximaMapa ?? null}
+                      meuTurno={timeLocal === proximaMapTime}
+                      onSelect={id => setPendente(id)} pendente={pendente}
+                      onConfirmar={() => handleProximaMapa(pendente)}
+                      onCancelar={() => setPendente(null)} />
+                  </>
                 )}
 
                 {fase === 'proxima_pronta' && (() => {
                   const m = pool.find(x => x.id === sessao.proximaMapa)
                   return m ? (
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-                      <img src={m.splashUrl} alt={m.nome} style={{ maxWidth: 300, width: '100%', borderRadius: 10, border: '2px solid var(--green)', boxShadow: '0 6px 24px rgba(0,0,0,0.4)' }}
-                        onError={e => { e.target.style.display = 'none' }} />
+                      <img src={m.splashUrl} alt={m.nome} style={{ maxWidth: 300, width: '100%', borderRadius: 10, border: '2px solid var(--green)', boxShadow: '0 6px 24px rgba(0,0,0,0.4)' }} onError={e => { e.target.style.display = 'none' }} />
                       <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 900, fontSize: 22, color: 'var(--green)' }}>{m.nome}</div>
                       <div style={{ fontSize: 13, color: 'var(--text2)' }}>⚡ First pick: <strong style={{ color: proximaFirstPickTime === 'A' ? corA : corB }}>{proximaFirstPickTime === 'A' ? nomeA : nomeB}</strong></div>
                       <Aguardando msg="Aguardando administrador confirmar..." />
                     </div>
                   ) : null
                 })()}
-
-                {/* Grid de mapas (apenas para escolha, não para proxima_pronta) */}
-                {fase === 'proxima_escolhendo_mapa' && (
-                  <MapaGrid
-                    mapas={pool}
-                    bans={bans}
-                    jogados={jogados}
-                    mapaAtual={sessao.proximaMapa ?? null}
-                    meuTurno={timeLocal === proximaMapTime}
-                    onSelect={id => setPendente(id)}
-                    pendente={pendente}
-                    onConfirmar={() => handleProximaMapa(pendente)}
-                    onCancelar={() => setPendente(null)}
-                  />
-                )}
               </div>
             )}
           </div>
         )}
 
-        {/* ── Encerrado ─────────────────────────────────────────────────── */}
+        {/* Encerrado */}
         {fase === 'encerrado' && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, textAlign: 'center' }}>
             <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--text3)' }}>SÉRIE ENCERRADA</div>
