@@ -26,6 +26,14 @@ export const MAPAS = [
   { id: 'warhead-junction',         nome: 'Warhead Junction'          },
 ].map(m => ({ ...m, splashUrl: `${BASE}/${m.id}.jpg` }))
 
+// Pool desta temporada — usado como padrão no pick de mapas
+export const POOL_TEMPORADA = [
+  'alterac-pass', 'battlefield-of-eternity', 'braxis-holdout',
+  'cursed-hollow', 'dragon-shire', 'garden-of-terror',
+  'infernal-shrines', 'sky-temple', 'tomb-of-the-spider-queen',
+  'towers-of-doom', 'volskaya-foundry',
+]
+
 export function getMapaById(id) {
   return MAPAS.find(m => m.id === id) ?? null
 }

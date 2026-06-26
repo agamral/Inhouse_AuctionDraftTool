@@ -213,6 +213,7 @@ export default function Admin() {
             { label: 'Chave',       path: '/chave' },
             { label: 'Hero Draft',  path: '/hero-draft' },
             { label: 'Scrims',      path: '/scrim' },
+            { label: '🗺 Pick Mapas', path: '/map-pick-admin' },
           ].map(({ label, path }) => (
             <a
               key={label}
