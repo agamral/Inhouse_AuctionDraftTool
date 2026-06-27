@@ -766,11 +766,11 @@ export function calcularPrioridadeTransmissao(confronto, tabela = [], rodadaAtua
 /**
  * Formata o resultado para exibição. Ex: "2-0", "W.O.", "1-1 (empate)"
  */
-export function formatarResultado(resultado) {
+export function formatarResultado(resultado, nomeA = 'Time A', nomeB = 'Time B') {
   if (!resultado) return '—'
   switch (resultado.tipo) {
-    case TIPO_RESULTADO.WO_A:     return 'W.O. (Time A venceu)'
-    case TIPO_RESULTADO.WO_B:     return 'W.O. (Time B venceu)'
+    case TIPO_RESULTADO.WO_A:     return `W.O. (${nomeA} venceu)`
+    case TIPO_RESULTADO.WO_B:     return `W.O. (${nomeB} venceu)`
     case TIPO_RESULTADO.DUPLO_WO: return '0×0 (duplo W.O.)'
     case TIPO_RESULTADO.EMPATE:   return `${resultado.timeA ?? 1}-${resultado.timeB ?? 1} (empate)`
     case TIPO_RESULTADO.NORMAL:   return `${resultado.timeA ?? 0}-${resultado.timeB ?? 0}`

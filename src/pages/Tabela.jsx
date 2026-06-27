@@ -228,18 +228,6 @@ export default function Tabela() {
                           }}
                         >⚖ DESEMPATE</span>
                       )}
-                      {isAdmin && entry.posicaoManual != null && (
-                        <span
-                          title={`Posição forçada manualmente pelo admin (${entry.posicaoManual}º)`}
-                          style={{
-                            marginLeft: 6, fontSize: 9, fontWeight: 700, letterSpacing: '0.08em',
-                            padding: '1px 5px', borderRadius: 3,
-                            color: 'var(--purple)', background: 'rgba(155,110,232,0.12)',
-                            border: '1px solid rgba(155,110,232,0.35)',
-                            fontFamily: "'Barlow Condensed', sans-serif",
-                          }}
-                        >✎ POS. MANUAL</span>
-                      )}
                     </td>
                     <td className="tab-td tab-td--num">{entry.jogos}</td>
                     <td className="tab-td tab-td--num tab-td--v">{entry.vitorias}</td>
@@ -328,7 +316,7 @@ export default function Tabela() {
                     )}
                     <span className="tab-partida-tipo">{c.tipo} · {c.formato}</span>
                     {c.resultado?.tipo && c.resultado.tipo !== 'normal' && (
-                      <span className="tab-partida-obs">{formatarResultado(c.resultado)}</span>
+                      <span className="tab-partida-obs">{formatarResultado(c.resultado, tA?.nome, tB?.nome)}</span>
                     )}
                   </div>
 
