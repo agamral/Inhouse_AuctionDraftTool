@@ -34,6 +34,7 @@ import HistoricoDetalhe    from './pages/HistoricoDetalhe.jsx'
 import ConfrontoDetalhe    from './pages/ConfrontoDetalhe.jsx'
 import MapPick             from './pages/MapPick.jsx'
 import MapPickAdmin        from './pages/MapPickAdmin.jsx'
+import MapPickEspectador   from './pages/MapPickEspectador.jsx'
 import { useCampeonato } from './contexts/CampeonatoContext.jsx'
 import { ViewAsProvider } from './contexts/ViewAsContext.jsx'
 
@@ -75,6 +76,7 @@ export default function App() {
           <Route path="scrim"               element={<ShowmatchCapitaoHost />} />
           <Route path="confronto/:confrontoId" element={<ConfrontoDetalhe />} />
           <Route path="map-pick"             element={<MapPick />} />
+          <Route path="map-pick-espectador"  element={<MapPickEspectador />} />
           <Route path="map-pick-admin"       element={<CampeonatoAdminRoute><MapPickAdmin /></CampeonatoAdminRoute>} />
         </Route>
 

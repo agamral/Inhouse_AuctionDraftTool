@@ -105,8 +105,9 @@ function SessaoView({ sessao, sessaoId, campeonatoId }) {
   const corA  = sessao.timeA?.cor ?? 'var(--blue)'
   const corB  = sessao.timeB?.cor ?? 'var(--red)'
 
-  const linkA = `${baseUrl}/campeonatos/${campeonatoId}/map-pick?sessao=${sessaoId}&time=A`
-  const linkB = `${baseUrl}/campeonatos/${campeonatoId}/map-pick?sessao=${sessaoId}&time=B`
+  const linkA   = `${baseUrl}/campeonatos/${campeonatoId}/map-pick?sessao=${sessaoId}&time=A`
+  const linkB   = `${baseUrl}/campeonatos/${campeonatoId}/map-pick?sessao=${sessaoId}&time=B`
+  const linkEsp = `${baseUrl}/campeonatos/${campeonatoId}/map-pick-espectador?sessao=${sessaoId}`
 
   const [confirmReset, setConfirmReset] = useState(false)
   const [adminMapSel, setAdminMapSel]   = useState('')
@@ -320,6 +321,14 @@ function SessaoView({ sessao, sessaoId, campeonatoId }) {
           </div>
         )
       })}
+
+      {/* ─ Link espectador ─ */}
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <span style={{ fontSize: 11, color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif", minWidth: 70 }}>Espectador</span>
+        <code style={{ flex: 1, background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 4, padding: '4px 8px', fontSize: 10, color: 'var(--text2)', wordBreak: 'break-all' }}>{linkEsp}</code>
+        <button className="btn" style={{ fontSize: 11, padding: '4px 10px', whiteSpace: 'nowrap' }} onClick={() => navigator.clipboard.writeText(linkEsp)}>⎘</button>
+        <button className="btn" style={{ fontSize: 11, padding: '4px 10px', whiteSpace: 'nowrap', borderColor: 'var(--purple)', color: 'var(--purple)' }} onClick={() => window.open(linkEsp, '_blank')}>↗</button>
+      </div>
 
       {/* ─ Mini grid de mapas ─ */}
       {(bans.length > 0 || sessao.mapaEscolhido || sessao.proximaMapa || jogosJogados.length > 0) && (
