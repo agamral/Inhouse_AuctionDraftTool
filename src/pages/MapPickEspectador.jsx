@@ -764,10 +764,12 @@ export default function MapPickEspectador() {
     </div>
   )
 
-  const fase    = getFase(sessao)
-  const bans    = sessao.bans ?? []
-  const jogados = sessao.jogosJogados ?? []
-  const pool    = (sessao.pool ?? []).map(id => MAPAS.find(m => m.id === id)).filter(Boolean)
+  const fase     = getFase(sessao)
+  const bans     = sessao.bans ?? []
+  const jogados  = sessao.jogosJogados ?? []
+  const pool     = (sessao.pool ?? []).map(id => MAPAS.find(m => m.id === id)).filter(Boolean)
+  const mapTime  = getMapTime(sessao)
+  const turnoBan = getTurnoBan(sessao)
 
   const nomeA = sessao.timeA?.nome ?? 'Time A'
   const nomeB = sessao.timeB?.nome ?? 'Time B'
@@ -856,7 +858,8 @@ export default function MapPickEspectador() {
 
       {/* ── Header: times + placar ─── */}
       {(() => {
-        const resultados  = sessao.resultados ?? []
+        const r = sessao.resultados
+        const resultados = Array.isArray(r) ? r : Object.values(r ?? {})
         const winsA = resultados.filter(r => r.perdedor === 'B').length
         const winsB = resultados.filter(r => r.perdedor === 'A').length
         const turno = getTurnoAtual(sessao, fase, turnoBan, mapTime)
