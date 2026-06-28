@@ -424,7 +424,7 @@ function BanTira({ sessao, pool, nomeA, nomeB, corA, corB }) {
 
 // ── Tela de reveal do mapa ────────────────────────────────────────────────────
 
-function MapRevealScreen({ mapa, mapTimeNome, mapTimeCor, fpNome, fpCor, onDismiss }) {
+function MapRevealScreen({ mapa, mapTimeNome, mapTimeCor, mapTimeData, onDismiss }) {
   const [vis, setVis] = useState(false)
 
   useEffect(() => {
@@ -440,45 +440,84 @@ function MapRevealScreen({ mapa, mapTimeNome, mapTimeCor, fpNome, fpCor, onDismi
       transition: 'opacity 0.5s ease-out',
     }}>
 
-      {/* Arte do mapa — lado esquerdo */}
+      {/* Arte do mapa — lado esquerdo (55%) */}
       <div style={{
-        flex: '0 0 58%', position: 'relative', overflow: 'hidden',
+        flex: '0 0 55%', position: 'relative', overflow: 'hidden',
         animation: vis ? 'revealArtIn 0.9s ease-out' : 'none',
       }}>
         <img
           src={mapa.splashUrl} alt={mapa.nome}
           onError={e => { e.target.style.background = '#0a0c10' }}
-          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top', display: 'block' }}
         />
-        {/* Gradiente de blend para o lado direito */}
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, rgba(5,6,18,0) 45%, rgba(5,6,18,0.85) 75%, rgba(5,6,18,1) 100%)' }} />
-        {/* Gradiente inferior */}
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(5,6,18,0.6) 0%, transparent 30%)' }} />
+        {/* Gradiente blend direita */}
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, transparent 40%, rgba(5,6,18,0.7) 70%, #050612 100%)' }} />
+        {/* Gradiente blend inferior — para o overlay do time */}
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(5,6,18,0.95) 0%, rgba(5,6,18,0.6) 18%, transparent 35%)' }} />
+
+        {/* Overlay do time no quarto inferior da arte */}
+        {mapTimeNome && (
+          <div style={{
+            position: 'absolute', bottom: 0, left: 0, right: 0,
+            height: '28%',
+            display: 'flex', alignItems: 'center',
+            padding: '0 clamp(20px, 3vw, 48px)',
+            gap: 'clamp(12px, 1.5vw, 20px)',
+            animation: vis ? 'revealTitleIn 0.7s ease-out 0.7s both' : 'none',
+          }}>
+            {/* TeamIcon */}
+            {mapTimeData && (
+              <TeamIcon
+                time={mapTimeData}
+                size={Math.round(window.innerHeight * 0.09)}
+                radius={8}
+                style={{ flexShrink: 0, boxShadow: `0 0 24px ${mapTimeCor}66`, border: `2px solid ${mapTimeCor}66` }}
+              />
+            )}
+            <div>
+              <div style={{
+                fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700,
+                fontSize: 'clamp(9px, 0.85vw, 11px)', letterSpacing: '0.2em', textTransform: 'uppercase',
+                color: 'rgba(255,255,255,0.45)', marginBottom: 4,
+              }}>
+                ESCOLHEU O MAPA
+              </div>
+              <div style={{
+                fontFamily: "'Rajdhani', sans-serif", fontWeight: 900,
+                fontSize: 'clamp(22px, 3.2vw, 48px)',
+                color: mapTimeCor, lineHeight: 1,
+                textShadow: `0 2px 20px ${mapTimeCor}66`,
+              }}>
+                {mapTimeNome}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Informações — lado direito */}
+      {/* Informações — lado direito (45%) */}
       <div style={{
         flex: 1, background: '#050612',
         display: 'flex', flexDirection: 'column', justifyContent: 'center',
-        padding: 'clamp(32px,5vh,64px) clamp(28px,4vw,56px)',
-        gap: 'clamp(16px,2.5vh,28px)',
+        padding: 'clamp(24px,4vh,52px) clamp(24px,3.5vw,48px)',
+        gap: 'clamp(12px,2vh,22px)',
         animation: vis ? 'revealInfoIn 0.8s ease-out 0.2s both' : 'none',
       }}>
 
         {/* Label */}
         <div style={{
           fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700,
-          fontSize: 'clamp(10px, 1.1vw, 13px)', letterSpacing: '0.3em', textTransform: 'uppercase',
+          fontSize: 'clamp(9px, 1vw, 12px)', letterSpacing: '0.3em', textTransform: 'uppercase',
           color: 'rgba(255,255,255,0.3)',
         }}>
           MAPA SELECIONADO
         </div>
 
         {/* Nome do mapa */}
-        <div style={{ animation: vis ? 'revealTitleIn 0.7s ease-out 0.35s both' : 'none' }}>
+        <div style={{ animation: vis ? 'revealTitleIn 0.7s ease-out 0.3s both' : 'none' }}>
           <div style={{
             fontFamily: "'Rajdhani', sans-serif", fontWeight: 900,
-            fontSize: 'clamp(32px, 5.5vw, 72px)',
+            fontSize: 'clamp(28px, 5vw, 66px)',
             color: '#fff', lineHeight: 0.9, letterSpacing: '-0.01em',
           }}>
             {mapa.nome}
@@ -487,17 +526,17 @@ function MapRevealScreen({ mapa, mapTimeNome, mapTimeCor, fpNome, fpCor, onDismi
 
         {/* Objetivo */}
         {mapa.objetivo && (
-          <div style={{ animation: vis ? 'revealTitleIn 0.7s ease-out 0.5s both' : 'none' }}>
+          <div style={{ animation: vis ? 'revealTitleIn 0.7s ease-out 0.45s both' : 'none' }}>
             <div style={{
-              fontFamily: "'Barlow Condensed', sans-serif", fontSize: 'clamp(9px, 0.9vw, 11px)',
+              fontFamily: "'Barlow Condensed', sans-serif", fontSize: 'clamp(8px, 0.85vw, 10px)',
               fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase',
-              color: 'var(--gold)', marginBottom: 6,
+              color: 'var(--gold)', marginBottom: 5,
             }}>
               OBJETIVO
             </div>
             <div style={{
               fontFamily: "'Rajdhani', sans-serif", fontWeight: 700,
-              fontSize: 'clamp(18px, 2.2vw, 28px)', color: 'var(--gold2)', letterSpacing: '0.02em',
+              fontSize: 'clamp(16px, 2vw, 26px)', color: 'var(--gold2)', letterSpacing: '0.02em',
             }}>
               {mapa.objetivo}
             </div>
@@ -506,58 +545,29 @@ function MapRevealScreen({ mapa, mapTimeNome, mapTimeCor, fpNome, fpCor, onDismi
 
         {/* Descrição */}
         {mapa.descricao && (
-          <div style={{ animation: vis ? 'revealTitleIn 0.7s ease-out 0.65s both' : 'none' }}>
+          <div style={{ animation: vis ? 'revealTitleIn 0.7s ease-out 0.58s both' : 'none' }}>
             <p style={{
               fontFamily: "'Barlow', sans-serif", fontWeight: 400,
-              fontSize: 'clamp(12px, 1.3vw, 16px)',
-              color: 'rgba(226,221,214,0.75)', lineHeight: 1.65, margin: 0,
-              maxWidth: 460,
+              fontSize: 'clamp(11px, 1.2vw, 15px)',
+              color: 'rgba(226,221,214,0.7)', lineHeight: 1.6, margin: 0,
             }}>
               {mapa.descricao}
             </p>
           </div>
         )}
 
-        {/* Layout image */}
+        {/* Overhead — maior, sem maxWidth fixo */}
         {mapa.layoutUrl && (
-          <div style={{ animation: vis ? 'revealTitleIn 0.7s ease-out 0.75s both' : 'none' }}>
+          <div style={{ animation: vis ? 'revealTitleIn 0.7s ease-out 0.7s both' : 'none', flex: 1, display: 'flex', alignItems: 'flex-end' }}>
             <img
               src={mapa.layoutUrl} alt={`Layout — ${mapa.nome}`}
               onError={e => { e.target.style.display = 'none' }}
-              style={{ maxWidth: 'clamp(160px, 22vw, 280px)', borderRadius: 8, opacity: 0.85, display: 'block' }}
+              style={{ width: '100%', maxHeight: '38vh', objectFit: 'contain', objectPosition: 'bottom left', borderRadius: 10, opacity: 0.9, display: 'block' }}
             />
           </div>
         )}
 
-        {/* Badges: who has FP, who chose the map */}
-        <div style={{
-          display: 'flex', gap: 20, flexWrap: 'wrap',
-          paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.07)',
-          animation: vis ? 'revealTitleIn 0.7s ease-out 0.8s both' : 'none',
-        }}>
-          {fpNome && (
-            <div>
-              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 'clamp(8px, 0.85vw, 10px)', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', marginBottom: 4 }}>
-                FIRST PICK
-              </div>
-              <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 'clamp(16px, 1.8vw, 22px)', color: fpCor }}>
-                {fpNome}
-              </div>
-            </div>
-          )}
-          {mapTimeNome && (
-            <div>
-              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 'clamp(8px, 0.85vw, 10px)', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', marginBottom: 4 }}>
-                ESCOLHEU O MAPA
-              </div>
-              <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 'clamp(16px, 1.8vw, 22px)', color: mapTimeCor }}>
-                {mapTimeNome}
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 10, color: 'rgba(255,255,255,0.2)', letterSpacing: '0.1em', marginTop: 8 }}>
+        <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 9, color: 'rgba(255,255,255,0.18)', letterSpacing: '0.1em' }}>
           Clique para fechar
         </div>
       </div>
@@ -607,21 +617,17 @@ export default function MapPickEspectador() {
       }
 
       // Flash choose + reveal após 3s
-      const triggerReveal = (mapaId, fpTime, mt) => {
+      const triggerReveal = (mapaId, mt) => {
         const mapa = MAPAS.find(m => m.id === mapaId)
         if (!mapa) return
         if (revealTimerRef.current) clearTimeout(revealTimerRef.current)
         revealTimerRef.current = setTimeout(() => {
-          const nA = data?.timeA?.nome ?? 'Time A'
-          const nB = data?.timeB?.nome ?? 'Time B'
-          const cA = data?.timeA?.cor  ?? '#4a9eda'
-          const cB = data?.timeB?.cor  ?? '#e05555'
+          const timeData = mt === 'A' ? data?.timeA : data?.timeB
           setReveal({
             mapa,
-            mapTimeNome: mt  === 'A' ? nA : nB,
-            mapTimeCor:  mt  === 'A' ? cA : cB,
-            fpNome:      fpTime === 'A' ? nA : nB,
-            fpCor:       fpTime === 'A' ? cA : cB,
+            mapTimeNome: timeData?.nome ?? (mt === 'A' ? 'Time A' : 'Time B'),
+            mapTimeCor:  timeData?.cor  ?? (mt === 'A' ? '#4a9eda' : '#e05555'),
+            mapTimeData: timeData ?? null,
           })
         }, 3000)
       }
@@ -631,13 +637,13 @@ export default function MapPickEspectador() {
         setFlashMap(prev => ({ ...prev, [id]: 'choose' }))
         setTimeout(() => setFlashMap(prev => { const n = { ...prev }; delete n[id]; return n }), 2000)
         const mt = data.preferencia === 'mapa' ? data.vencedor : (data.vencedor === 'A' ? 'B' : 'A')
-        triggerReveal(id, data.firstPickTime, mt)
+        triggerReveal(id, mt)
       }
       if (data?.proximaMapa && data.proximaMapa !== prevProxMapaRef.current) {
         const id = data.proximaMapa
         setFlashMap(prev => ({ ...prev, [id]: 'choose' }))
         setTimeout(() => setFlashMap(prev => { const n = { ...prev }; delete n[id]; return n }), 2000)
-        triggerReveal(id, data.proximaFirstPickTime, data.proximaMapTime)
+        triggerReveal(id, data.proximaMapTime)
       }
 
       prevResultadoRef.current = data?.resultado ?? null
@@ -732,8 +738,7 @@ export default function MapPickEspectador() {
         mapa={reveal.mapa}
         mapTimeNome={reveal.mapTimeNome}
         mapTimeCor={reveal.mapTimeCor}
-        fpNome={reveal.fpNome}
-        fpCor={reveal.fpCor}
+        mapTimeData={reveal.mapTimeData}
         onDismiss={() => setReveal(null)}
       />
     )}
