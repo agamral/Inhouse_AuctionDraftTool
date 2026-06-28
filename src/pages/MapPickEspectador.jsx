@@ -75,12 +75,12 @@ const CSS = `
 
   /* Conveyor belt — loop contínuo em direção ao nome do time */
   @keyframes conveyorToA {
-    from { transform: translateX(24px); }
-    to   { transform: translateX(-24px); }
+    from { transform: translateX(36px); }
+    to   { transform: translateX(-36px); }
   }
   @keyframes conveyorToB {
-    from { transform: translateX(-24px); }
-    to   { transform: translateX(24px); }
+    from { transform: translateX(-36px); }
+    to   { transform: translateX(36px); }
   }
 
   @keyframes flashBan {
@@ -877,16 +877,24 @@ export default function MapPickEspectador() {
         const aAtivo = turno === 'A'
         const bAtivo = turno === 'B'
 
-        // Seta conveyor belt — loop contínuo apontando para fora (em direção ao nome)
+        // Seta conveyor belt — altura total do header, máscara gradiente nas bordas, velocidade suave
         const Arrows = ({ dir, cor }) => (
-          <div style={{ width: 48, overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
+          <div style={{
+            width: 56, flexShrink: 0,
+            alignSelf: 'stretch',  // ocupa todo o Y do header
+            display: 'flex', alignItems: 'center',
+            overflow: 'hidden',
+            // Máscara gradiente: fade nas duas bordas, evita corte brusco
+            WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 30%, black 70%, transparent 100%)',
+            maskImage:        'linear-gradient(to right, transparent 0%, black 30%, black 70%, transparent 100%)',
+          }}>
             <span style={{
               fontFamily: "'Rajdhani', sans-serif", fontWeight: 900,
-              fontSize: 'clamp(16px, 2vw, 26px)', color: cor,
-              letterSpacing: 2, display: 'inline-block', whiteSpace: 'nowrap',
-              animation: `${dir === 'left' ? 'conveyorToA' : 'conveyorToB'} 0.45s linear infinite`,
+              fontSize: 'clamp(14px, 1.8vw, 22px)', color: cor,
+              letterSpacing: 8, display: 'inline-block', whiteSpace: 'nowrap',
+              animation: `${dir === 'left' ? 'conveyorToA' : 'conveyorToB'} 1.6s linear infinite`,
             }}>
-              {dir === 'left' ? '‹ ‹ ‹ ‹ ‹ ‹' : '› › › › › ›'}
+              {dir === 'left' ? '‹ ‹ ‹ ‹ ‹ ‹ ‹ ‹' : '› › › › › › › ›'}
             </span>
           </div>
         )
