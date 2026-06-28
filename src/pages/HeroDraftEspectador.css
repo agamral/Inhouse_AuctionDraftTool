@@ -100,20 +100,21 @@ body:has(.hde-root) > * {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  width: clamp(160px, 24vh, 300px);
-  height: clamp(160px, 24vh, 300px);
+  width: clamp(280px, 42vh, 480px);
+  height: clamp(280px, 42vh, 480px);
   z-index: 3;
   opacity: 0;
   transition: opacity 2.5s ease;
   pointer-events: none;
-  filter: blur(10px) saturate(0.6);
+  filter: blur(12px) saturate(0.55);
 }
 .hde-logo-bg--vis {
-  opacity: 0.18;
+  opacity: 0.22;
   transition: opacity 2s ease;
 }
-.hde-logo-bg--a { left: -6vw; }
-.hde-logo-bg--b { right: -6vw; }
+/* Centralizado mais ao meio — offset positivo em vez de negativo */
+.hde-logo-bg--a { left: 8vw; }
+.hde-logo-bg--b { right: 8vw; }
 
 /* ── Header ──────────────────────────────────────────────────────────────── */
 .hde-header {

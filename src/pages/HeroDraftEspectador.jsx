@@ -144,18 +144,31 @@ export default function HeroDraftEspectador() {
     }
   }, [estado?.historico?.length, estado?.passoAtual]) // eslint-disable-line
 
-  // ── Background pulsante do mapa ──────────────────────────────────────────
+  // ── Background alternante: mapa → logos → mapa → logos ──────────────────
   const [mapaVis, setMapaVis] = useState(false)
+  const [logoVis, setLogoVis] = useState(false)
   useEffect(() => {
     const mapa = getMapaById(estado?.mapaId)
     if (!mapa?.splashUrl) return
-    const pulse = () => {
-      setMapaVis(true)
-      setTimeout(() => setMapaVis(false), 5000)
+    let tick = 0
+    const PERIOD  = 12000  // intervalo entre fases
+    const VISIBLE = 5000   // duração visível em cada fase
+
+    const run = () => {
+      const isMapa = tick % 2 === 0
+      if (isMapa) {
+        setMapaVis(true);  setLogoVis(false)
+        setTimeout(() => setMapaVis(false), VISIBLE)
+      } else {
+        setLogoVis(true);  setMapaVis(false)
+        setTimeout(() => setLogoVis(false), VISIBLE)
+      }
+      tick++
     }
-    pulse()
-    const id = setInterval(pulse, 25000)
-    return () => clearInterval(id)
+
+    run()
+    const id = setInterval(run, PERIOD)
+    return () => { clearInterval(id); setMapaVis(false); setLogoVis(false) }
   }, [estado?.mapaId]) // eslint-disable-line
 
   // ── Timer de contagem regressiva por turno ────────────────────────────────
@@ -276,11 +289,11 @@ export default function HeroDraftEspectador() {
         />
       )}
       {/* Logos dos times no fundo — sincronizados com o pulso do mapa */}
-      <div className={`hde-logo-bg hde-logo-bg--a${mapaVis ? ' hde-logo-bg--vis' : ''}`}>
-        <TeamIcon time={estado.timeA} size={280} radius={24} style={{ width: '100%', height: '100%', maxWidth: '100%', maxHeight: '100%', objectFit: 'cover' }} />
+      <div className={`hde-logo-bg hde-logo-bg--a${logoVis ? ' hde-logo-bg--vis' : ''}`}>
+        <TeamIcon time={estado.timeA} size={420} radius={32} style={{ width: '100%', height: '100%' }} />
       </div>
-      <div className={`hde-logo-bg hde-logo-bg--b${mapaVis ? ' hde-logo-bg--vis' : ''}`}>
-        <TeamIcon time={estado.timeB} size={280} radius={24} style={{ width: '100%', height: '100%', maxWidth: '100%', maxHeight: '100%', objectFit: 'cover' }} />
+      <div className={`hde-logo-bg hde-logo-bg--b${logoVis ? ' hde-logo-bg--vis' : ''}`}>
+        <TeamIcon time={estado.timeB} size={420} radius={32} style={{ width: '100%', height: '100%' }} />
       </div>
 
       {/* ── Header ────────────────────────────────────────────────────────── */}
