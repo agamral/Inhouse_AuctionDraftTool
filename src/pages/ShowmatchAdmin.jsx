@@ -97,6 +97,9 @@ export default function ShowmatchAdmin() {
   const [confirmResultado, setConfirmResultado] = useState(false)
   const [resultadoFinalOk, setResultadoFinalOk] = useState(false)
   const [confirmReiniciar, setConfirmReiniciar] = useState(false)
+  const [editandoDraft,    setEditandoDraft]    = useState(false)
+  const [slotEditando,     setSlotEditando]     = useState(null) // { time: 'A'|'B', tipo: 'picks'|'bans', index }
+  const [buscaEdicao,      setBuscaEdicao]      = useState('')
 
   // Hero Draft hook — usa caminho dinâmico (showmatch ou confronto)
   const { estado: draftEstado, iniciar: _iniciarDraft, iniciarComContagem, encerrar: encerrarDraft, desfazer: desfazerDraft, reiniciar: reiniciarDraft } = useHeroDraft(
@@ -401,6 +404,34 @@ export default function ShowmatchAdmin() {
     updates[`${base}/partidas/${pNum}/encerradoEm`] = Date.now()
     await update(ref(db), updates)
     flash(`Partida ${pNum} encerrada!`)
+  }
+
+  async function editarSlotDraft(time, tipo, index, novoId) {
+    const timeKey = time === 'A' ? 'timeA' : 'timeB'
+    const lista   = [...(draftEstado?.[timeKey]?.[tipo] ?? [])]
+    lista[index]  = novoId
+    try {
+      // Atualiza heroDraft session
+      await update(ref(db, `${heroDraftPath}/${timeKey}`), { [tipo]: lista })
+
+      // Atualiza cópia salva na partida do confronto
+      if (isConfrontoMode && confrontoId && campeonatoId) {
+        const entry = Object.entries(partidas).find(([, p]) => p.heroDraftId === sessaoId)
+        if (entry) {
+          const [pNum] = entry
+          const picks = { A: [...(draftEstado?.timeA?.picks ?? [])], B: [...(draftEstado?.timeB?.picks ?? [])] }
+          const bans  = { A: [...(draftEstado?.timeA?.bans  ?? [])], B: [...(draftEstado?.timeB?.bans  ?? [])] }
+          if (tipo === 'picks') picks[time][index] = novoId
+          else                  bans[time][index]  = novoId
+          await update(ref(db, `${confrontosPath(campeonatoId)}/${confrontoId}/partidas/${pNum}`), { picks, bans })
+        }
+      }
+      flash(`${tipo === 'picks' ? 'Pick' : 'Ban'} corrigido!`)
+      setSlotEditando(null)
+      setBuscaEdicao('')
+    } catch (e) {
+      flash(`Erro: ${e.message}`, 'err')
+    }
   }
 
   async function iniciarProximaPartida() {
@@ -827,6 +858,108 @@ export default function ShowmatchAdmin() {
                       ) : (
                         <span style={{ fontSize: 13, color: 'var(--text2)' }}>✓ Encerrado</span>
                       )
+                    )}
+
+                    {/* Corrigir pick/ban após encerramento */}
+                    {draftEstado?.status === 'encerrado' && isConfrontoMode && (
+                      <div style={{ width: '100%' }}>
+                        <button className="btn" style={{ fontSize: 11, padding: '4px 12px', borderColor: editandoDraft ? 'var(--gold)' : 'var(--border)', color: editandoDraft ? 'var(--gold)' : 'var(--text2)' }}
+                          onClick={() => { setEditandoDraft(v => !v); setSlotEditando(null); setBuscaEdicao('') }}>
+                          ✎ {editandoDraft ? 'Fechar editor' : 'Corrigir pick/ban'}
+                        </button>
+
+                        {editandoDraft && (
+                          <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            {/* Grid de picks e bans */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                              {[['A', draftEstado?.timeA], ['B', draftEstado?.timeB]].map(([t, timeData]) => {
+                                const corTime = timeData?.cor ?? (t === 'A' ? '#4a9eda' : '#e05555')
+                                const nomeTime = t === 'A' ? sessao?.timeA?.nome ?? 'Time A' : sessao?.timeB?.nome ?? 'Time B'
+                                const bans  = timeData?.bans  ?? []
+                                const picks = timeData?.picks ?? []
+                                return (
+                                  <div key={t}>
+                                    <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: corTime, marginBottom: 6 }}>
+                                      {nomeTime}
+                                    </div>
+                                    {bans.length > 0 && (
+                                      <div style={{ marginBottom: 6 }}>
+                                        <div style={{ fontSize: 9, fontFamily: "'Barlow Condensed', sans-serif", color: 'var(--text3)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 4 }}>Bans</div>
+                                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                                          {bans.map((id, i) => {
+                                            const h = HEROES.find(x => x.id === id)
+                                            const sel = slotEditando?.time === t && slotEditando?.tipo === 'bans' && slotEditando?.index === i
+                                            return (
+                                              <button key={i} title={`${h?.nome ?? id} — clique para substituir`}
+                                                onClick={() => setSlotEditando(sel ? null : { time: t, tipo: 'bans', index: i })}
+                                                style={{ padding: 0, border: `2px solid ${sel ? 'var(--gold)' : 'rgba(224,85,85,0.5)'}`, borderRadius: 4, background: 'none', cursor: 'pointer', width: 32, height: 32, overflow: 'hidden', flexShrink: 0 }}>
+                                                <img src={h?.iconeUrl} alt={h?.nome ?? id} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', filter: 'grayscale(40%)' }}
+                                                  onError={e => { e.target.style.display = 'none' }} />
+                                              </button>
+                                            )
+                                          })}
+                                        </div>
+                                      </div>
+                                    )}
+                                    {picks.length > 0 && (
+                                      <div>
+                                        <div style={{ fontSize: 9, fontFamily: "'Barlow Condensed', sans-serif", color: 'var(--text3)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 4 }}>Picks</div>
+                                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                                          {picks.map((id, i) => {
+                                            const h = HEROES.find(x => x.id === id)
+                                            const sel = slotEditando?.time === t && slotEditando?.tipo === 'picks' && slotEditando?.index === i
+                                            return (
+                                              <button key={i} title={`${h?.nome ?? id} — clique para substituir`}
+                                                onClick={() => setSlotEditando(sel ? null : { time: t, tipo: 'picks', index: i })}
+                                                style={{ padding: 0, border: `2px solid ${sel ? 'var(--gold)' : corTime + '66'}`, borderRadius: 4, background: 'none', cursor: 'pointer', width: 32, height: 32, overflow: 'hidden', flexShrink: 0 }}>
+                                                <img src={h?.iconeUrl} alt={h?.nome ?? id} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                                                  onError={e => { e.target.style.display = 'none' }} />
+                                              </button>
+                                            )
+                                          })}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                )
+                              })}
+                            </div>
+
+                            {/* Painel de substituição */}
+                            {slotEditando && (() => {
+                              const timeData = slotEditando.time === 'A' ? draftEstado?.timeA : draftEstado?.timeB
+                              const heroAtual = HEROES.find(h => h.id === timeData?.[slotEditando.tipo]?.[slotEditando.index])
+                              const usados = [...(draftEstado?.timeA?.picks ?? []), ...(draftEstado?.timeA?.bans ?? []), ...(draftEstado?.timeB?.picks ?? []), ...(draftEstado?.timeB?.bans ?? []), ...(draftEstado?.globalBans ?? [])]
+                              const heroisFiltrados = HEROES.filter(h => (!buscaEdicao || h.nome.toLowerCase().includes(buscaEdicao.toLowerCase())))
+                              return (
+                                <div style={{ background: 'var(--bg2)', border: '1px solid var(--gold)', borderRadius: 8, padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                  <div style={{ fontSize: 12, fontFamily: "'Barlow Condensed', sans-serif", color: 'var(--text2)' }}>
+                                    Substituindo <strong style={{ color: 'var(--gold)' }}>{heroAtual?.nome ?? slotEditando.tipo + ' ' + (slotEditando.index + 1)}</strong>
+                                    {' '}(Time {slotEditando.time} · {slotEditando.tipo === 'picks' ? 'Pick' : 'Ban'} #{slotEditando.index + 1})
+                                    <button style={{ marginLeft: 8, background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 12 }} onClick={() => { setSlotEditando(null); setBuscaEdicao('') }}>✕</button>
+                                  </div>
+                                  <input autoFocus value={buscaEdicao} onChange={e => setBuscaEdicao(e.target.value)} placeholder="Buscar herói..."
+                                    style={{ background: 'var(--bg)', border: '1px solid var(--border2)', borderRadius: 6, padding: '6px 10px', color: 'var(--text)', fontSize: 13, outline: 'none' }} />
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, maxHeight: 160, overflowY: 'auto' }}>
+                                    {heroisFiltrados.map(h => {
+                                      const jaUsado = usados.includes(h.id) && h.id !== timeData?.[slotEditando.tipo]?.[slotEditando.index]
+                                      return (
+                                        <button key={h.id} title={h.nome}
+                                          onClick={() => !jaUsado && editarSlotDraft(slotEditando.time, slotEditando.tipo, slotEditando.index, h.id)}
+                                          style={{ padding: 2, border: `1px solid ${jaUsado ? 'var(--border)' : 'var(--border2)'}`, borderRadius: 4, background: 'var(--bg3)', cursor: jaUsado ? 'not-allowed' : 'pointer', opacity: jaUsado ? 0.35 : 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, width: 44 }}>
+                                          <img src={h.iconeUrl} alt={h.nome} style={{ width: 32, height: 32, borderRadius: 3, objectFit: 'cover', display: 'block' }}
+                                            onError={e => { e.target.style.display = 'none' }} />
+                                          <span style={{ fontSize: 8, fontFamily: "'Barlow Condensed', sans-serif", color: 'var(--text3)', lineHeight: 1.1, textAlign: 'center', width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h.nome}</span>
+                                        </button>
+                                      )
+                                    })}
+                                  </div>
+                                </div>
+                              )
+                            })()}
+                          </div>
+                        )}
+                      </div>
                     )}
 
                     {/* Draft encerrado + partida marcada: próxima partida ou registrar resultado */}
