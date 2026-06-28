@@ -6,6 +6,7 @@ import { useCampeonato } from '../contexts/CampeonatoContext'
 import { mapPickPath } from '../utils/campeonatoPaths'
 import { MAPAS } from '../utils/mapPool'
 import { getFase } from './MapPick'
+import TeamIcon from '../components/TeamIcon'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -23,28 +24,30 @@ function getTurnoBan(s) {
   return bans.length % 2 === 0 ? mapTime : outroTime(mapTime)
 }
 
-// Retorna { cor, nome, tipo } do time que baniu/escolheu o mapa, ou null
-function getMapaEquipe(mapaId, sessao, corA, corB, nomeA, nomeB) {
+// Retorna os dados do time { nome, cor, iconUrl } que baniu/escolheu o mapa, ou null
+function getMapaEquipe(mapaId, sessao) {
   const bans    = sessao?.bans ?? []
   const jogados = sessao?.jogosJogados ?? []
   const mapTime = getMapTime(sessao)
+
+  const timeData = (t) => t === 'A' ? sessao?.timeA : sessao?.timeB
 
   // Mapa banido — qual time baniu baseado na ordem
   const banIdx = bans.indexOf(mapaId)
   if (banIdx !== -1 && mapTime) {
     const t = banIdx % 2 === 0 ? mapTime : outroTime(mapTime)
-    return { cor: t === 'A' ? corA : corB, nome: t === 'A' ? nomeA : nomeB, tipo: 'ban' }
+    return timeData(t)
   }
 
   // Mapa escolhido da partida atual
   if (mapaId === sessao?.mapaEscolhido && !jogados.includes(mapaId) && mapTime) {
-    return { cor: mapTime === 'A' ? corA : corB, nome: mapTime === 'A' ? nomeA : nomeB, tipo: 'choose' }
+    return timeData(mapTime)
   }
 
   // Mapa escolhido da próxima partida
   const pmt = sessao?.proximaMapTime
   if (mapaId === sessao?.proximaMapa && pmt) {
-    return { cor: pmt === 'A' ? corA : corB, nome: pmt === 'A' ? nomeA : nomeB, tipo: 'choose' }
+    return timeData(pmt)
   }
 
   return null
@@ -126,114 +129,112 @@ function MoedaSpec({ resultado, animando }) {
 // ── Card de mapa ──────────────────────────────────────────────────────────────
 
 function MapaCard({ mapa, estado, equipe }) {
-  // estado: 'normal' | 'banido' | 'jogado' | 'escolhido' | 'flash_ban' | 'flash_choose'
-  // equipe: { cor, nome } | null — time que baniu/escolheu
   const banido    = estado === 'banido'   || estado === 'flash_ban'
   const jogado    = estado === 'jogado'
   const escolhido = estado === 'escolhido' || estado === 'flash_choose'
   const flash     = estado === 'flash_ban' || estado === 'flash_choose'
 
-  const equipeCor  = equipe?.cor ?? (banido ? '#e05555' : '#4caf7d')
-  const equipeLetra = equipe?.nome?.charAt(0).toUpperCase() ?? ''
+  const equipeCor = equipe?.cor ?? (banido ? '#e05555' : '#4caf7d')
 
   return (
     <div style={{
       position: 'relative', borderRadius: 10, overflow: 'hidden',
-      transition: 'opacity 0.5s, filter 0.5s',
-      opacity: banido ? 0.22 : jogado ? 0.35 : 1,
-      filter: (banido || jogado) ? 'grayscale(100%)' : 'none',
       border: escolhido
         ? `3px solid ${equipeCor}`
         : banido
-          ? `3px solid ${equipeCor}99`
+          ? `3px solid ${equipeCor}88`
           : jogado
-            ? '3px solid rgba(201,168,76,0.4)'
+            ? '3px solid rgba(201,168,76,0.35)'
             : '3px solid transparent',
       animation: flash
         ? (estado === 'flash_ban' ? 'flashBan 1s ease-out' : 'flashChoose 1.2s ease-out')
         : 'none',
-      boxShadow: escolhido ? `0 0 30px ${equipeCor}66` : 'none',
+      boxShadow: escolhido ? `0 0 30px ${equipeCor}55` : 'none',
+      transition: 'border-color 0.4s, box-shadow 0.4s',
     }}>
+      {/* Imagem — grayscale só aqui, não afeta os overlays */}
       <img
         src={mapa.splashUrl} alt={mapa.nome}
         onError={e => { e.target.style.background = '#1a1a1a'; e.target.style.minHeight = '100px' }}
-        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+        style={{
+          width: '100%', height: '100%', objectFit: 'cover', display: 'block',
+          filter: (banido || jogado) ? 'grayscale(100%) brightness(0.55)' : 'none',
+          opacity: banido ? 0.6 : jogado ? 0.5 : 1,
+          transition: 'filter 0.5s, opacity 0.5s',
+        }}
       />
 
-      {/* Nome */}
+      {/* Nome do mapa */}
       <div style={{
         position: 'absolute', bottom: 0, left: 0, right: 0,
         padding: '20px 10px 8px',
-        background: 'linear-gradient(transparent, rgba(0,0,0,0.85))',
+        background: 'linear-gradient(transparent, rgba(0,0,0,0.88))',
         fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700,
         fontSize: 'clamp(10px, 1.1vw, 13px)', letterSpacing: '0.04em',
-        color: escolhido ? equipeCor : banido ? `${equipeCor}AA` : jogado ? 'rgba(201,168,76,0.7)' : '#fff',
+        color: escolhido ? equipeCor : banido ? `${equipeCor}CC` : jogado ? 'rgba(201,168,76,0.8)' : '#fff',
         textAlign: 'center',
       }}>
         {mapa.nome}
       </div>
 
-      {/* Badge do time (quem agiu) */}
-      {equipe && (banido || escolhido) && (
+      {/* Overlay ban — TeamIcon + X no canto */}
+      {banido && equipe && (
         <div style={{
-          position: 'absolute', top: 6, left: 6,
-          width: 22, height: 22, borderRadius: '50%',
-          background: equipeCor,
+          position: 'absolute', inset: 0,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 11, fontWeight: 900, color: '#fff',
-          fontFamily: "'Rajdhani', sans-serif",
-          boxShadow: '0 1px 6px rgba(0,0,0,0.7)',
-          border: '1px solid rgba(255,255,255,0.25)',
         }}>
-          {equipeLetra}
+          <div style={{ position: 'relative' }}>
+            <TeamIcon
+              time={equipe} size={64} radius={32}
+              style={{ boxShadow: `0 4px 20px rgba(0,0,0,0.7), 0 0 24px ${equipeCor}55`, border: '2px solid rgba(255,255,255,0.2)' }}
+            />
+            <div style={{
+              position: 'absolute', top: -5, right: -5,
+              width: 24, height: 24, borderRadius: '50%',
+              background: '#0a0c10', border: `2px solid ${equipeCor}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 12, fontWeight: 900, color: equipeCor,
+              fontFamily: "'Rajdhani', sans-serif",
+            }}>✕</div>
+          </div>
         </div>
       )}
 
-      {/* Overlay ban — cor do time */}
-      {banido && (
-        <div style={{
-          position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: 'rgba(0,0,0,0.2)',
-        }}>
-          <div style={{
-            width: 48, height: 48, borderRadius: '50%',
-            background: equipeCor,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 24, color: '#fff', fontWeight: 900,
-            boxShadow: `0 2px 14px rgba(0,0,0,0.6), 0 0 20px ${equipeCor}66`,
-          }}>✕</div>
+      {/* Overlay ban sem equipe (fallback) */}
+      {banido && !equipe && (
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: 48, height: 48, borderRadius: '50%', background: '#e05555', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, color: '#fff', fontWeight: 900 }}>✕</div>
         </div>
       )}
 
       {/* Overlay jogado */}
       {jogado && (
-        <div style={{
-          position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: 'rgba(0,0,0,0.25)',
-        }}>
-          <div style={{
-            width: 44, height: 44, borderRadius: '50%',
-            background: 'rgba(201,168,76,0.8)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 20, color: '#0a0c10',
-            boxShadow: '0 2px 12px rgba(0,0,0,0.5)',
-          }}>⚔</div>
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(201,168,76,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, color: '#0a0c10', boxShadow: '0 2px 12px rgba(0,0,0,0.5)' }}>⚔</div>
         </div>
       )}
 
-      {/* Overlay escolhido — cor do time */}
-      {escolhido && (
+      {/* Overlay escolhido — TeamIcon + ✓ */}
+      {escolhido && equipe && (
         <div style={{
-          position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: `${equipeCor}1A`,
+          position: 'absolute', inset: 0,
+          background: `${equipeCor}12`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
-          <div style={{
-            width: 52, height: 52, borderRadius: '50%',
-            background: equipeCor,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 26, color: '#fff',
-            boxShadow: `0 2px 18px rgba(0,0,0,0.5), 0 0 24px ${equipeCor}55`,
-          }}>✓</div>
+          <div style={{ position: 'relative' }}>
+            <TeamIcon
+              time={equipe} size={64} radius={32}
+              style={{ boxShadow: `0 4px 20px rgba(0,0,0,0.6), 0 0 30px ${equipeCor}66`, border: '2px solid rgba(255,255,255,0.2)' }}
+            />
+            <div style={{
+              position: 'absolute', top: -5, right: -5,
+              width: 24, height: 24, borderRadius: '50%',
+              background: '#0a0c10', border: `2px solid ${equipeCor}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 13, fontWeight: 900, color: equipeCor,
+              fontFamily: "'Rajdhani', sans-serif",
+            }}>✓</div>
+          </div>
         </div>
       )}
     </div>
@@ -642,7 +643,7 @@ export default function MapPickEspectador() {
               <MapaCard
                 key={m.id} mapa={m}
                 estado={getEstadoMapa(m.id)}
-                equipe={getMapaEquipe(m.id, sessao, corA, corB, nomeA, nomeB)}
+                equipe={getMapaEquipe(m.id, sessao)}
               />
             ))}
           </div>
