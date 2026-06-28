@@ -190,8 +190,9 @@ function SessaoView({ sessao, sessaoId, campeonatoId }) {
   async function iniciarProxima(perdedor) {
     const mapaJogado = fase === 'proxima_pronta' ? sessao.proximaMapa : sessao.mapaEscolhido
     const novosJogados = [...jogosJogados, mapaJogado]
-    // Registra resultado da partida encerrada (vencedor = time oposto ao perdedor)
-    const resultados = [...(sessao.resultados ?? []), { perdedor, mapaId: mapaJogado }]
+    // Registra resultado da partida encerrada incluindo quem escolheu o mapa
+    const mapaEscolhidoPor = fase === 'proxima_pronta' ? sessao.proximaMapTime : sessao.mapTime
+    const resultados = [...(sessao.resultados ?? []), { perdedor, mapaId: mapaJogado, mapaEscolhidoPor: mapaEscolhidoPor ?? null }]
     await update(ref(db, `${mapPickPath(campeonatoId)}/${sessaoId}`), {
       jogosJogados: novosJogados, resultados, perdedorProxima: perdedor,
       proximaPreferencia: null, proximaMapTime: null, proximaFirstPickTime: null, proximaMapa: null,

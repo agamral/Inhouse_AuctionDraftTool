@@ -32,6 +32,11 @@ function getMapaEquipe(mapaId, sessao) {
 
   const timeData = (t) => t === 'A' ? sessao?.timeA : sessao?.timeB
 
+  const getResultados = () => {
+    const r = sessao?.resultados
+    return Array.isArray(r) ? r : Object.values(r ?? {})
+  }
+
   // Mapa banido — qual time baniu baseado na ordem
   const banIdx = bans.indexOf(mapaId)
   if (banIdx !== -1 && mapTime) {
@@ -39,8 +44,15 @@ function getMapaEquipe(mapaId, sessao) {
     return timeData(t)
   }
 
+  // Mapa jogado (histórico) — quem escolheu guardado em resultados
+  if (jogados.includes(mapaId)) {
+    const resultado = getResultados().find(r => r.mapaId === mapaId)
+    if (resultado?.mapaEscolhidoPor) return timeData(resultado.mapaEscolhidoPor)
+    return null
+  }
+
   // Mapa escolhido da partida atual
-  if (mapaId === sessao?.mapaEscolhido && !jogados.includes(mapaId) && mapTime) {
+  if (mapaId === sessao?.mapaEscolhido && mapTime) {
     return timeData(mapTime)
   }
 
@@ -61,13 +73,14 @@ const CSS = `
   /* Oculta navbar e footer para tela cheia do espectador */
   nav, footer, .navbar { display: none !important; }
 
-  @keyframes arrowRight {
-    0%,100% { opacity: 0.25; transform: translateX(0); }
-    50%     { opacity: 1;    transform: translateX(5px); }
+  /* Conveyor belt — loop contínuo em direção ao nome do time */
+  @keyframes conveyorToA {
+    from { transform: translateX(24px); }
+    to   { transform: translateX(-24px); }
   }
-  @keyframes arrowLeft {
-    0%,100% { opacity: 0.25; transform: translateX(0); }
-    50%     { opacity: 1;    transform: translateX(-5px); }
+  @keyframes conveyorToB {
+    from { transform: translateX(-24px); }
+    to   { transform: translateX(24px); }
   }
 
   @keyframes flashBan {
@@ -858,13 +871,27 @@ export default function MapPickEspectador() {
 
       {/* ── Header: times + placar ─── */}
       {(() => {
-        const r = sessao.resultados
-        const resultados = Array.isArray(r) ? r : Object.values(r ?? {})
+        const rRaw = sessao.resultados
+        const resultados = Array.isArray(rRaw) ? rRaw : Object.values(rRaw ?? {})
         const winsA = resultados.filter(r => r.perdedor === 'B').length
         const winsB = resultados.filter(r => r.perdedor === 'A').length
         const turno = getTurnoAtual(sessao, fase, turnoBan, mapTime)
         const aAtivo = turno === 'A'
         const bAtivo = turno === 'B'
+
+        // Seta conveyor belt — loop contínuo apontando para fora (em direção ao nome)
+        const Arrows = ({ dir, cor }) => (
+          <div style={{ width: 48, overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
+            <span style={{
+              fontFamily: "'Rajdhani', sans-serif", fontWeight: 900,
+              fontSize: 'clamp(16px, 2vw, 26px)', color: cor,
+              letterSpacing: 2, display: 'inline-block', whiteSpace: 'nowrap',
+              animation: `${dir === 'left' ? 'conveyorToA' : 'conveyorToB'} 0.45s linear infinite`,
+            }}>
+              {dir === 'left' ? '‹ ‹ ‹ ‹ ‹ ‹' : '› › › › › ›'}
+            </span>
+          </div>
+        )
 
         return (
           <div style={{
@@ -872,53 +899,50 @@ export default function MapPickEspectador() {
             borderBottom: '1px solid rgba(255,255,255,0.06)',
             flexShrink: 0,
           }}>
-            {/* Time A */}
+            {/* Time A — seta na borda direita (perto do centro) apontando para a esquerda (pro nome) */}
             <div style={{
-              flex: 1, padding: 'clamp(8px, 1.2vh, 16px) clamp(12px, 2vw, 28px)',
-              display: 'flex', alignItems: 'center', gap: 10,
+              flex: 1, padding: 'clamp(8px, 1.2vh, 16px) clamp(12px, 2vw, 20px)',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               borderRight: `3px solid ${corA}`,
-              position: 'relative', overflow: 'hidden',
-              background: aAtivo ? `linear-gradient(to right, ${corA}22 0%, transparent 80%)` : 'transparent',
+              background: aAtivo ? `linear-gradient(to right, ${corA}1A 0%, transparent 70%)` : 'transparent',
               transition: 'background 0.4s',
             }}>
-              <div style={{ width: 'clamp(8px, 1vw, 12px)', height: 'clamp(8px, 1vw, 12px)', borderRadius: '50%', background: corA, boxShadow: `0 0 8px ${corA}`, flexShrink: 0 }} />
-              <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 'clamp(16px, 2.2vw, 28px)', color: corA, letterSpacing: '0.04em' }}>{nomeA}</span>
-              {aAtivo && (
-                <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 900, fontSize: 'clamp(14px, 1.8vw, 22px)', color: corA, marginLeft: 4, animation: 'arrowRight 0.8s ease-in-out infinite' }}>›››</span>
-              )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 'clamp(7px, 0.9vw, 11px)', height: 'clamp(7px, 0.9vw, 11px)', borderRadius: '50%', background: corA, boxShadow: `0 0 8px ${corA}`, flexShrink: 0 }} />
+                <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 'clamp(15px, 2.1vw, 26px)', color: corA, letterSpacing: '0.04em' }}>{nomeA}</span>
+              </div>
+              {aAtivo && <Arrows dir="left" cor={corA} />}
             </div>
 
             {/* Centro: placar */}
             <div style={{
-              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-              padding: '0 clamp(12px, 2vw, 24px)', minWidth: 'clamp(60px, 7vw, 100px)', flexShrink: 0,
-              gap: 2,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: '0 clamp(10px, 1.5vw, 20px)', minWidth: 'clamp(56px, 6.5vw, 90px)', flexShrink: 0,
             }}>
               {resultados.length > 0 ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 900, fontSize: 'clamp(20px, 2.8vw, 36px)', color: winsA > winsB ? corA : 'rgba(255,255,255,0.5)', lineHeight: 1 }}>{winsA}</span>
-                  <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 'clamp(12px, 1.4vw, 18px)', color: 'rgba(255,255,255,0.25)' }}>–</span>
-                  <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 900, fontSize: 'clamp(20px, 2.8vw, 36px)', color: winsB > winsA ? corB : 'rgba(255,255,255,0.5)', lineHeight: 1 }}>{winsB}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 900, fontSize: 'clamp(22px, 3vw, 40px)', color: winsA > winsB ? corA : 'rgba(255,255,255,0.45)', lineHeight: 1 }}>{winsA}</span>
+                  <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 'clamp(13px, 1.5vw, 20px)', color: 'rgba(255,255,255,0.2)' }}>–</span>
+                  <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 900, fontSize: 'clamp(22px, 3vw, 40px)', color: winsB > winsA ? corB : 'rgba(255,255,255,0.45)', lineHeight: 1 }}>{winsB}</span>
                 </div>
               ) : (
-                <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 'clamp(14px, 1.6vw, 20px)', color: 'rgba(255,255,255,0.2)' }}>vs</span>
+                <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 'clamp(13px, 1.5vw, 18px)', color: 'rgba(255,255,255,0.2)' }}>vs</span>
               )}
             </div>
 
-            {/* Time B */}
+            {/* Time B — seta na borda esquerda (perto do centro) apontando para a direita (pro nome) */}
             <div style={{
-              flex: 1, padding: 'clamp(8px, 1.2vh, 16px) clamp(12px, 2vw, 28px)',
-              display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10,
+              flex: 1, padding: 'clamp(8px, 1.2vh, 16px) clamp(12px, 2vw, 20px)',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               borderLeft: `3px solid ${corB}`,
-              position: 'relative', overflow: 'hidden',
-              background: bAtivo ? `linear-gradient(to left, ${corB}22 0%, transparent 80%)` : 'transparent',
+              background: bAtivo ? `linear-gradient(to left, ${corB}1A 0%, transparent 70%)` : 'transparent',
               transition: 'background 0.4s',
             }}>
-              {bAtivo && (
-                <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 900, fontSize: 'clamp(14px, 1.8vw, 22px)', color: corB, marginRight: 4, animation: 'arrowLeft 0.8s ease-in-out infinite' }}>‹‹‹</span>
-              )}
-              <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 'clamp(16px, 2.2vw, 28px)', color: corB, letterSpacing: '0.04em' }}>{nomeB}</span>
-              <div style={{ width: 'clamp(8px, 1vw, 12px)', height: 'clamp(8px, 1vw, 12px)', borderRadius: '50%', background: corB, boxShadow: `0 0 8px ${corB}`, flexShrink: 0 }} />
+              {bAtivo && <Arrows dir="right" cor={corB} />}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 'clamp(15px, 2.1vw, 26px)', color: corB, letterSpacing: '0.04em' }}>{nomeB}</span>
+                <div style={{ width: 'clamp(7px, 0.9vw, 11px)', height: 'clamp(7px, 0.9vw, 11px)', borderRadius: '50%', background: corB, boxShadow: `0 0 8px ${corB}`, flexShrink: 0 }} />
+              </div>
             </div>
           </div>
         )
