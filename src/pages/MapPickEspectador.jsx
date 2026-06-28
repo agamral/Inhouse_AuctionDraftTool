@@ -73,14 +73,10 @@ const CSS = `
   /* Oculta navbar e footer para tela cheia do espectador */
   nav, footer, .navbar { display: none !important; }
 
-  /* Conveyor belt seamless — duplica o conteúdo e translada -50% para loop sem salto */
-  @keyframes seamlessLeft {
-    from { transform: translateX(0); }
-    to   { transform: translateX(-50%); }
-  }
-  @keyframes seamlessRight {
-    from { transform: translateX(-50%); }
-    to   { transform: translateX(0); }
+  /* Chase lights — 3 setas que pulsam em sequência dando ilusão de movimento */
+  @keyframes arrowChase {
+    0%, 100% { opacity: 0.08; }
+    40%      { opacity: 1; }
   }
 
   @keyframes flashBan {
@@ -877,31 +873,30 @@ export default function MapPickEspectador() {
         const aAtivo = turno === 'A'
         const bAtivo = turno === 'B'
 
-        // Conveyor belt seamless: dois spans idênticos, translada -50% da largura total = sem salto
+        // Chase lights: 3 setas fixas que pulsam em sequência → ilusão de movimento sem loop visível
         const Arrows = ({ dir, cor }) => {
-          const chars = dir === 'left' ? '‹  ‹  ‹  ‹  ‹  ' : '›  ›  ›  ›  ›  '
-          const arrowStyle = {
-            fontFamily: "'Rajdhani', sans-serif", fontWeight: 900,
-            fontSize: 'clamp(14px, 1.8vw, 22px)', color: cor,
-            whiteSpace: 'nowrap', userSelect: 'none',
-          }
+          const char = dir === 'left' ? '‹' : '›'
+          // Para dir='left' a onda vai da direita para esquerda (pulsa 2→1→0)
+          // Para dir='right' a onda vai da esquerda para direita (pulsa 0→1→2)
           return (
             <div style={{
-              width: 56, flexShrink: 0,
-              alignSelf: 'stretch',
-              display: 'flex', alignItems: 'center',
-              overflow: 'hidden',
-              WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 28%, black 72%, transparent 100%)',
-              maskImage:        'linear-gradient(to right, transparent 0%, black 28%, black 72%, transparent 100%)',
+              display: 'flex', alignItems: 'center', gap: 'clamp(2px, 0.4vw, 5px)',
+              alignSelf: 'stretch', padding: '0 4px', flexShrink: 0,
             }}>
-              {/* Conteúdo duplicado — quando o 1º sai, o 2º já está no lugar exato */}
-              <div style={{
-                display: 'flex', flexShrink: 0,
-                animation: `${dir === 'left' ? 'seamlessLeft' : 'seamlessRight'} 2s linear infinite`,
-              }}>
-                <span style={arrowStyle}>{chars}</span>
-                <span style={arrowStyle}>{chars}</span>
-              </div>
+              {[0, 1, 2].map(i => {
+                const order = dir === 'left' ? 2 - i : i
+                return (
+                  <span key={i} style={{
+                    fontFamily: "'Rajdhani', sans-serif", fontWeight: 900,
+                    fontSize: 'clamp(13px, 1.6vw, 21px)', color: cor,
+                    display: 'inline-block', userSelect: 'none',
+                    animation: 'arrowChase 1.2s ease-in-out infinite',
+                    animationDelay: `${order * 0.22}s`,
+                  }}>
+                    {char}
+                  </span>
+                )
+              })}
             </div>
           )
         }
