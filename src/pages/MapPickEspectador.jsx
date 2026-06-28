@@ -871,10 +871,8 @@ export default function MapPickEspectador() {
 
       {/* ── Header: times + placar ─── */}
       {(() => {
-        const rRaw = sessao.resultados
-        const resultados = Array.isArray(rRaw) ? rRaw : Object.values(rRaw ?? {})
-        const winsA = resultados.filter(r => r.perdedor === 'B').length
-        const winsB = resultados.filter(r => r.perdedor === 'A').length
+        const winsA = sessao.placarA ?? 0
+        const winsB = sessao.placarB ?? 0
         const turno = getTurnoAtual(sessao, fase, turnoBan, mapTime)
         const aAtivo = turno === 'A'
         const bAtivo = turno === 'B'
@@ -919,7 +917,7 @@ export default function MapPickEspectador() {
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               padding: '0 clamp(10px, 1.5vw, 20px)', minWidth: 'clamp(56px, 6.5vw, 90px)', flexShrink: 0,
             }}>
-              {resultados.length > 0 ? (
+              {(winsA > 0 || winsB > 0) ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 900, fontSize: 'clamp(22px, 3vw, 40px)', color: winsA > winsB ? corA : 'rgba(255,255,255,0.45)', lineHeight: 1 }}>{winsA}</span>
                   <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 'clamp(13px, 1.5vw, 20px)', color: 'rgba(255,255,255,0.2)' }}>–</span>

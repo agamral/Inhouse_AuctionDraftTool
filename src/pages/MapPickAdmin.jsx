@@ -482,6 +482,26 @@ function SessaoView({ sessao, sessaoId, campeonatoId }) {
         </div>
       )}
 
+      {/* Placar manual */}
+      {!sessao.encerrada && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 10, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)' }}>Placar:</span>
+          {[['A', corA, nomeA], ['B', corB, nomeB]].map(([t, cor, nome]) => {
+            const pts = t === 'A' ? (sessao.placarA ?? 0) : (sessao.placarB ?? 0)
+            const field = t === 'A' ? 'placarA' : 'placarB'
+            const set_ = async (v) => update(ref(db, `${mapPickPath(campeonatoId)}/${sessaoId}`), { [field]: Math.max(0, v) })
+            return (
+              <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 11, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, color: cor, minWidth: 80 }}>{nome}</span>
+                <button onClick={() => set_(pts - 1)} style={{ background: 'var(--bg)', border: '1px solid var(--border2)', borderRadius: 4, padding: '2px 8px', color: 'var(--text2)', cursor: 'pointer', fontSize: 13, lineHeight: 1 }}>−</button>
+                <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 900, fontSize: 18, color: cor, minWidth: 20, textAlign: 'center' }}>{pts}</span>
+                <button onClick={() => set_(pts + 1)} style={{ background: 'var(--bg)', border: '1px solid var(--border2)', borderRadius: 4, padding: '2px 8px', color: 'var(--text2)', cursor: 'pointer', fontSize: 13, lineHeight: 1 }}>+</button>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
       {/* Histórico */}
       {jogosJogados.length > 0 && (
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -559,6 +579,8 @@ export default function MapPickAdmin() {
         criadoEm: Date.now(),
         pool: form.pool,
         escolhedor: form.escolhedor,
+        placarA: 0,
+        placarB: 0,
         timeA: { nome: nomeA, cor: corA, ...(iconUrlA ? { iconUrl: iconUrlA } : {}), ...(emojiA ? { emoji: emojiA } : {}) },
         timeB: { nome: nomeB, cor: corB, ...(iconUrlB ? { iconUrl: iconUrlB } : {}), ...(emojiB ? { emoji: emojiB } : {}) },
       })
