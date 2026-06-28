@@ -58,6 +58,8 @@ function getMapaEquipe(mapaId, sessao) {
 const CSS = `
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { overflow: hidden; }
+  /* Oculta navbar e footer para tela cheia do espectador */
+  nav, footer, .navbar { display: none !important; }
 
   @keyframes flashBan {
     0%   { box-shadow: 0 0 0 0   rgba(224,85,85,0.9); }
@@ -422,6 +424,55 @@ function BanTira({ sessao, pool, nomeA, nomeB, corA, corB }) {
   )
 }
 
+// ── Tela de vencedor da partida ───────────────────────────────────────────────
+
+function VencedorScreen({ vencedor, onDone }) {
+  const [phase, setPhase] = useState('in') // 'in' → 'show' → 'out'
+
+  useEffect(() => {
+    const t1 = setTimeout(() => setPhase('show'), 80)
+    const t2 = setTimeout(() => setPhase('out'),  4800)
+    const t3 = setTimeout(onDone, 5500)
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3) }
+  }, []) // eslint-disable-line
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 9999,
+      background: '#050612',
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 28,
+      opacity: phase === 'show' ? 1 : 0,
+      transition: 'opacity 0.55s ease-out',
+    }}>
+      <style>{CSS}</style>
+      <div style={{
+        fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700,
+        fontSize: 'clamp(11px, 1.2vw, 14px)', letterSpacing: '0.35em', textTransform: 'uppercase',
+        color: 'rgba(255,255,255,0.35)',
+      }}>
+        VENCEDOR DA PARTIDA
+      </div>
+
+      <TeamIcon
+        time={vencedor.data}
+        size={Math.min(window.innerHeight * 0.18, 140)}
+        radius={16}
+        style={{ boxShadow: `0 0 40px ${vencedor.cor}55`, border: `3px solid ${vencedor.cor}66` }}
+      />
+
+      <div style={{
+        fontFamily: "'Rajdhani', sans-serif", fontWeight: 900,
+        fontSize: 'clamp(42px, 8vw, 96px)',
+        color: vencedor.cor, lineHeight: 1,
+        textShadow: `0 0 60px ${vencedor.cor}66`,
+        letterSpacing: '0.02em',
+      }}>
+        {vencedor.nome}
+      </div>
+    </div>
+  )
+}
+
 // ── Tela de reveal do mapa ────────────────────────────────────────────────────
 
 function MapRevealScreen({ mapa, mapTimeNome, mapTimeCor, mapTimeData, onDismiss }) {
@@ -434,11 +485,12 @@ function MapRevealScreen({ mapa, mapTimeNome, mapTimeCor, mapTimeData, onDismiss
 
   return (
     <div onClick={onDismiss} style={{
-      position: 'fixed', inset: 0, zIndex: 50, cursor: 'pointer',
+      position: 'fixed', inset: 0, zIndex: 9999, cursor: 'pointer',
       display: 'flex',
       opacity: vis ? 1 : 0,
       transition: 'opacity 0.5s ease-out',
     }}>
+      <style>{CSS}</style>
 
       {/* Arte do mapa — lado esquerdo (55%) */}
       <div style={{
@@ -501,12 +553,10 @@ function MapRevealScreen({ mapa, mapTimeNome, mapTimeCor, mapTimeData, onDismiss
         display: 'flex', flexDirection: 'column',
         padding: 'clamp(20px,3.5vh,44px) clamp(20px,3vw,44px)',
         animation: vis ? 'revealInfoIn 0.8s ease-out 0.2s both' : 'none',
-        minHeight: 0,
       }}>
 
-        {/* Bloco de texto — compacto no topo */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(8px,1.4vh,16px)', flexShrink: 0 }}>
-
+        {/* Texto — altura fixa baseada em conteúdo, não em flex */}
+        <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 'clamp(8px,1.3vh,14px)' }}>
           <div style={{
             fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700,
             fontSize: 'clamp(9px, 1vw, 11px)', letterSpacing: '0.3em', textTransform: 'uppercase',
@@ -527,17 +577,10 @@ function MapRevealScreen({ mapa, mapTimeNome, mapTimeCor, mapTimeData, onDismiss
 
           {mapa.objetivo && (
             <div style={{ animation: vis ? 'revealTitleIn 0.7s ease-out 0.42s both' : 'none' }}>
-              <div style={{
-                fontFamily: "'Barlow Condensed', sans-serif", fontSize: 'clamp(8px, 0.8vw, 10px)',
-                fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase',
-                color: 'var(--gold)', marginBottom: 4,
-              }}>
+              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 'clamp(8px, 0.8vw, 10px)', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: 4 }}>
                 OBJETIVO
               </div>
-              <div style={{
-                fontFamily: "'Rajdhani', sans-serif", fontWeight: 700,
-                fontSize: 'clamp(17px, 2.2vw, 28px)', color: 'var(--gold2)',
-              }}>
+              <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 'clamp(17px, 2.2vw, 28px)', color: 'var(--gold2)' }}>
                 {mapa.objetivo}
               </div>
             </div>
@@ -545,40 +588,29 @@ function MapRevealScreen({ mapa, mapTimeNome, mapTimeCor, mapTimeData, onDismiss
 
           {mapa.descricao && (
             <div style={{ animation: vis ? 'revealTitleIn 0.7s ease-out 0.54s both' : 'none' }}>
-              <p style={{
-                fontFamily: "'Barlow', sans-serif", fontWeight: 400,
-                fontSize: 'clamp(11px, 1.15vw, 14px)',
-                color: 'rgba(226,221,214,0.65)', lineHeight: 1.55, margin: 0,
-              }}>
+              <p style={{ fontFamily: "'Barlow', sans-serif", fontWeight: 400, fontSize: 'clamp(11px, 1.15vw, 14px)', color: 'rgba(226,221,214,0.65)', lineHeight: 1.55, margin: 0 }}>
                 {mapa.descricao}
               </p>
             </div>
           )}
         </div>
 
-        {/* Overhead — ocupa todo espaço restante abaixo do texto */}
-        {mapa.layoutUrl ? (
+        {/* Overhead — altura fixa em vh para ser sempre consistente */}
+        {mapa.layoutUrl && (
           <div style={{
-            flex: 1, minHeight: 0,
-            marginTop: 'clamp(12px,2vh,24px)',
+            height: '46vh', flexShrink: 0,
+            marginTop: 'clamp(10px,1.8vh,20px)',
             animation: vis ? 'revealTitleIn 0.7s ease-out 0.68s both' : 'none',
-            position: 'relative',
           }}>
             <img
               src={mapa.layoutUrl} alt={`Layout — ${mapa.nome}`}
               onError={e => { e.target.parentElement.style.display = 'none' }}
-              style={{
-                width: '100%', height: '100%',
-                objectFit: 'contain', objectPosition: 'bottom left',
-                borderRadius: 10, opacity: 0.92, display: 'block',
-              }}
+              style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'bottom left', borderRadius: 10, opacity: 0.92, display: 'block' }}
             />
           </div>
-        ) : (
-          <div style={{ flex: 1 }} />
         )}
 
-        <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 9, color: 'rgba(255,255,255,0.15)', letterSpacing: '0.1em', flexShrink: 0, marginTop: 8 }}>
+        <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 9, color: 'rgba(255,255,255,0.15)', letterSpacing: '0.1em', marginTop: 'auto', paddingTop: 8 }}>
           Clique para fechar
         </div>
       </div>
@@ -596,13 +628,15 @@ export default function MapPickEspectador() {
   const [sessao, setSessao]       = useState(null)
   const [loading, setLoading]     = useState(true)
   const [animCoin, setAnimCoin]   = useState(false)
-  const [flashMap, setFlashMap]   = useState({}) // mapId → 'ban' | 'choose'
-  const [reveal, setReveal]       = useState(null) // { mapa, mapTimeNome, mapTimeCor, fpNome, fpCor }
+  const [flashMap, setFlashMap]   = useState({})
+  const [reveal, setReveal]       = useState(null) // { mapa, mapTimeNome, mapTimeCor, mapTimeData }
+  const [ganhou, setGanhou]       = useState(null) // { nome, cor, data } — vencedor da partida
 
   const prevResultadoRef  = useRef(null)
   const prevBansRef       = useRef([])
   const prevMapaRef       = useRef(null)
   const prevProxMapaRef   = useRef(null)
+  const prevPerdedorRef   = useRef(null)
   const animCoinDoneRef   = useRef(false)
   const revealTimerRef    = useRef(null)
 
@@ -657,10 +691,28 @@ export default function MapPickEspectador() {
         triggerReveal(id, data.proximaMapTime)
       }
 
+      // Detecta quando admin define quem perdeu → anuncia vencedor e fecha reveal
+      if (data?.perdedorProxima && !prevPerdedorRef.current) {
+        const vencedorTime = data.perdedorProxima === 'A' ? 'B' : 'A'
+        const vencedorData = vencedorTime === 'A' ? data?.timeA : data?.timeB
+        setGanhou({
+          nome: vencedorData?.nome ?? (vencedorTime === 'A' ? 'Time A' : 'Time B'),
+          cor:  vencedorData?.cor  ?? '#4a9eda',
+          data: vencedorData ?? null,
+        })
+        setReveal(null) // fecha o reveal do mapa se ainda estiver aberto
+        if (revealTimerRef.current) clearTimeout(revealTimerRef.current)
+      }
+      // Reseta vencedor quando próxima rodada começa de verdade
+      if (!data?.perdedorProxima && prevPerdedorRef.current) {
+        setGanhou(null)
+      }
+
       prevResultadoRef.current = data?.resultado ?? null
       prevBansRef.current      = currBans
       prevMapaRef.current      = data?.mapaEscolhido ?? null
       prevProxMapaRef.current  = data?.proximaMapa ?? null
+      prevPerdedorRef.current  = data?.perdedorProxima ?? null
       setSessao(data)
       setLoading(false)
     })
@@ -744,7 +796,13 @@ export default function MapPickEspectador() {
 
   return (
     <>
-    {reveal && (
+    {ganhou && (
+      <VencedorScreen
+        vencedor={ganhou}
+        onDone={() => setGanhou(null)}
+      />
+    )}
+    {reveal && !ganhou && (
       <MapRevealScreen
         mapa={reveal.mapa}
         mapTimeNome={reveal.mapTimeNome}
