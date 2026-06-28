@@ -61,6 +61,15 @@ const CSS = `
   /* Oculta navbar e footer para tela cheia do espectador */
   nav, footer, .navbar { display: none !important; }
 
+  @keyframes arrowRight {
+    0%,100% { opacity: 0.25; transform: translateX(0); }
+    50%     { opacity: 1;    transform: translateX(5px); }
+  }
+  @keyframes arrowLeft {
+    0%,100% { opacity: 0.25; transform: translateX(0); }
+    50%     { opacity: 1;    transform: translateX(-5px); }
+  }
+
   @keyframes flashBan {
     0%   { box-shadow: 0 0 0 0   rgba(224,85,85,0.9); }
     40%  { box-shadow: 0 0 0 24px rgba(224,85,85,0.4); }
@@ -209,9 +218,9 @@ function MapaCard({ mapa, estado, equipe }) {
             <div style={{
               position: 'absolute', top: -5, right: -5,
               width: 24, height: 24, borderRadius: '50%',
-              background: '#0a0c10', border: `2px solid ${equipeCor}`,
+              background: '#e05555', border: '2px solid rgba(0,0,0,0.6)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 12, fontWeight: 900, color: equipeCor,
+              fontSize: 12, fontWeight: 900, color: '#fff',
               fontFamily: "'Rajdhani', sans-serif",
             }}>✕</div>
           </div>
@@ -247,9 +256,9 @@ function MapaCard({ mapa, estado, equipe }) {
             <div style={{
               position: 'absolute', top: -5, right: -5,
               width: 24, height: 24, borderRadius: '50%',
-              background: '#0a0c10', border: `2px solid ${equipeCor}`,
+              background: '#4caf7d', border: '2px solid rgba(0,0,0,0.6)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 13, fontWeight: 900, color: equipeCor,
+              fontSize: 13, fontWeight: 900, color: '#fff',
               fontFamily: "'Rajdhani', sans-serif",
             }}>✓</div>
           </div>
@@ -618,6 +627,20 @@ function MapRevealScreen({ mapa, mapTimeNome, mapTimeCor, mapTimeData, onDismiss
   )
 }
 
+// ── Turno atual (qual time está agindo agora) ─────────────────────────────────
+
+function getTurnoAtual(sessao, fase, turnoBan, mapTime) {
+  switch (fase) {
+    case 'coin':                   return sessao?.escolhedor ?? null
+    case 'escolhendo':             return sessao?.vencedor   ?? null
+    case 'banindo':                return turnoBan
+    case 'escolhendo_mapa':        return mapTime
+    case 'proxima_escolhendo':     return sessao?.perdedorProxima  ?? null
+    case 'proxima_escolhendo_mapa':return sessao?.proximaMapTime   ?? null
+    default:                       return null
+  }
+}
+
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function MapPickEspectador() {
@@ -627,7 +650,8 @@ export default function MapPickEspectador() {
 
   const [sessao, setSessao]       = useState(null)
   const [loading, setLoading]     = useState(true)
-  const [animCoin, setAnimCoin]   = useState(false)
+  const [animCoin, setAnimCoin]         = useState(false)
+  const [coinResultVisible, setCoinResultVisible] = useState(false)
   const [flashMap, setFlashMap]   = useState({})
   const [reveal, setReveal]       = useState(null) // { mapa, mapTimeNome, mapTimeCor, mapTimeData }
   const [ganhou, setGanhou]       = useState(null) // { nome, cor, data } — vencedor da partida
@@ -650,7 +674,10 @@ export default function MapPickEspectador() {
       if (data?.resultado && !prevResultadoRef.current && !animCoinDoneRef.current) {
         animCoinDoneRef.current = true
         setAnimCoin(true)
+        setCoinResultVisible(true)
         setTimeout(() => setAnimCoin(false), 1700)
+        // Mantém o resultado visível por 4.5s antes de transicionar para a galeria
+        setTimeout(() => setCoinResultVisible(false), 4500)
       }
 
       // Flash ban animation (novo mapa banido)
@@ -799,7 +826,7 @@ export default function MapPickEspectador() {
     )
   }
 
-  const isCoin = fase === 'coin' || (animCoin && fase === 'escolhendo')
+  const isCoin = fase === 'coin' || coinResultVisible
   const temBans = bans.length > 0 || fase === 'banindo' || fase === 'escolhendo_mapa' || fase.startsWith('proxima') || fase === 'partida_pronta'
 
   return (
@@ -827,42 +854,72 @@ export default function MapPickEspectador() {
     }}>
       <style>{CSS}</style>
 
-      {/* ── Header: times ─── */}
-      <div style={{
-        display: 'flex', alignItems: 'stretch',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
-        flexShrink: 0,
-      }}>
-        {/* Time A */}
-        <div style={{
-          flex: 1, padding: 'clamp(8px, 1.2vh, 16px) clamp(12px, 2vw, 28px)',
-          display: 'flex', alignItems: 'center', gap: 10,
-          borderRight: `3px solid ${corA}`,
-        }}>
-          <div style={{ width: 'clamp(8px, 1vw, 12px)', height: 'clamp(8px, 1vw, 12px)', borderRadius: '50%', background: corA, boxShadow: `0 0 8px ${corA}` }} />
-          <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 'clamp(16px, 2.2vw, 28px)', color: corA, letterSpacing: '0.04em' }}>{nomeA}</span>
-        </div>
+      {/* ── Header: times + placar ─── */}
+      {(() => {
+        const resultados  = sessao.resultados ?? []
+        const winsA = resultados.filter(r => r.perdedor === 'B').length
+        const winsB = resultados.filter(r => r.perdedor === 'A').length
+        const turno = getTurnoAtual(sessao, fase, turnoBan, mapTime)
+        const aAtivo = turno === 'A'
+        const bAtivo = turno === 'B'
 
-        {/* Centro: logo / VS */}
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          padding: '0 clamp(12px, 2vw, 24px)',
-          color: 'rgba(255,255,255,0.2)',
-          fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 'clamp(14px, 1.6vw, 20px)',
-        }}>
-          vs
-        </div>
+        return (
+          <div style={{
+            display: 'flex', alignItems: 'stretch',
+            borderBottom: '1px solid rgba(255,255,255,0.06)',
+            flexShrink: 0,
+          }}>
+            {/* Time A */}
+            <div style={{
+              flex: 1, padding: 'clamp(8px, 1.2vh, 16px) clamp(12px, 2vw, 28px)',
+              display: 'flex', alignItems: 'center', gap: 10,
+              borderRight: `3px solid ${corA}`,
+              position: 'relative', overflow: 'hidden',
+              background: aAtivo ? `linear-gradient(to right, ${corA}22 0%, transparent 80%)` : 'transparent',
+              transition: 'background 0.4s',
+            }}>
+              <div style={{ width: 'clamp(8px, 1vw, 12px)', height: 'clamp(8px, 1vw, 12px)', borderRadius: '50%', background: corA, boxShadow: `0 0 8px ${corA}`, flexShrink: 0 }} />
+              <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 'clamp(16px, 2.2vw, 28px)', color: corA, letterSpacing: '0.04em' }}>{nomeA}</span>
+              {aAtivo && (
+                <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 900, fontSize: 'clamp(14px, 1.8vw, 22px)', color: corA, marginLeft: 4, animation: 'arrowRight 0.8s ease-in-out infinite' }}>›››</span>
+              )}
+            </div>
 
-        {/* Time B */}
-        <div style={{
-          flex: 1, padding: 'clamp(8px, 1.2vh, 16px) clamp(12px, 2vw, 28px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10,
-          borderLeft: `3px solid ${corB}`,
-        }}>
-          <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 'clamp(16px, 2.2vw, 28px)', color: corB, letterSpacing: '0.04em' }}>{nomeB}</span>
-          <div style={{ width: 'clamp(8px, 1vw, 12px)', height: 'clamp(8px, 1vw, 12px)', borderRadius: '50%', background: corB, boxShadow: `0 0 8px ${corB}` }} />
-        </div>
-      </div>
+            {/* Centro: placar */}
+            <div style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              padding: '0 clamp(12px, 2vw, 24px)', minWidth: 'clamp(60px, 7vw, 100px)', flexShrink: 0,
+              gap: 2,
+            }}>
+              {resultados.length > 0 ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 900, fontSize: 'clamp(20px, 2.8vw, 36px)', color: winsA > winsB ? corA : 'rgba(255,255,255,0.5)', lineHeight: 1 }}>{winsA}</span>
+                  <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 'clamp(12px, 1.4vw, 18px)', color: 'rgba(255,255,255,0.25)' }}>–</span>
+                  <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 900, fontSize: 'clamp(20px, 2.8vw, 36px)', color: winsB > winsA ? corB : 'rgba(255,255,255,0.5)', lineHeight: 1 }}>{winsB}</span>
+                </div>
+              ) : (
+                <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 'clamp(14px, 1.6vw, 20px)', color: 'rgba(255,255,255,0.2)' }}>vs</span>
+              )}
+            </div>
+
+            {/* Time B */}
+            <div style={{
+              flex: 1, padding: 'clamp(8px, 1.2vh, 16px) clamp(12px, 2vw, 28px)',
+              display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10,
+              borderLeft: `3px solid ${corB}`,
+              position: 'relative', overflow: 'hidden',
+              background: bAtivo ? `linear-gradient(to left, ${corB}22 0%, transparent 80%)` : 'transparent',
+              transition: 'background 0.4s',
+            }}>
+              {bAtivo && (
+                <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 900, fontSize: 'clamp(14px, 1.8vw, 22px)', color: corB, marginRight: 4, animation: 'arrowLeft 0.8s ease-in-out infinite' }}>‹‹‹</span>
+              )}
+              <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 'clamp(16px, 2.2vw, 28px)', color: corB, letterSpacing: '0.04em' }}>{nomeB}</span>
+              <div style={{ width: 'clamp(8px, 1vw, 12px)', height: 'clamp(8px, 1vw, 12px)', borderRadius: '50%', background: corB, boxShadow: `0 0 8px ${corB}`, flexShrink: 0 }} />
+            </div>
+          </div>
+        )
+      })()}
 
       {/* ── Fase banner ─── */}
       <div style={{

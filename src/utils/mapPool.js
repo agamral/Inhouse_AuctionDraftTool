@@ -21,7 +21,7 @@ const POOL_LOCAL_SPLASH = new Set([
 
 export const MAPAS_INFO = {
   'alterac-pass': {
-    objetivo: 'Cavalaria & General Drakkisath',
+    objetivo: 'Ataque os campos de prisioneiros para libertar a cavalaria.',
     descricao: 'Invada o território inimigo, liberte prisioneiros aliados e chame a cavalaria para reivindicar o campo de batalha para o seu General — mas cuidado com as traiçoeiras armadilhas de lama!',
     layoutUrl: '/maps/overhead/alterac-pass-overhead.webp',
   },
@@ -41,7 +41,7 @@ export const MAPAS_INFO = {
     layoutUrl: '/maps/overhead/braxis-holdout-overhead.webp',
   },
   'cursed-hollow': {
-    objetivo: 'Maldição do Senhor Corvo',
+    objetivo: 'Maldição do Senhor dos Corvos',
     descricao: 'Colete Tributos para amaldiçoar o time inimigo. Enquanto amaldiçoados, os Servos inimigos ficam com apenas 1 ponto de vida e as Estruturas inimigas param de atacar.',
     layoutUrl: '/maps/overhead/cursed-hollow-overhead.webp',
   },
@@ -66,7 +66,7 @@ export const MAPAS_INFO = {
     layoutUrl: null,
   },
   'infernal-shrines': {
-    objetivo: 'Punidor',
+    objetivo: 'Algoz',
     descricao: 'Derrote 40 Guardiões do Santuário antes dos adversários para invocar um Punidor que ataca Heróis e Estruturas inimigas.',
     layoutUrl: '/maps/overhead/infernal-shrines-overhead.webp',
   },
@@ -76,7 +76,7 @@ export const MAPAS_INFO = {
     layoutUrl: '/maps/overhead/sky-temple-overhead.webp',
   },
   'tomb-of-the-spider-queen': {
-    objetivo: 'Coletoras de Teias',
+    objetivo: 'Téce-Teias',
     descricao: 'Colete Gemas derrubadas por Servos e Heróis. Entregue Gemas suficientes para invocar Coletoras de Teias que avançam por cada lane simultaneamente.',
     layoutUrl: '/maps/overhead/tomb-of-the-spider-queen-overhead.webp',
   },
