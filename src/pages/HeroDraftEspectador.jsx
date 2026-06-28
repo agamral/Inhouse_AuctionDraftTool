@@ -19,145 +19,116 @@ const SHOWMATCH_DRAFT_PATH_LEGACY = 'showmatch/sessaoAtiva/heroDraft'
 
 // ── Tela de resultado dramática ──────────────────────────────────────────────
 
+// Layout por coluna: logo grande → picks em row → bans em row
 function ResultadoFinal({ estado, mapa }) {
-  const d = (delay) => ({ animationDelay: `${delay}s`, animationFillMode: 'both' })
+  const corA  = estado.timeA.cor ?? '#4a9eda'
+  const corB  = estado.timeB.cor ?? '#e05555'
+  const picksA = estado.timeA.picks ?? []
+  const picksB = estado.timeB.picks ?? []
+  const bansA  = bansLogicos(estado.timeA.bans ?? [])
+  const bansB  = bansLogicos(estado.timeB.bans ?? [])
 
-  const picksA  = estado.timeA.picks  ?? []
-  const picksB  = estado.timeB.picks  ?? []
-  const bansA   = bansLogicos(estado.timeA.bans ?? [])
-  const bansB   = bansLogicos(estado.timeB.bans ?? [])
-  const corA    = estado.timeA.cor ?? '#4a9eda'
-  const corB    = estado.timeB.cor ?? '#e05555'
+  const anim = (anim, delay) => ({ animation: `${anim} 0.6s cubic-bezier(0.22,1,0.36,1) both`, animationDelay: `${delay}s` })
 
-  const HeroImg = ({ heroiId, ban, side }) => {
-    const h = HEROES.find(x => x.id === heroiId)
-    return (
-      <img
-        src={getHeroImageUrl(heroiId) || h?.iconeUrl}
-        alt={h?.nome ?? heroiId}
-        className={ban ? 'hde-resultado-ban-img' : 'hde-resultado-pick-img'}
-        onError={e => { e.target.src = h?.iconeUrl ?? ''; e.onerror = null }}
-      />
-    )
-  }
+  const iconSz    = Math.min(96, Math.max(60, Math.round(window.innerHeight * 0.09)))
+  const banSz     = Math.min(52, Math.max(32, Math.round(window.innerHeight * 0.05)))
+  const logoSz    = Math.min(160, Math.max(100, Math.round(window.innerHeight * 0.18)))
+
+  const renderPicks = (picks, cor, slideDir, baseDelay) =>
+    picks.map((heroId, i) => {
+      const h = HEROES.find(x => x.id === heroId)
+      return (
+        <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, ...anim('hde-res-scale-in', baseDelay + i * 0.12) }}>
+          <img src={h?.iconeUrl} alt={h?.nome ?? ''}
+            style={{ width: iconSz, height: iconSz, borderRadius: 10, objectFit: 'cover', border: `2px solid ${cor}55`, boxShadow: `0 4px 20px rgba(0,0,0,0.6), 0 0 12px ${cor}33`, display: 'block' }}
+            onError={e => { e.target.style.opacity = 0.3 }} />
+          <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 'clamp(9px,1.1vw,13px)', color: 'rgba(255,255,255,0.8)', letterSpacing: '0.04em', maxWidth: iconSz, textAlign: 'center', lineHeight: 1.2 }}>
+            {h?.nome ?? heroId}
+          </span>
+        </div>
+      )
+    })
+
+  const renderBans = (bans, baseDelay) =>
+    bans.map((b, i) => {
+      const h = HEROES.find(x => x.id === b.heroiId)
+      return (
+        <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, ...anim('hde-res-scale-in', baseDelay + i * 0.09) }}>
+          <img src={h?.iconeUrl} alt={h?.nome ?? ''}
+            style={{ width: banSz, height: banSz, borderRadius: 6, objectFit: 'cover', filter: 'grayscale(65%) brightness(0.5)', border: '1px solid rgba(224,85,85,0.35)', display: 'block' }}
+            onError={e => { e.target.style.opacity = 0 }} />
+        </div>
+      )
+    })
 
   return (
     <div className="hde-resultado">
-      {/* Fundo do mapa */}
-      {mapa?.splashUrl && (
-        <div className="hde-resultado-bg" style={{ backgroundImage: `url(${mapa.splashUrl})` }} />
-      )}
-      {/* Glows de cor */}
+      {mapa?.splashUrl && <div className="hde-resultado-bg" style={{ backgroundImage: `url(${mapa.splashUrl})` }} />}
       <div className="hde-resultado-glow-a" style={{ background: corA }} />
       <div className="hde-resultado-glow-b" style={{ background: corB }} />
 
-      {/* Header */}
-      <div style={{ position: 'relative', zIndex: 1, textAlign: 'center', padding: 'clamp(12px,2vh,24px) 0 0',
-        animation: 'hde-res-fade-up 0.7s ease-out 0.1s both', fontFamily: "'Barlow Condensed', sans-serif",
-        fontSize: 'clamp(10px,1.1vw,13px)', letterSpacing: '0.35em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)' }}>
+      {/* Label superior */}
+      <div style={{ position: 'relative', zIndex: 1, textAlign: 'center', padding: 'clamp(10px,1.8vh,22px) 0 0',
+        fontFamily: "'Barlow Condensed', sans-serif", fontSize: 'clamp(9px,1vw,12px)',
+        letterSpacing: '0.35em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.28)',
+        ...anim('hde-res-fade-up', 0.1) }}>
         DRAFT ENCERRADO
-        {mapa && <span style={{ color: 'var(--gold)', marginLeft: 16 }}>· {mapa.nome}</span>}
+        {mapa && <span style={{ color: 'var(--gold)', marginLeft: 14 }}>· {mapa.nome}</span>}
       </div>
 
-      {/* Corpo principal */}
-      <div className="hde-resultado-body">
+      {/* Corpo: Time A | divisor | Time B */}
+      <div style={{ position: 'relative', zIndex: 1, flex: 1, display: 'flex', minHeight: 0 }}>
 
-        {/* Time A */}
-        <div className="hde-resultado-time" style={{ alignItems: 'flex-end' }}>
-
-          {/* Logo + nome */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8, animation: 'hde-res-slide-left 0.7s cubic-bezier(0.22,1,0.36,1) 0.2s both', width: '100%' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'flex-end' }}>
-              <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 900, fontSize: 'clamp(22px,3.5vw,48px)', color: corA, letterSpacing: '0.03em', textShadow: `0 0 30px ${corA}66` }}>
-                {estado.timeA.nome}
-              </span>
-              <TeamIcon time={estado.timeA} size={clamp(48, 7, 80)} radius={10}
-                style={{ boxShadow: `0 0 24px ${corA}55`, border: `2px solid ${corA}55` }} />
-            </div>
-
-            {/* Bans */}
-            {bansA.length > 0 && (
-              <div style={{ display: 'flex', gap: 5, justifyContent: 'flex-end', flexWrap: 'wrap', ...d(0.5), animation: 'hde-res-fade-up 0.5s ease-out both' }}>
-                {bansA.map((b, i) => (
-                  <div key={i} style={{ animation: `hde-res-scale-in 0.4s ease-out both`, animationDelay: `${0.6 + i * 0.08}s` }}>
-                    <HeroImg heroiId={b.heroiId} ban side="a" />
-                  </div>
-                ))}
-              </div>
-            )}
+        {/* ── Time A ── */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 'clamp(10px,2vh,24px)', padding: 'clamp(10px,2vh,24px) clamp(16px,3vw,48px)' }}>
+          {/* Logo + Nome */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, ...anim('hde-res-slide-left', 0.2) }}>
+            <TeamIcon time={estado.timeA} size={logoSz} radius={Math.round(logoSz * 0.12)}
+              style={{ boxShadow: `0 0 48px ${corA}55, 0 0 16px ${corA}33`, border: `3px solid ${corA}44` }} />
+            <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 900, fontSize: 'clamp(20px,3.2vw,44px)', color: corA, letterSpacing: '0.04em', textShadow: `0 0 28px ${corA}66` }}>
+              {estado.timeA.nome}
+            </span>
           </div>
-
           {/* Picks */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(4px,0.8vh,10px)', width: '100%' }}>
-            {picksA.map((heroId, i) => {
-              const h = HEROES.find(x => x.id === heroId)
-              return (
-                <div key={i} className="hde-resultado-pick" style={{ justifyContent: 'flex-end', animation: `hde-res-slide-left 0.5s cubic-bezier(0.22,1,0.36,1) both`, animationDelay: `${1.0 + i * 0.18}s` }}>
-                  <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 'clamp(12px,1.5vw,18px)', color: 'rgba(255,255,255,0.85)', letterSpacing: '0.05em', textAlign: 'right' }}>
-                    {h?.nome ?? heroId}
-                  </span>
-                  <HeroImg heroiId={heroId} side="a" />
-                </div>
-              )
-            })}
+          <div style={{ display: 'flex', gap: 'clamp(6px,0.8vw,14px)', flexWrap: 'wrap', justifyContent: 'center' }}>
+            {renderPicks(picksA, corA, 'left', 0.7)}
           </div>
+          {/* Bans */}
+          {bansA.length > 0 && (
+            <div style={{ display: 'flex', gap: 'clamp(4px,0.5vw,8px)', flexWrap: 'wrap', justifyContent: 'center' }}>
+              {renderBans(bansA, 1.5)}
+            </div>
+          )}
         </div>
 
-        {/* Centro */}
-        <div className="hde-resultado-centro">
-          <div className="hde-resultado-divisor" />
-        </div>
+        {/* Divisor central */}
+        <div style={{ width: 1, background: 'linear-gradient(to bottom, transparent, rgba(255,255,255,0.12) 20%, rgba(255,255,255,0.12) 80%, transparent)', flexShrink: 0, ...anim('hde-res-divider', 0.3) }} />
 
-        {/* Time B */}
-        <div className="hde-resultado-time hde-resultado-time--b" style={{ alignItems: 'flex-start' }}>
-
-          {/* Logo + nome */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8, animation: 'hde-res-slide-right 0.7s cubic-bezier(0.22,1,0.36,1) 0.2s both', width: '100%' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'flex-start' }}>
-              <TeamIcon time={estado.timeB} size={clamp(48, 7, 80)} radius={10}
-                style={{ boxShadow: `0 0 24px ${corB}55`, border: `2px solid ${corB}55` }} />
-              <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 900, fontSize: 'clamp(22px,3.5vw,48px)', color: corB, letterSpacing: '0.03em', textShadow: `0 0 30px ${corB}66` }}>
-                {estado.timeB.nome}
-              </span>
-            </div>
-
-            {/* Bans */}
-            {bansB.length > 0 && (
-              <div style={{ display: 'flex', gap: 5, justifyContent: 'flex-start', flexWrap: 'wrap' }}>
-                {bansB.map((b, i) => (
-                  <div key={i} style={{ animation: `hde-res-scale-in 0.4s ease-out both`, animationDelay: `${0.6 + i * 0.08}s` }}>
-                    <HeroImg heroiId={b.heroiId} ban side="b" />
-                  </div>
-                ))}
-              </div>
-            )}
+        {/* ── Time B ── */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 'clamp(10px,2vh,24px)', padding: 'clamp(10px,2vh,24px) clamp(16px,3vw,48px)' }}>
+          {/* Logo + Nome */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, ...anim('hde-res-slide-right', 0.2) }}>
+            <TeamIcon time={estado.timeB} size={logoSz} radius={Math.round(logoSz * 0.12)}
+              style={{ boxShadow: `0 0 48px ${corB}55, 0 0 16px ${corB}33`, border: `3px solid ${corB}44` }} />
+            <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 900, fontSize: 'clamp(20px,3.2vw,44px)', color: corB, letterSpacing: '0.04em', textShadow: `0 0 28px ${corB}66` }}>
+              {estado.timeB.nome}
+            </span>
           </div>
-
           {/* Picks */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(4px,0.8vh,10px)', width: '100%' }}>
-            {picksB.map((heroId, i) => {
-              const h = HEROES.find(x => x.id === heroId)
-              return (
-                <div key={i} className="hde-resultado-pick hde-resultado-pick--b" style={{ justifyContent: 'flex-start', animation: `hde-res-slide-right 0.5s cubic-bezier(0.22,1,0.36,1) both`, animationDelay: `${1.0 + i * 0.18}s` }}>
-                  <HeroImg heroiId={heroId} side="b" />
-                  <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 'clamp(12px,1.5vw,18px)', color: 'rgba(255,255,255,0.85)', letterSpacing: '0.05em' }}>
-                    {h?.nome ?? heroId}
-                  </span>
-                </div>
-              )
-            })}
+          <div style={{ display: 'flex', gap: 'clamp(6px,0.8vw,14px)', flexWrap: 'wrap', justifyContent: 'center' }}>
+            {renderPicks(picksB, corB, 'right', 0.7)}
           </div>
+          {/* Bans */}
+          {bansB.length > 0 && (
+            <div style={{ display: 'flex', gap: 'clamp(4px,0.5vw,8px)', flexWrap: 'wrap', justifyContent: 'center' }}>
+              {renderBans(bansB, 1.5)}
+            </div>
+          )}
         </div>
 
       </div>
     </div>
   )
-}
-
-// helper para calcular tamanho de ícone responsivo (px)
-function clamp(minPx, vhFactor, maxPx) {
-  if (typeof window === 'undefined') return maxPx
-  return Math.min(maxPx, Math.max(minPx, Math.round(window.innerHeight * vhFactor / 100)))
 }
 
 // URL: /campeonatos/:id/hero-draft/espectador?sessao=semifinal-1
