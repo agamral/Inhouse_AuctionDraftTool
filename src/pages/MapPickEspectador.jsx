@@ -23,6 +23,33 @@ function getTurnoBan(s) {
   return bans.length % 2 === 0 ? mapTime : outroTime(mapTime)
 }
 
+// Retorna { cor, nome, tipo } do time que baniu/escolheu o mapa, ou null
+function getMapaEquipe(mapaId, sessao, corA, corB, nomeA, nomeB) {
+  const bans    = sessao?.bans ?? []
+  const jogados = sessao?.jogosJogados ?? []
+  const mapTime = getMapTime(sessao)
+
+  // Mapa banido — qual time baniu baseado na ordem
+  const banIdx = bans.indexOf(mapaId)
+  if (banIdx !== -1 && mapTime) {
+    const t = banIdx % 2 === 0 ? mapTime : outroTime(mapTime)
+    return { cor: t === 'A' ? corA : corB, nome: t === 'A' ? nomeA : nomeB, tipo: 'ban' }
+  }
+
+  // Mapa escolhido da partida atual
+  if (mapaId === sessao?.mapaEscolhido && !jogados.includes(mapaId) && mapTime) {
+    return { cor: mapTime === 'A' ? corA : corB, nome: mapTime === 'A' ? nomeA : nomeB, tipo: 'choose' }
+  }
+
+  // Mapa escolhido da próxima partida
+  const pmt = sessao?.proximaMapTime
+  if (mapaId === sessao?.proximaMapa && pmt) {
+    return { cor: pmt === 'A' ? corA : corB, nome: pmt === 'A' ? nomeA : nomeB, tipo: 'choose' }
+  }
+
+  return null
+}
+
 // ── CSS ───────────────────────────────────────────────────────────────────────
 
 const CSS = `
@@ -98,12 +125,16 @@ function MoedaSpec({ resultado, animando }) {
 
 // ── Card de mapa ──────────────────────────────────────────────────────────────
 
-function MapaCard({ mapa, estado }) {
+function MapaCard({ mapa, estado, equipe }) {
   // estado: 'normal' | 'banido' | 'jogado' | 'escolhido' | 'flash_ban' | 'flash_choose'
-  const banido   = estado === 'banido'   || estado === 'flash_ban'
-  const jogado   = estado === 'jogado'
+  // equipe: { cor, nome } | null — time que baniu/escolheu
+  const banido    = estado === 'banido'   || estado === 'flash_ban'
+  const jogado    = estado === 'jogado'
   const escolhido = estado === 'escolhido' || estado === 'flash_choose'
-  const flash    = estado === 'flash_ban' || estado === 'flash_choose'
+  const flash     = estado === 'flash_ban' || estado === 'flash_choose'
+
+  const equipeCor  = equipe?.cor ?? (banido ? '#e05555' : '#4caf7d')
+  const equipeLetra = equipe?.nome?.charAt(0).toUpperCase() ?? ''
 
   return (
     <div style={{
@@ -112,16 +143,16 @@ function MapaCard({ mapa, estado }) {
       opacity: banido ? 0.22 : jogado ? 0.35 : 1,
       filter: (banido || jogado) ? 'grayscale(100%)' : 'none',
       border: escolhido
-        ? '3px solid var(--green)'
+        ? `3px solid ${equipeCor}`
         : banido
-          ? '3px solid rgba(224,85,85,0.6)'
+          ? `3px solid ${equipeCor}99`
           : jogado
             ? '3px solid rgba(201,168,76,0.4)'
             : '3px solid transparent',
       animation: flash
         ? (estado === 'flash_ban' ? 'flashBan 1s ease-out' : 'flashChoose 1.2s ease-out')
         : 'none',
-      boxShadow: escolhido ? '0 0 30px rgba(76,175,125,0.5)' : 'none',
+      boxShadow: escolhido ? `0 0 30px ${equipeCor}66` : 'none',
     }}>
       <img
         src={mapa.splashUrl} alt={mapa.nome}
@@ -136,24 +167,40 @@ function MapaCard({ mapa, estado }) {
         background: 'linear-gradient(transparent, rgba(0,0,0,0.85))',
         fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700,
         fontSize: 'clamp(10px, 1.1vw, 13px)', letterSpacing: '0.04em',
-        color: escolhido ? 'var(--green)' : banido ? 'rgba(224,85,85,0.7)' : jogado ? 'rgba(201,168,76,0.7)' : '#fff',
+        color: escolhido ? equipeCor : banido ? `${equipeCor}AA` : jogado ? 'rgba(201,168,76,0.7)' : '#fff',
         textAlign: 'center',
       }}>
         {mapa.nome}
       </div>
 
-      {/* Overlay ban */}
+      {/* Badge do time (quem agiu) */}
+      {equipe && (banido || escolhido) && (
+        <div style={{
+          position: 'absolute', top: 6, left: 6,
+          width: 22, height: 22, borderRadius: '50%',
+          background: equipeCor,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 11, fontWeight: 900, color: '#fff',
+          fontFamily: "'Rajdhani', sans-serif",
+          boxShadow: '0 1px 6px rgba(0,0,0,0.7)',
+          border: '1px solid rgba(255,255,255,0.25)',
+        }}>
+          {equipeLetra}
+        </div>
+      )}
+
+      {/* Overlay ban — cor do time */}
       {banido && (
         <div style={{
           position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: 'rgba(0,0,0,0.25)',
+          background: 'rgba(0,0,0,0.2)',
         }}>
           <div style={{
             width: 48, height: 48, borderRadius: '50%',
-            background: 'rgba(224,85,85,0.9)',
+            background: equipeCor,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 24, color: '#fff', fontWeight: 900,
-            boxShadow: '0 2px 12px rgba(0,0,0,0.6)',
+            boxShadow: `0 2px 14px rgba(0,0,0,0.6), 0 0 20px ${equipeCor}66`,
           }}>✕</div>
         </div>
       )}
@@ -174,18 +221,18 @@ function MapaCard({ mapa, estado }) {
         </div>
       )}
 
-      {/* Overlay escolhido */}
+      {/* Overlay escolhido — cor do time */}
       {escolhido && (
         <div style={{
           position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: 'rgba(76,175,125,0.1)',
+          background: `${equipeCor}1A`,
         }}>
           <div style={{
             width: 52, height: 52, borderRadius: '50%',
-            background: 'rgba(76,175,125,0.9)',
+            background: equipeCor,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 26, color: '#fff',
-            boxShadow: '0 2px 16px rgba(0,0,0,0.5)',
+            boxShadow: `0 2px 18px rgba(0,0,0,0.5), 0 0 24px ${equipeCor}55`,
           }}>✓</div>
         </div>
       )}
@@ -592,7 +639,11 @@ export default function MapPickEspectador() {
             gap: 'clamp(5px, 0.8vw, 10px)',
           }}>
             {pool.map(m => (
-              <MapaCard key={m.id} mapa={m} estado={getEstadoMapa(m.id)} />
+              <MapaCard
+                key={m.id} mapa={m}
+                estado={getEstadoMapa(m.id)}
+                equipe={getMapaEquipe(m.id, sessao, corA, corB, nomeA, nomeB)}
+              />
             ))}
           </div>
 
