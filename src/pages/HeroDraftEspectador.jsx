@@ -83,8 +83,10 @@ function ResultadoFinal({ estado, mapa }) {
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 'clamp(10px,2vh,24px)', padding: 'clamp(10px,2vh,24px) clamp(16px,3vw,48px)' }}>
           {/* Logo + Nome */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, ...anim('hde-res-slide-left', 0.2) }}>
-            <TeamIcon time={estado.timeA} size={logoSz} radius={Math.round(logoSz * 0.12)}
-              style={{ boxShadow: `0 0 60px ${corA}44`, border: 'none', background: 'transparent' }} />
+            <TeamIcon time={estado.timeA} size={logoSz} radius={0}
+              style={{ border: 'none', background: 'transparent', borderRadius: 0,
+                WebkitMaskImage: 'radial-gradient(ellipse 72% 72% at 50% 50%, black 38%, transparent 78%)',
+                maskImage: 'radial-gradient(ellipse 72% 72% at 50% 50%, black 38%, transparent 78%)' }} />
             <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 900, fontSize: 'clamp(20px,3.2vw,44px)', color: corA, letterSpacing: '0.04em', textShadow: `0 0 28px ${corA}66` }}>
               {estado.timeA.nome}
             </span>
@@ -101,15 +103,29 @@ function ResultadoFinal({ estado, mapa }) {
           )}
         </div>
 
-        {/* Divisor central */}
-        <div style={{ width: 1, background: 'linear-gradient(to bottom, transparent, rgba(255,255,255,0.12) 20%, rgba(255,255,255,0.12) 80%, transparent)', flexShrink: 0, ...anim('hde-res-divider', 0.3) }} />
+        {/* Divisor central com VS */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0, width: 60, ...anim('hde-res-fade-in', 0.4) }}>
+          <div style={{ flex: 1, width: 1, background: 'linear-gradient(to bottom, transparent, rgba(255,255,255,0.1) 40%)' }} />
+          <div style={{
+            fontFamily: "'Rajdhani', sans-serif", fontWeight: 900,
+            fontSize: 'clamp(20px, 3vw, 38px)', letterSpacing: '0.05em',
+            background: `linear-gradient(135deg, ${corA}, rgba(255,255,255,0.6), ${corB})`,
+            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
+            padding: '8px 0',
+            textShadow: 'none',
+          }}>VS</div>
+          <div style={{ flex: 1, width: 1, background: 'linear-gradient(to top, transparent, rgba(255,255,255,0.1) 40%)' }} />
+        </div>
 
         {/* ── Time B ── */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 'clamp(10px,2vh,24px)', padding: 'clamp(10px,2vh,24px) clamp(16px,3vw,48px)' }}>
           {/* Logo + Nome */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, ...anim('hde-res-slide-right', 0.2) }}>
-            <TeamIcon time={estado.timeB} size={logoSz} radius={Math.round(logoSz * 0.12)}
-              style={{ boxShadow: `0 0 60px ${corB}44`, border: 'none', background: 'transparent' }} />
+            <TeamIcon time={estado.timeB} size={logoSz} radius={0}
+              style={{ border: 'none', background: 'transparent', borderRadius: 0,
+                WebkitMaskImage: 'radial-gradient(ellipse 72% 72% at 50% 50%, black 38%, transparent 78%)',
+                maskImage: 'radial-gradient(ellipse 72% 72% at 50% 50%, black 38%, transparent 78%)' }} />
             <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 900, fontSize: 'clamp(20px,3.2vw,44px)', color: corB, letterSpacing: '0.04em', textShadow: `0 0 28px ${corB}66` }}>
               {estado.timeB.nome}
             </span>
