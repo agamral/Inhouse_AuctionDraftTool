@@ -637,6 +637,7 @@ export default function MapPickEspectador() {
   const prevMapaRef       = useRef(null)
   const prevProxMapaRef   = useRef(null)
   const prevPerdedorRef   = useRef(null)
+  const prevJogosLenRef   = useRef(0)
   const animCoinDoneRef   = useRef(false)
   const revealTimerRef    = useRef(null)
 
@@ -692,7 +693,13 @@ export default function MapPickEspectador() {
       }
 
       // Detecta quando admin define quem perdeu → anuncia vencedor e fecha reveal
-      if (data?.perdedorProxima && !prevPerdedorRef.current) {
+      // Condição dupla: valor mudou OU jogosJogados cresceu (mesmo time perdendo de novo)
+      const jogosLen = (data?.jogosJogados ?? []).length
+      const perdedorMudou = data?.perdedorProxima && (
+        data.perdedorProxima !== prevPerdedorRef.current ||
+        jogosLen > prevJogosLenRef.current
+      )
+      if (perdedorMudou) {
         const vencedorTime = data.perdedorProxima === 'A' ? 'B' : 'A'
         const vencedorData = vencedorTime === 'A' ? data?.timeA : data?.timeB
         setGanhou({
@@ -713,6 +720,7 @@ export default function MapPickEspectador() {
       prevMapaRef.current      = data?.mapaEscolhido ?? null
       prevProxMapaRef.current  = data?.proximaMapa ?? null
       prevPerdedorRef.current  = data?.perdedorProxima ?? null
+      prevJogosLenRef.current  = jogosLen
       setSessao(data)
       setLoading(false)
     })
