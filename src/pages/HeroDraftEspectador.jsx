@@ -17,6 +17,149 @@ import './HeroDraftEspectador.css'
 
 const SHOWMATCH_DRAFT_PATH_LEGACY = 'showmatch/sessaoAtiva/heroDraft'
 
+// ── Tela de resultado dramática ──────────────────────────────────────────────
+
+function ResultadoFinal({ estado, mapa }) {
+  const d = (delay) => ({ animationDelay: `${delay}s`, animationFillMode: 'both' })
+
+  const picksA  = estado.timeA.picks  ?? []
+  const picksB  = estado.timeB.picks  ?? []
+  const bansA   = bansLogicos(estado.timeA.bans ?? [])
+  const bansB   = bansLogicos(estado.timeB.bans ?? [])
+  const corA    = estado.timeA.cor ?? '#4a9eda'
+  const corB    = estado.timeB.cor ?? '#e05555'
+
+  const HeroImg = ({ heroiId, ban, side }) => {
+    const h = HEROES.find(x => x.id === heroiId)
+    return (
+      <img
+        src={getHeroImageUrl(heroiId) || h?.iconeUrl}
+        alt={h?.nome ?? heroiId}
+        className={ban ? 'hde-resultado-ban-img' : 'hde-resultado-pick-img'}
+        onError={e => { e.target.src = h?.iconeUrl ?? ''; e.onerror = null }}
+      />
+    )
+  }
+
+  return (
+    <div className="hde-resultado">
+      {/* Fundo do mapa */}
+      {mapa?.splashUrl && (
+        <div className="hde-resultado-bg" style={{ backgroundImage: `url(${mapa.splashUrl})` }} />
+      )}
+      {/* Glows de cor */}
+      <div className="hde-resultado-glow-a" style={{ background: corA }} />
+      <div className="hde-resultado-glow-b" style={{ background: corB }} />
+
+      {/* Header */}
+      <div style={{ position: 'relative', zIndex: 1, textAlign: 'center', padding: 'clamp(12px,2vh,24px) 0 0',
+        animation: 'hde-res-fade-up 0.7s ease-out 0.1s both', fontFamily: "'Barlow Condensed', sans-serif",
+        fontSize: 'clamp(10px,1.1vw,13px)', letterSpacing: '0.35em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)' }}>
+        DRAFT ENCERRADO
+        {mapa && <span style={{ color: 'var(--gold)', marginLeft: 16 }}>· {mapa.nome}</span>}
+      </div>
+
+      {/* Corpo principal */}
+      <div className="hde-resultado-body">
+
+        {/* Time A */}
+        <div className="hde-resultado-time" style={{ alignItems: 'flex-end' }}>
+
+          {/* Logo + nome */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8, animation: 'hde-res-slide-left 0.7s cubic-bezier(0.22,1,0.36,1) 0.2s both', width: '100%' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'flex-end' }}>
+              <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 900, fontSize: 'clamp(22px,3.5vw,48px)', color: corA, letterSpacing: '0.03em', textShadow: `0 0 30px ${corA}66` }}>
+                {estado.timeA.nome}
+              </span>
+              <TeamIcon time={estado.timeA} size={clamp(48, 7, 80)} radius={10}
+                style={{ boxShadow: `0 0 24px ${corA}55`, border: `2px solid ${corA}55` }} />
+            </div>
+
+            {/* Bans */}
+            {bansA.length > 0 && (
+              <div style={{ display: 'flex', gap: 5, justifyContent: 'flex-end', flexWrap: 'wrap', ...d(0.5), animation: 'hde-res-fade-up 0.5s ease-out both' }}>
+                {bansA.map((b, i) => (
+                  <div key={i} style={{ animation: `hde-res-scale-in 0.4s ease-out both`, animationDelay: `${0.6 + i * 0.08}s` }}>
+                    <HeroImg heroiId={b.heroiId} ban side="a" />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Picks */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(4px,0.8vh,10px)', width: '100%' }}>
+            {picksA.map((heroId, i) => {
+              const h = HEROES.find(x => x.id === heroId)
+              return (
+                <div key={i} className="hde-resultado-pick" style={{ justifyContent: 'flex-end', animation: `hde-res-slide-left 0.5s cubic-bezier(0.22,1,0.36,1) both`, animationDelay: `${1.0 + i * 0.18}s` }}>
+                  <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 'clamp(12px,1.5vw,18px)', color: 'rgba(255,255,255,0.85)', letterSpacing: '0.05em', textAlign: 'right' }}>
+                    {h?.nome ?? heroId}
+                  </span>
+                  <HeroImg heroiId={heroId} side="a" />
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Centro */}
+        <div className="hde-resultado-centro">
+          <div className="hde-resultado-divisor" />
+        </div>
+
+        {/* Time B */}
+        <div className="hde-resultado-time hde-resultado-time--b" style={{ alignItems: 'flex-start' }}>
+
+          {/* Logo + nome */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8, animation: 'hde-res-slide-right 0.7s cubic-bezier(0.22,1,0.36,1) 0.2s both', width: '100%' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'flex-start' }}>
+              <TeamIcon time={estado.timeB} size={clamp(48, 7, 80)} radius={10}
+                style={{ boxShadow: `0 0 24px ${corB}55`, border: `2px solid ${corB}55` }} />
+              <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 900, fontSize: 'clamp(22px,3.5vw,48px)', color: corB, letterSpacing: '0.03em', textShadow: `0 0 30px ${corB}66` }}>
+                {estado.timeB.nome}
+              </span>
+            </div>
+
+            {/* Bans */}
+            {bansB.length > 0 && (
+              <div style={{ display: 'flex', gap: 5, justifyContent: 'flex-start', flexWrap: 'wrap' }}>
+                {bansB.map((b, i) => (
+                  <div key={i} style={{ animation: `hde-res-scale-in 0.4s ease-out both`, animationDelay: `${0.6 + i * 0.08}s` }}>
+                    <HeroImg heroiId={b.heroiId} ban side="b" />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Picks */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(4px,0.8vh,10px)', width: '100%' }}>
+            {picksB.map((heroId, i) => {
+              const h = HEROES.find(x => x.id === heroId)
+              return (
+                <div key={i} className="hde-resultado-pick hde-resultado-pick--b" style={{ justifyContent: 'flex-start', animation: `hde-res-slide-right 0.5s cubic-bezier(0.22,1,0.36,1) both`, animationDelay: `${1.0 + i * 0.18}s` }}>
+                  <HeroImg heroiId={heroId} side="b" />
+                  <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 'clamp(12px,1.5vw,18px)', color: 'rgba(255,255,255,0.85)', letterSpacing: '0.05em' }}>
+                    {h?.nome ?? heroId}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+      </div>
+    </div>
+  )
+}
+
+// helper para calcular tamanho de ícone responsivo (px)
+function clamp(minPx, vhFactor, maxPx) {
+  if (typeof window === 'undefined') return maxPx
+  return Math.min(maxPx, Math.max(minPx, Math.round(window.innerHeight * vhFactor / 100)))
+}
+
 // URL: /campeonatos/:id/hero-draft/espectador?sessao=semifinal-1
 // URL: /showmatch/espectador?sessao=smXXXXX  (com ID único)
 export default function HeroDraftEspectador() {
@@ -143,6 +286,14 @@ export default function HeroDraftEspectador() {
       }
     }
   }, [estado?.historico?.length, estado?.passoAtual]) // eslint-disable-line
+
+  // ── Tela de resultado final (aparece 1.5s após o draft encerrar) ─────────
+  const [mostrarResultado, setMostrarResultado] = useState(false)
+  useEffect(() => {
+    if (estado?.status !== STATUS_DRAFT.ENCERRADO || mostrarResultado) return
+    const t = setTimeout(() => setMostrarResultado(true), 1500)
+    return () => clearTimeout(t)
+  }, [estado?.status]) // eslint-disable-line
 
   // ── Background alternante: mapa → logos → mapa → logos ──────────────────
   const [mapaVis, setMapaVis] = useState(false)
@@ -277,6 +428,9 @@ export default function HeroDraftEspectador() {
 
   return (
     <div className="hde-root">
+
+      {/* ── Tela de resultado dramática ──────────────────────────────────── */}
+      {mostrarResultado && <ResultadoFinal estado={estado} mapa={mapa} />}
 
       {/* ── Fundo ─────────────────────────────────────────────────────────── */}
       <div className="hde-bg-grid" />
