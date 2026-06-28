@@ -77,6 +77,22 @@ const CSS = `
     from { opacity: 0; transform: scale(0.92); }
     to   { opacity: 1; transform: scale(1); }
   }
+  @keyframes revealOverlayIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  @keyframes revealArtIn {
+    from { opacity: 0; transform: scale(1.04); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+  @keyframes revealInfoIn {
+    from { opacity: 0; transform: translateX(48px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes revealTitleIn {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
   @keyframes coinGira {
     0%   { transform: scaleX(1);    }
     25%  { transform: scaleX(0.05); }
@@ -406,6 +422,149 @@ function BanTira({ sessao, pool, nomeA, nomeB, corA, corB }) {
   )
 }
 
+// ── Tela de reveal do mapa ────────────────────────────────────────────────────
+
+function MapRevealScreen({ mapa, mapTimeNome, mapTimeCor, fpNome, fpCor, onDismiss }) {
+  const [vis, setVis] = useState(false)
+
+  useEffect(() => {
+    const t = setTimeout(() => setVis(true), 40)
+    return () => clearTimeout(t)
+  }, [])
+
+  return (
+    <div onClick={onDismiss} style={{
+      position: 'fixed', inset: 0, zIndex: 50, cursor: 'pointer',
+      display: 'flex',
+      opacity: vis ? 1 : 0,
+      transition: 'opacity 0.5s ease-out',
+    }}>
+
+      {/* Arte do mapa — lado esquerdo */}
+      <div style={{
+        flex: '0 0 58%', position: 'relative', overflow: 'hidden',
+        animation: vis ? 'revealArtIn 0.9s ease-out' : 'none',
+      }}>
+        <img
+          src={mapa.splashUrl} alt={mapa.nome}
+          onError={e => { e.target.style.background = '#0a0c10' }}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+        />
+        {/* Gradiente de blend para o lado direito */}
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, rgba(5,6,18,0) 45%, rgba(5,6,18,0.85) 75%, rgba(5,6,18,1) 100%)' }} />
+        {/* Gradiente inferior */}
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(5,6,18,0.6) 0%, transparent 30%)' }} />
+      </div>
+
+      {/* Informações — lado direito */}
+      <div style={{
+        flex: 1, background: '#050612',
+        display: 'flex', flexDirection: 'column', justifyContent: 'center',
+        padding: 'clamp(32px,5vh,64px) clamp(28px,4vw,56px)',
+        gap: 'clamp(16px,2.5vh,28px)',
+        animation: vis ? 'revealInfoIn 0.8s ease-out 0.2s both' : 'none',
+      }}>
+
+        {/* Label */}
+        <div style={{
+          fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700,
+          fontSize: 'clamp(10px, 1.1vw, 13px)', letterSpacing: '0.3em', textTransform: 'uppercase',
+          color: 'rgba(255,255,255,0.3)',
+        }}>
+          MAPA SELECIONADO
+        </div>
+
+        {/* Nome do mapa */}
+        <div style={{ animation: vis ? 'revealTitleIn 0.7s ease-out 0.35s both' : 'none' }}>
+          <div style={{
+            fontFamily: "'Rajdhani', sans-serif", fontWeight: 900,
+            fontSize: 'clamp(32px, 5.5vw, 72px)',
+            color: '#fff', lineHeight: 0.9, letterSpacing: '-0.01em',
+          }}>
+            {mapa.nome}
+          </div>
+        </div>
+
+        {/* Objetivo */}
+        {mapa.objetivo && (
+          <div style={{ animation: vis ? 'revealTitleIn 0.7s ease-out 0.5s both' : 'none' }}>
+            <div style={{
+              fontFamily: "'Barlow Condensed', sans-serif", fontSize: 'clamp(9px, 0.9vw, 11px)',
+              fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase',
+              color: 'var(--gold)', marginBottom: 6,
+            }}>
+              OBJETIVO
+            </div>
+            <div style={{
+              fontFamily: "'Rajdhani', sans-serif", fontWeight: 700,
+              fontSize: 'clamp(18px, 2.2vw, 28px)', color: 'var(--gold2)', letterSpacing: '0.02em',
+            }}>
+              {mapa.objetivo}
+            </div>
+          </div>
+        )}
+
+        {/* Descrição */}
+        {mapa.descricao && (
+          <div style={{ animation: vis ? 'revealTitleIn 0.7s ease-out 0.65s both' : 'none' }}>
+            <p style={{
+              fontFamily: "'Barlow', sans-serif", fontWeight: 400,
+              fontSize: 'clamp(12px, 1.3vw, 16px)',
+              color: 'rgba(226,221,214,0.75)', lineHeight: 1.65, margin: 0,
+              maxWidth: 460,
+            }}>
+              {mapa.descricao}
+            </p>
+          </div>
+        )}
+
+        {/* Layout image */}
+        {mapa.layoutUrl && (
+          <div style={{ animation: vis ? 'revealTitleIn 0.7s ease-out 0.75s both' : 'none' }}>
+            <img
+              src={mapa.layoutUrl} alt={`Layout — ${mapa.nome}`}
+              onError={e => { e.target.style.display = 'none' }}
+              style={{ maxWidth: 'clamp(160px, 22vw, 280px)', borderRadius: 8, opacity: 0.85, display: 'block' }}
+            />
+          </div>
+        )}
+
+        {/* Badges: who has FP, who chose the map */}
+        <div style={{
+          display: 'flex', gap: 20, flexWrap: 'wrap',
+          paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.07)',
+          animation: vis ? 'revealTitleIn 0.7s ease-out 0.8s both' : 'none',
+        }}>
+          {fpNome && (
+            <div>
+              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 'clamp(8px, 0.85vw, 10px)', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', marginBottom: 4 }}>
+                FIRST PICK
+              </div>
+              <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 'clamp(16px, 1.8vw, 22px)', color: fpCor }}>
+                {fpNome}
+              </div>
+            </div>
+          )}
+          {mapTimeNome && (
+            <div>
+              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 'clamp(8px, 0.85vw, 10px)', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', marginBottom: 4 }}>
+                ESCOLHEU O MAPA
+              </div>
+              <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 'clamp(16px, 1.8vw, 22px)', color: mapTimeCor }}>
+                {mapTimeNome}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 10, color: 'rgba(255,255,255,0.2)', letterSpacing: '0.1em', marginTop: 8 }}>
+          Clique para fechar
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function MapPickEspectador() {
@@ -413,16 +572,18 @@ export default function MapPickEspectador() {
   const sessaoId  = params.get('sessao')
   const { idPublico } = useCampeonato()
 
-  const [sessao, setSessao]     = useState(null)
-  const [loading, setLoading]   = useState(true)
-  const [animCoin, setAnimCoin] = useState(false)
-  const [flashMap, setFlashMap] = useState({}) // mapId → 'ban' | 'choose'
+  const [sessao, setSessao]       = useState(null)
+  const [loading, setLoading]     = useState(true)
+  const [animCoin, setAnimCoin]   = useState(false)
+  const [flashMap, setFlashMap]   = useState({}) // mapId → 'ban' | 'choose'
+  const [reveal, setReveal]       = useState(null) // { mapa, mapTimeNome, mapTimeCor, fpNome, fpCor }
 
   const prevResultadoRef  = useRef(null)
   const prevBansRef       = useRef([])
   const prevMapaRef       = useRef(null)
   const prevProxMapaRef   = useRef(null)
   const animCoinDoneRef   = useRef(false)
+  const revealTimerRef    = useRef(null)
 
   useEffect(() => {
     if (!idPublico || !sessaoId) return
@@ -445,16 +606,38 @@ export default function MapPickEspectador() {
         setTimeout(() => setFlashMap(prev => { const n = { ...prev }; delete n[newBan]; return n }), 1500)
       }
 
-      // Flash choose animation (mapa escolhido)
+      // Flash choose + reveal após 3s
+      const triggerReveal = (mapaId, fpTime, mt) => {
+        const mapa = MAPAS.find(m => m.id === mapaId)
+        if (!mapa) return
+        if (revealTimerRef.current) clearTimeout(revealTimerRef.current)
+        revealTimerRef.current = setTimeout(() => {
+          const nA = data?.timeA?.nome ?? 'Time A'
+          const nB = data?.timeB?.nome ?? 'Time B'
+          const cA = data?.timeA?.cor  ?? '#4a9eda'
+          const cB = data?.timeB?.cor  ?? '#e05555'
+          setReveal({
+            mapa,
+            mapTimeNome: mt  === 'A' ? nA : nB,
+            mapTimeCor:  mt  === 'A' ? cA : cB,
+            fpNome:      fpTime === 'A' ? nA : nB,
+            fpCor:       fpTime === 'A' ? cA : cB,
+          })
+        }, 3000)
+      }
+
       if (data?.mapaEscolhido && data.mapaEscolhido !== prevMapaRef.current) {
         const id = data.mapaEscolhido
         setFlashMap(prev => ({ ...prev, [id]: 'choose' }))
         setTimeout(() => setFlashMap(prev => { const n = { ...prev }; delete n[id]; return n }), 2000)
+        const mt = data.preferencia === 'mapa' ? data.vencedor : (data.vencedor === 'A' ? 'B' : 'A')
+        triggerReveal(id, data.firstPickTime, mt)
       }
       if (data?.proximaMapa && data.proximaMapa !== prevProxMapaRef.current) {
         const id = data.proximaMapa
         setFlashMap(prev => ({ ...prev, [id]: 'choose' }))
         setTimeout(() => setFlashMap(prev => { const n = { ...prev }; delete n[id]; return n }), 2000)
+        triggerReveal(id, data.proximaFirstPickTime, data.proximaMapTime)
       }
 
       prevResultadoRef.current = data?.resultado ?? null
@@ -543,6 +726,17 @@ export default function MapPickEspectador() {
   const temBans = bans.length > 0 || fase === 'banindo' || fase === 'escolhendo_mapa' || fase.startsWith('proxima') || fase === 'partida_pronta'
 
   return (
+    <>
+    {reveal && (
+      <MapRevealScreen
+        mapa={reveal.mapa}
+        mapTimeNome={reveal.mapTimeNome}
+        mapTimeCor={reveal.mapTimeCor}
+        fpNome={reveal.fpNome}
+        fpCor={reveal.fpCor}
+        onDismiss={() => setReveal(null)}
+      />
+    )}
     <div style={{
       position: 'fixed', inset: 0,
       background: '#070910',
@@ -673,5 +867,6 @@ export default function MapPickEspectador() {
         </div>
       )}
     </div>
+    </>
   )
 }
