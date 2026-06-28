@@ -151,7 +151,7 @@ export default function HeroDraftEspectador() {
     const mapa = getMapaById(estado?.mapaId)
     if (!mapa?.splashUrl) return
     let tick = 0
-    const PERIOD  = 12000  // intervalo entre fases
+    const PERIOD  = 7000   // intervalo entre fases (escuro = PERIOD - VISIBLE = 2s)
     const VISIBLE = 5000   // duração visível em cada fase
 
     const run = () => {

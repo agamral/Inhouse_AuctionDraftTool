@@ -106,7 +106,7 @@ body:has(.hde-root) > * {
   opacity: 0;
   transition: opacity 2.5s ease;
   pointer-events: none;
-  filter: blur(12px) saturate(0.55);
+  filter: blur(3px) saturate(0.7);
 }
 .hde-logo-bg--vis {
   opacity: 0.22;
