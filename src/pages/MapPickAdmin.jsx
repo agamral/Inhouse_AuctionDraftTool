@@ -528,8 +528,8 @@ export default function MapPickAdmin() {
   }
 
   async function handleCriar() {
-    let nomeA = form.nomeA.trim(), corA = form.corA, iconUrlA = null
-    let nomeB = form.nomeB.trim(), corB = form.corB, iconUrlB = null
+    let nomeA = form.nomeA.trim(), corA = form.corA, iconUrlA = null, emojiA = null
+    let nomeB = form.nomeB.trim(), corB = form.corB, iconUrlB = null, emojiB = null
 
     if (form.modoTimes === 'campeonato') {
       const tA = times[form.timeAId]
@@ -541,6 +541,8 @@ export default function MapPickAdmin() {
       nomeB = tB.nome; corB = tB.cor || CORES_PADRAO[1]
       if (tA.iconUrl) iconUrlA = tA.iconUrl
       if (tB.iconUrl) iconUrlB = tB.iconUrl
+      if (tA.emoji)   emojiA   = tA.emoji
+      if (tB.emoji)   emojiB   = tB.emoji
     } else {
       if (!nomeA || !nomeB) return flash('Informe os nomes dos dois times.', 'err')
     }
@@ -554,8 +556,8 @@ export default function MapPickAdmin() {
         criadoEm: Date.now(),
         pool: form.pool,
         escolhedor: form.escolhedor,
-        timeA: { nome: nomeA, cor: corA, ...(iconUrlA ? { iconUrl: iconUrlA } : {}) },
-        timeB: { nome: nomeB, cor: corB, ...(iconUrlB ? { iconUrl: iconUrlB } : {}) },
+        timeA: { nome: nomeA, cor: corA, ...(iconUrlA ? { iconUrl: iconUrlA } : {}), ...(emojiA ? { emoji: emojiA } : {}) },
+        timeB: { nome: nomeB, cor: corB, ...(iconUrlB ? { iconUrl: iconUrlB } : {}), ...(emojiB ? { emoji: emojiB } : {}) },
       })
       setSessaoSel(id)
       setMostraCriar(false)

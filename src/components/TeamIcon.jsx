@@ -29,19 +29,25 @@ export default function TeamIcon({ time, size = 40, radius, style = {} }) {
     )
   }
 
+  const baseStyle = {
+    width: size, height: size, borderRadius: r, flexShrink: 0,
+    background: cor + '22',
+    border: `1.5px solid ${cor}`,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    userSelect: 'none',
+    ...style,
+  }
+
+  if (time.emoji) {
+    return (
+      <div style={{ ...baseStyle, fontSize: Math.round(size * 0.52) }}>
+        {time.emoji}
+      </div>
+    )
+  }
+
   return (
-    <div style={{
-      width: size, height: size, borderRadius: r, flexShrink: 0,
-      background: cor + '22',
-      border: `1.5px solid ${cor}`,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      color: cor,
-      fontFamily: "'Rajdhani', sans-serif",
-      fontWeight: 700,
-      fontSize: Math.round(size * 0.45),
-      userSelect: 'none',
-      ...style,
-    }}>
+    <div style={{ ...baseStyle, color: cor, fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: Math.round(size * 0.45) }}>
       {time.nome?.[0]?.toUpperCase() ?? '?'}
     </div>
   )
