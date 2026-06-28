@@ -33,6 +33,9 @@ function AgendaPublica({ teams, confrontos, rodadas }) {
       c.status !== STATUS_CONFRONTO.EMPATE_PENDENTE
     ) return
     if (filtroTime && c.timeA !== filtroTime && c.timeB !== filtroTime) return
+    // Esconde confrontos de rodadas em configuração
+    const rodada = rodadas?.[c.rodadaId]
+    if (rodada?.status === 'configurando') return
     const rId = c.rodadaId ?? 'sem-rodada'
     if (!confirmedByRodada[rId]) confirmedByRodada[rId] = []
     confirmedByRodada[rId].push({ id, ...c })
@@ -190,10 +193,22 @@ export default function Agendamento() {
   useEffect(() => onValue(ref(db, disponibilidadePath(idPublico)),s => setDispon(s.val() ?? {})), [idPublico])
   useEffect(() => onValue(ref(db, rodadasPath(idPublico)),        s => setRodadas(s.val() ?? {})), [idPublico])
 
-  const confsMeuTime = Object.entries(confrontos).filter(([, c]) =>
-    (c.timeA === teamSel || c.timeB === teamSel) &&
-    [STATUS_CONFRONTO.PENDENTE, STATUS_CONFRONTO.AGENDANDO, STATUS_CONFRONTO.CONFIRMADO].includes(c.status)
-  ).sort(([, a], [, b]) => (a.criadoEm ?? 0) - (b.criadoEm ?? 0))
+  const STATUS_RODADA_VISIVEL = ['agendamento', 'jogando']
+  const confsMeuTime = Object.entries(confrontos).filter(([, c]) => {
+    if (c.timeA !== teamSel && c.timeB !== teamSel) return false
+    const rodada = rodadas[c.rodadaId]
+    const sr = rodada?.status
+    // Rodada em configuração: oculta para não-admin
+    if (!isAdmin && sr === 'configurando') return false
+    // Rodada encerrada: inclui todos os confrontos do meu time (incluindo realizados)
+    if (sr === 'encerrada') return true
+    // Ativo (agendamento/jogando/sem status): só confrontos ativos
+    return [STATUS_CONFRONTO.PENDENTE, STATUS_CONFRONTO.AGENDANDO, STATUS_CONFRONTO.CONFIRMADO].includes(c.status)
+  }).sort(([, a], [, b]) => (a.criadoEm ?? 0) - (b.criadoEm ?? 0))
+
+  // Separa confrontos de rodadas encerradas (colapsáveis) dos ativos
+  const confsAtivos      = confsMeuTime.filter(([, c]) => rodadas[c.rodadaId]?.status !== 'encerrada')
+  const confsEncerrados  = confsMeuTime.filter(([, c]) => rodadas[c.rodadaId]?.status === 'encerrada')
 
   useEffect(() => {
     if (!teamSel) return
@@ -468,7 +483,7 @@ export default function Agendamento() {
             </div>
           )}
 
-          {teamSel && confsMeuTime.length === 0 && (
+          {teamSel && confsAtivos.length === 0 && confsEncerrados.length === 0 && (
             <div className="ag-aviso" style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
               <strong style={{ color: 'var(--text)' }}>Nenhum confronto pendente para este time.</strong>
               <span style={{ fontSize: 13 }}>
@@ -480,7 +495,7 @@ export default function Agendamento() {
             </div>
           )}
 
-          {teamSel && confsMeuTime.map(([id, c]) => {
+          {teamSel && confsAtivos.map(([id, c]) => {
             const advId    = c.timeA === teamSel ? c.timeB : c.timeA
             const adv      = teams[advId]
                     const rodada    = rodadas[c.rodadaId]
@@ -702,6 +717,53 @@ export default function Agendamento() {
               </div>
             )
           })}
+
+          {/* ── Rodadas encerradas ─────────────────────────────────────── */}
+          {teamSel && confsEncerrados.length > 0 && (
+            <div style={{ marginTop: 24 }}>
+              <div className="ag-section-title" style={{ marginBottom: 10, fontSize: 13, color: 'var(--text3)' }}>
+                Rodadas encerradas
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {confsEncerrados.map(([id, c]) => {
+                  const advId   = c.timeA === teamSel ? c.timeB : c.timeA
+                  const adv     = teams[advId]
+                  const rodada  = rodadas[c.rodadaId]
+                  const realizado = c.status === STATUS_CONFRONTO.REALIZADO || c.status === STATUS_CONFRONTO.EMPATE_PENDENTE
+                  const pendente  = !realizado
+                  return (
+                    <div key={id} style={{
+                      display: 'flex', alignItems: 'center', gap: 12,
+                      padding: '8px 14px', borderRadius: 8,
+                      background: pendente ? 'rgba(224,85,85,0.06)' : 'var(--bg3)',
+                      border: `1px solid ${pendente ? 'rgba(224,85,85,0.35)' : 'var(--border)'}`,
+                      flexWrap: 'wrap',
+                    }}>
+                      <span style={{ fontSize: 11, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, letterSpacing: '0.08em', color: 'var(--text3)', minWidth: 70 }}>
+                        Rodada {rodada?.numero ?? '?'}
+                      </span>
+                      <span style={{ fontSize: 13, color: meuTime?.cor ?? 'var(--blue)', fontWeight: 700 }}>{meuTime?.nome ?? 'Meu time'}</span>
+                      <span style={{ fontSize: 12, color: 'var(--text3)' }}>vs</span>
+                      <span style={{ fontSize: 13, color: adv?.cor ?? 'var(--text)', fontWeight: 700 }}>{adv?.nome ?? advId}</span>
+                      <span style={{ marginLeft: 'auto', fontSize: 11, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700,
+                        color: pendente ? 'var(--red)' : 'var(--text2)',
+                        background: pendente ? 'rgba(224,85,85,0.12)' : 'var(--bg2)',
+                        border: `1px solid ${pendente ? 'rgba(224,85,85,0.3)' : 'var(--border)'}`,
+                        borderRadius: 4, padding: '2px 8px',
+                      }}>
+                        {pendente ? '⚠ Pendente' : STATUS_LABEL[c.status]}
+                      </span>
+                      {c.resultado && (
+                        <span style={{ fontSize: 12, color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif" }}>
+                          {c.resultado.timeA ?? 0}–{c.resultado.timeB ?? 0}
+                        </span>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
         </>
       )}
 

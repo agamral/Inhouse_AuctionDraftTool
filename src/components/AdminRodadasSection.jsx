@@ -246,6 +246,14 @@ export default function AdminRodadasSection() {
 
   // ── Mudar status do confronto ────────────────────────────────────────────────
 
+  async function mudarStatusRodada(rodadaId, status) {
+    try {
+      await update(ref(db, `${rodadasPath(campeonatoId)}/${rodadaId}`), { status })
+    } catch (e) {
+      flash('erro', e.message)
+    }
+  }
+
   async function mudarStatus(confrontoId, status, extras = {}) {
     try {
       await update(ref(db, `${confrontosPath(campeonatoId)}/${confrontoId}`), {
@@ -453,7 +461,7 @@ export default function AdminRodadasSection() {
         {/* Rodada selecionada */}
         {rodadaAtual && (
           <>
-            <RodadaHeader rodada={rodadaAtual} rodadaId={rodadaSel} onChange={mudarStatus} onAtualizar={atualizarRodada} onEstender={() => setModalEstenderRodada(true)} />
+            <RodadaHeader rodada={rodadaAtual} rodadaId={rodadaSel} onChange={mudarStatusRodada} onAtualizar={atualizarRodada} onEstender={() => setModalEstenderRodada(true)} />
 
             {/* Confrontos */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
