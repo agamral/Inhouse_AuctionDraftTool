@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { ref, onValue, set, update, remove, push } from 'firebase/database'
 import { db } from '../firebase/database'
 import { useCampeonato } from '../contexts/CampeonatoContext'
-import { teamPath, rodadasPath, confrontosPath, disponibilidadePath } from '../utils/campeonatoPaths'
+import { teamPath, rodadasPath, confrontosPath, disponibilidadePath, heroDraftPath } from '../utils/campeonatoPaths'
 import AdminReplayUpload from './AdminReplayUpload'
 import { HEROES } from '../utils/heroPool'
 import { MAPAS } from '../utils/mapPool'
@@ -55,6 +55,7 @@ export default function AdminRodadasSection() {
   const [modalEditarTimes, setModalEditarTimes]   = useState(null) // confrontoId (só bracket)
   const [confirmDelete, setConfirmDelete]         = useState(null) // confrontoId
   const [confirmReset, setConfirmReset]           = useState(null) // confrontoId
+  const [modalEditarDraft, setModalEditarDraft]   = useState(null) // { confrontoId, partidaNum }
 
   useEffect(() => onValue(ref(db, rodadasPath(campeonatoId)),         snap => setRodadas(snap.val()    ?? {})), [campeonatoId])
   useEffect(() => onValue(ref(db, confrontosPath(campeonatoId)),      snap => setConfrontos(snap.val() ?? {})), [campeonatoId])
@@ -487,6 +488,7 @@ export default function AdminRodadasSection() {
                   confirmandoReset={confirmReset === id}
                   onConfirmarReset={() => resetarConfronto(id)}
                   onCancelarReset={() => setConfirmReset(null)}
+                  onEditarDraft={(pNum) => setModalEditarDraft({ confrontoId: id, partidaNum: pNum })}
                   onIniciarDraft={() => navigate(`/showmatch?confronto=${id}&campeonato=${campeonatoId}`)}
                 />
               ))}
@@ -544,6 +546,16 @@ export default function AdminRodadasSection() {
           times={times}
           onSalvar={editarTimesBracket}
           onFechar={() => setModalEditarTimes(null)}
+        />
+      )}
+      {modalEditarDraft && confrontos[modalEditarDraft.confrontoId] && (
+        <ModalEditarDraft
+          confronto={confrontos[modalEditarDraft.confrontoId]}
+          confrontoId={modalEditarDraft.confrontoId}
+          partidaNum={modalEditarDraft.partidaNum}
+          times={times}
+          campeonatoId={campeonatoId}
+          onFechar={() => setModalEditarDraft(null)}
         />
       )}
     </section>
@@ -616,7 +628,7 @@ function RodadaHeader({ rodada, rodadaId, onChange, onAtualizar, onEstender }) {
   )
 }
 
-function ConfrontoCard({ confrontoId, confronto: c, campeonatoId, times, disponibilidade, onRegistrarResultado, onForcarSlot, onEditarTimes, onMudarStatus, onResetarAgendamento, onAgendarDesempate, onDeletar, confirmandoDelete, onConfirmarDelete, onCancelarDelete, onIniciarDraft, onResetarConfronto, confirmandoReset, onConfirmarReset, onCancelarReset }) {
+function ConfrontoCard({ confrontoId, confronto: c, campeonatoId, times, disponibilidade, onRegistrarResultado, onForcarSlot, onEditarTimes, onMudarStatus, onResetarAgendamento, onAgendarDesempate, onDeletar, confirmandoDelete, onConfirmarDelete, onCancelarDelete, onIniciarDraft, onResetarConfronto, confirmandoReset, onConfirmarReset, onCancelarReset, onEditarDraft }) {
   const tA = times[c.timeA]
   const tB = times[c.timeB]
   const dispA = disponibilidade[c.timeA]?.slots ?? []
@@ -773,12 +785,21 @@ function ConfrontoCard({ confrontoId, confronto: c, campeonatoId, times, disponi
                   <span style={{ fontSize: 11, fontFamily: "'Barlow Condensed', sans-serif", color: 'var(--text3)', minWidth: 52 }}>Partida {n}:</span>
                   <span style={{ fontSize: 11, fontFamily: "'Barlow Condensed', sans-serif", color: cor, flex: 1 }}>{label}</span>
                   {temDraft && (
-                    <button
-                      style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 4, padding: '1px 7px', fontSize: 10, color: 'var(--text2)', cursor: 'pointer', fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.05em' }}
-                      onClick={() => setOpenDraft(prev => ({ ...prev, [n]: !prev[n] }))}
-                    >
-                      {isOpen ? '▲' : '▼ picks'}
-                    </button>
+                    <>
+                      <button
+                        style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 4, padding: '1px 7px', fontSize: 10, color: 'var(--text2)', cursor: 'pointer', fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.05em' }}
+                        onClick={() => setOpenDraft(prev => ({ ...prev, [n]: !prev[n] }))}
+                      >
+                        {isOpen ? '▲' : '▼ picks'}
+                      </button>
+                      <button
+                        style={{ background: 'none', border: '1px solid rgba(201,168,76,0.35)', borderRadius: 4, padding: '1px 7px', fontSize: 10, color: 'var(--gold)', cursor: 'pointer', fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.05em' }}
+                        onClick={() => onEditarDraft && onEditarDraft(n)}
+                        title="Editar picks e bans desta partida"
+                      >
+                        ✎ editar
+                      </button>
+                    </>
                   )}
                 </div>
                 {isOpen && temDraft && (
@@ -937,6 +958,150 @@ function ConfrontoCard({ confrontoId, confronto: c, campeonatoId, times, disponi
 }
 
 // ── Modais ─────────────────────────────────────────────────────────────────────
+
+// ── Modal editar draft (picks e bans) ────────────────────────────────────────
+
+function ModalEditarDraft({ confronto: c, confrontoId, partidaNum, times, campeonatoId, onFechar }) {
+  const partida = c.partidas?.[partidaNum]
+  const tA = times[c.timeA]
+  const tB = times[c.timeB]
+
+  const [picks, setPicks] = useState({ A: [...(partida?.picks?.A ?? [])], B: [...(partida?.picks?.B ?? [])] })
+  const [bans,  setBans]  = useState({ A: [...(partida?.bans?.A  ?? [])], B: [...(partida?.bans?.B  ?? [])] })
+  const [slotEd, setSlotEd] = useState(null) // { time, tipo, index }
+  const [busca,  setBusca]  = useState('')
+  const [salvando, setSalvando] = useState(false)
+  const [msg, setMsg] = useState(null)
+
+  const todosUsados = [...picks.A, ...picks.B, ...bans.A, ...bans.B]
+
+  function setLista(time, tipo, index, novoId) {
+    if (tipo === 'picks') setPicks(prev => { const l = [...prev[time]]; l[index] = novoId; return { ...prev, [time]: l } })
+    else                  setBans (prev => { const l = [...prev[time]]; l[index] = novoId; return { ...prev, [time]: l } })
+    setSlotEd(null)
+    setBusca('')
+  }
+
+  async function salvar() {
+    setSalvando(true)
+    setMsg(null)
+    try {
+      const base = `${confrontosPath(campeonatoId)}/${confrontoId}/partidas/${partidaNum}`
+      await update(ref(db), { [`${base}/picks`]: picks, [`${base}/bans`]: bans })
+
+      if (partida?.heroDraftId) {
+        const hdBase = `${heroDraftPath(campeonatoId)}/${partida.heroDraftId}`
+        await update(ref(db, `${hdBase}/timeA`), { picks: picks.A, bans: bans.A })
+        await update(ref(db, `${hdBase}/timeB`), { picks: picks.B, bans: bans.B })
+      }
+      setMsg({ tipo: 'ok', txt: 'Salvo!' })
+      setTimeout(onFechar, 900)
+    } catch (e) {
+      setMsg({ tipo: 'err', txt: e.message })
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  const inputStyle = { background: 'var(--bg)', border: '1px solid var(--border2)', borderRadius: 6, padding: '7px 10px', color: 'var(--text)', fontFamily: "'Barlow', sans-serif", fontSize: 13, outline: 'none', width: '100%', boxSizing: 'border-box' }
+
+  return (
+    <Modal titulo={`Editar Draft — Partida ${partidaNum}`} onFechar={onFechar}>
+      <p style={{ fontSize: 12, color: 'var(--text2)', margin: '0 0 14px' }}>
+        Clique em qualquer pick ou ban para substituir o herói.
+        {partida?.heroDraftId && <span style={{ color: 'var(--gold)', marginLeft: 6 }}>· Sessão heroDraft vinculada também será atualizada.</span>}
+      </p>
+
+      {/* Grid picks/bans por time */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+        {[['A', tA, picks.A, bans.A], ['B', tB, picks.B, bans.B]].map(([t, time, pList, bList]) => (
+          <div key={t}>
+            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: time?.cor ?? 'var(--text2)', marginBottom: 8 }}>
+              {time?.nome ?? `Time ${t}`}
+            </div>
+
+            {bList.length > 0 && (
+              <div style={{ marginBottom: 8 }}>
+                <div style={{ fontSize: 9, fontFamily: "'Barlow Condensed', sans-serif", color: 'var(--text3)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 4 }}>Bans</div>
+                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                  {bList.map((id, i) => {
+                    const h   = HEROES.find(x => x.id === id)
+                    const sel = slotEd?.time === t && slotEd?.tipo === 'bans' && slotEd?.index === i
+                    return (
+                      <button key={i} title={h?.nome ?? id} onClick={() => setSlotEd(sel ? null : { time: t, tipo: 'bans', index: i })}
+                        style={{ padding: 0, border: `2px solid ${sel ? 'var(--gold)' : 'rgba(224,85,85,0.5)'}`, borderRadius: 5, background: 'none', cursor: 'pointer', width: 36, height: 36, overflow: 'hidden', flexShrink: 0 }}>
+                        <img src={h?.iconeUrl} alt={h?.nome ?? id} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', filter: 'grayscale(50%)' }} onError={e => { e.target.style.display = 'none' }} />
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {pList.length > 0 && (
+              <div>
+                <div style={{ fontSize: 9, fontFamily: "'Barlow Condensed', sans-serif", color: 'var(--text3)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 4 }}>Picks</div>
+                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                  {pList.map((id, i) => {
+                    const h   = HEROES.find(x => x.id === id)
+                    const sel = slotEd?.time === t && slotEd?.tipo === 'picks' && slotEd?.index === i
+                    return (
+                      <button key={i} title={h?.nome ?? id} onClick={() => setSlotEd(sel ? null : { time: t, tipo: 'picks', index: i })}
+                        style={{ padding: 0, border: `2px solid ${sel ? 'var(--gold)' : (time?.cor ?? 'var(--border2)') + '88'}`, borderRadius: 5, background: 'none', cursor: 'pointer', width: 36, height: 36, overflow: 'hidden', flexShrink: 0 }}>
+                        <img src={h?.iconeUrl} alt={h?.nome ?? id} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={e => { e.target.style.display = 'none' }} />
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Painel de substituição */}
+      {slotEd && (() => {
+        const listaAtual = slotEd.tipo === 'picks' ? picks[slotEd.time] : bans[slotEd.time]
+        const heroAtual  = HEROES.find(h => h.id === listaAtual[slotEd.index])
+        const timeSel    = slotEd.time === 'A' ? tA : tB
+        return (
+          <div style={{ background: 'var(--bg)', border: '1px solid var(--gold)', borderRadius: 8, padding: 12, marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ fontSize: 12, fontFamily: "'Barlow Condensed', sans-serif", color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span>Substituindo <strong style={{ color: 'var(--gold)' }}>{heroAtual?.nome ?? 'herói'}</strong> ({timeSel?.nome ?? `Time ${slotEd.time}`} · {slotEd.tipo === 'picks' ? 'Pick' : 'Ban'} #{slotEd.index + 1})</span>
+              <button onClick={() => { setSlotEd(null); setBusca('') }} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 14 }}>✕</button>
+            </div>
+            <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar herói..." autoFocus style={inputStyle} />
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, maxHeight: 180, overflowY: 'auto' }}>
+              {HEROES.filter(h => !busca || h.nome.toLowerCase().includes(busca.toLowerCase())).map(h => {
+                const jaUsado = todosUsados.includes(h.id) && h.id !== listaAtual[slotEd.index]
+                return (
+                  <button key={h.id} title={h.nome} onClick={() => !jaUsado && setLista(slotEd.time, slotEd.tipo, slotEd.index, h.id)}
+                    style={{ padding: 2, border: `1px solid ${jaUsado ? 'var(--border)' : 'var(--border2)'}`, borderRadius: 4, background: 'var(--bg2)', cursor: jaUsado ? 'not-allowed' : 'pointer', opacity: jaUsado ? 0.3 : 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, width: 48 }}>
+                    <img src={h.iconeUrl} alt={h.nome} style={{ width: 36, height: 36, borderRadius: 3, objectFit: 'cover' }} onError={e => { e.target.style.display = 'none' }} />
+                    <span style={{ fontSize: 8, fontFamily: "'Barlow Condensed', sans-serif", color: 'var(--text3)', lineHeight: 1.1, textAlign: 'center', width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h.nome}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )
+      })()}
+
+      {msg && (
+        <div style={{ padding: '6px 10px', borderRadius: 6, fontSize: 12, marginBottom: 10, color: msg.tipo === 'ok' ? 'var(--green)' : 'var(--red)', background: msg.tipo === 'ok' ? 'rgba(76,175,125,0.1)' : 'rgba(224,85,85,0.1)', border: `1px solid ${msg.tipo === 'ok' ? 'var(--green)' : 'var(--red)'}` }}>
+          {msg.txt}
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button className="btn primary" onClick={salvar} disabled={salvando} style={{ fontSize: 13, padding: '8px 20px' }}>
+          {salvando ? 'Salvando...' : 'Salvar alterações'}
+        </button>
+        <button className="btn" onClick={onFechar} style={{ fontSize: 13, padding: '8px 14px' }}>Cancelar</button>
+      </div>
+    </Modal>
+  )
+}
 
 function ModalEditarTimesBracket({ confronto: c, confrontoId, times, onSalvar, onFechar }) {
   const timesArr = Object.entries(times).sort(([,a],[,b]) => a.nome.localeCompare(b.nome))
