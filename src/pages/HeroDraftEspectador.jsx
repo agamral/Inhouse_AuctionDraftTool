@@ -32,7 +32,7 @@ function ResultadoFinal({ estado, mapa }) {
 
   const iconSz    = Math.min(96, Math.max(60, Math.round(window.innerHeight * 0.09)))
   const banSz     = Math.min(52, Math.max(32, Math.round(window.innerHeight * 0.05)))
-  const logoSz    = Math.min(160, Math.max(100, Math.round(window.innerHeight * 0.18)))
+  const logoSz    = Math.min(260, Math.max(160, Math.round(window.innerHeight * 0.28)))
 
   const renderPicks = (picks, cor, slideDir, baseDelay) =>
     picks.map((heroId, i) => {
@@ -84,7 +84,7 @@ function ResultadoFinal({ estado, mapa }) {
           {/* Logo + Nome */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, ...anim('hde-res-slide-left', 0.2) }}>
             <TeamIcon time={estado.timeA} size={logoSz} radius={Math.round(logoSz * 0.12)}
-              style={{ boxShadow: `0 0 48px ${corA}55, 0 0 16px ${corA}33`, border: `3px solid ${corA}44` }} />
+              style={{ boxShadow: `0 0 60px ${corA}44`, border: 'none', background: 'transparent' }} />
             <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 900, fontSize: 'clamp(20px,3.2vw,44px)', color: corA, letterSpacing: '0.04em', textShadow: `0 0 28px ${corA}66` }}>
               {estado.timeA.nome}
             </span>
@@ -109,7 +109,7 @@ function ResultadoFinal({ estado, mapa }) {
           {/* Logo + Nome */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, ...anim('hde-res-slide-right', 0.2) }}>
             <TeamIcon time={estado.timeB} size={logoSz} radius={Math.round(logoSz * 0.12)}
-              style={{ boxShadow: `0 0 48px ${corB}55, 0 0 16px ${corB}33`, border: `3px solid ${corB}44` }} />
+              style={{ boxShadow: `0 0 60px ${corB}44`, border: 'none', background: 'transparent' }} />
             <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 900, fontSize: 'clamp(20px,3.2vw,44px)', color: corB, letterSpacing: '0.04em', textShadow: `0 0 28px ${corB}66` }}>
               {estado.timeB.nome}
             </span>
