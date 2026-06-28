@@ -84,9 +84,7 @@ function ResultadoFinal({ estado, mapa }) {
           {/* Logo + Nome */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, ...anim('hde-res-slide-left', 0.2) }}>
             <TeamIcon time={estado.timeA} size={logoSz} radius={0}
-              style={{ border: 'none', background: 'transparent', borderRadius: 0,
-                WebkitMaskImage: 'radial-gradient(ellipse 72% 72% at 50% 50%, black 38%, transparent 78%)',
-                maskImage: 'radial-gradient(ellipse 72% 72% at 50% 50%, black 38%, transparent 78%)' }} />
+              style={{ border: 'none', background: 'transparent', borderRadius: 0 }} />
             <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 900, fontSize: 'clamp(20px,3.2vw,44px)', color: corA, letterSpacing: '0.04em', textShadow: `0 0 28px ${corA}66` }}>
               {estado.timeA.nome}
             </span>
@@ -123,9 +121,7 @@ function ResultadoFinal({ estado, mapa }) {
           {/* Logo + Nome */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, ...anim('hde-res-slide-right', 0.2) }}>
             <TeamIcon time={estado.timeB} size={logoSz} radius={0}
-              style={{ border: 'none', background: 'transparent', borderRadius: 0,
-                WebkitMaskImage: 'radial-gradient(ellipse 72% 72% at 50% 50%, black 38%, transparent 78%)',
-                maskImage: 'radial-gradient(ellipse 72% 72% at 50% 50%, black 38%, transparent 78%)' }} />
+              style={{ border: 'none', background: 'transparent', borderRadius: 0 }} />
             <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 900, fontSize: 'clamp(20px,3.2vw,44px)', color: corB, letterSpacing: '0.04em', textShadow: `0 0 28px ${corB}66` }}>
               {estado.timeB.nome}
             </span>
