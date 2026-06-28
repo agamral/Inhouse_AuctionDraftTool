@@ -95,6 +95,26 @@ body:has(.hde-root) > * {
 .hde-glow--a { top: -100px; left: -150px; }
 .hde-glow--b { top: -100px; right: -150px; }
 
+/* ── Logos de time no fundo ──────────────────────────────────────────────── */
+.hde-logo-bg {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: clamp(160px, 24vh, 300px);
+  height: clamp(160px, 24vh, 300px);
+  z-index: 3;
+  opacity: 0;
+  transition: opacity 2.5s ease;
+  pointer-events: none;
+  filter: blur(10px) saturate(0.6);
+}
+.hde-logo-bg--vis {
+  opacity: 0.18;
+  transition: opacity 2s ease;
+}
+.hde-logo-bg--a { left: -6vw; }
+.hde-logo-bg--b { right: -6vw; }
+
 /* ── Header ──────────────────────────────────────────────────────────────── */
 .hde-header {
   position: relative;

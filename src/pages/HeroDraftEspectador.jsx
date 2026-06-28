@@ -10,6 +10,7 @@ import { HEROES } from '../utils/heroPool'
 import { getHeroVideoUrl, getHeroImageUrl } from '../utils/heroVideos'
 import { passoAtual, getDuracao, ACOES, STATUS_DRAFT, bansLogicos } from '../utils/heroDraft'
 import { getMapaById } from '../utils/mapPool'
+import TeamIcon from '../components/TeamIcon'
 import { useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import './HeroDraftEspectador.css'
@@ -274,6 +275,13 @@ export default function HeroDraftEspectador() {
           style={{ backgroundImage: `url(${mapa.splashUrl})` }}
         />
       )}
+      {/* Logos dos times no fundo — sincronizados com o pulso do mapa */}
+      <div className={`hde-logo-bg hde-logo-bg--a${mapaVis ? ' hde-logo-bg--vis' : ''}`}>
+        <TeamIcon time={estado.timeA} size={280} radius={24} style={{ width: '100%', height: '100%', maxWidth: '100%', maxHeight: '100%', objectFit: 'cover' }} />
+      </div>
+      <div className={`hde-logo-bg hde-logo-bg--b${mapaVis ? ' hde-logo-bg--vis' : ''}`}>
+        <TeamIcon time={estado.timeB} size={280} radius={24} style={{ width: '100%', height: '100%', maxWidth: '100%', maxHeight: '100%', objectFit: 'cover' }} />
+      </div>
 
       {/* ── Header ────────────────────────────────────────────────────────── */}
       <header className="hde-header">
@@ -288,6 +296,7 @@ export default function HeroDraftEspectador() {
               ))
             })()}
           </div>
+          <TeamIcon time={estado.timeA} size={28} radius={6} style={{ flexShrink: 0 }} />
           <span className="hde-tnome" style={{ color: estado.timeA.cor }}>
             {estado.timeA.nome}
           </span>
@@ -340,6 +349,7 @@ export default function HeroDraftEspectador() {
           <span className="hde-tnome" style={{ color: estado.timeB.cor }}>
             {estado.timeB.nome}
           </span>
+          <TeamIcon time={estado.timeB} size={28} radius={6} style={{ flexShrink: 0 }} />
         </div>
 
       </header>

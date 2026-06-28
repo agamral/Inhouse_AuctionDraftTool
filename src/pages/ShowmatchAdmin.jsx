@@ -280,8 +280,8 @@ export default function ShowmatchAdmin() {
       ? seqBase.map(s => ({ ...s, time: s.time === 'A' ? 'B' : 'A' }))
       : seqBase
     const estado = criarEstadoInicial({
-      timeA:      { nome: sessao.timeA?.nome ?? 'Time A', capitaoUid: confrontoCtx?.tA?.capitaoUid, capitaoEmail: confrontoCtx?.tA?.capitaoEmail },
-      timeB:      { nome: sessao.timeB?.nome ?? 'Time B', capitaoUid: confrontoCtx?.tB?.capitaoUid, capitaoEmail: confrontoCtx?.tB?.capitaoEmail },
+      timeA:      { nome: sessao.timeA?.nome ?? 'Time A', capitaoUid: confrontoCtx?.tA?.capitaoUid, capitaoEmail: confrontoCtx?.tA?.capitaoEmail, ...(confrontoCtx?.tA?.emoji ? { emoji: confrontoCtx.tA.emoji } : {}), ...(confrontoCtx?.tA?.iconUrl ? { iconUrl: confrontoCtx.tA.iconUrl } : {}) },
+      timeB:      { nome: sessao.timeB?.nome ?? 'Time B', capitaoUid: confrontoCtx?.tB?.capitaoUid, capitaoEmail: confrontoCtx?.tB?.capitaoEmail, ...(confrontoCtx?.tB?.emoji ? { emoji: confrontoCtx.tB.emoji } : {}), ...(confrontoCtx?.tB?.iconUrl ? { iconUrl: confrontoCtx.tB.iconUrl } : {}) },
       sequencia,
       globalBans,
       mapaId:     mapaId || null,
