@@ -498,76 +498,87 @@ function MapRevealScreen({ mapa, mapTimeNome, mapTimeCor, mapTimeData, onDismiss
       {/* Informações — lado direito (45%) */}
       <div style={{
         flex: 1, background: '#050612',
-        display: 'flex', flexDirection: 'column', justifyContent: 'center',
-        padding: 'clamp(24px,4vh,52px) clamp(24px,3.5vw,48px)',
-        gap: 'clamp(12px,2vh,22px)',
+        display: 'flex', flexDirection: 'column',
+        padding: 'clamp(20px,3.5vh,44px) clamp(20px,3vw,44px)',
         animation: vis ? 'revealInfoIn 0.8s ease-out 0.2s both' : 'none',
+        minHeight: 0,
       }}>
 
-        {/* Label */}
-        <div style={{
-          fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700,
-          fontSize: 'clamp(9px, 1vw, 12px)', letterSpacing: '0.3em', textTransform: 'uppercase',
-          color: 'rgba(255,255,255,0.3)',
-        }}>
-          MAPA SELECIONADO
-        </div>
+        {/* Bloco de texto — compacto no topo */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(8px,1.4vh,16px)', flexShrink: 0 }}>
 
-        {/* Nome do mapa */}
-        <div style={{ animation: vis ? 'revealTitleIn 0.7s ease-out 0.3s both' : 'none' }}>
           <div style={{
-            fontFamily: "'Rajdhani', sans-serif", fontWeight: 900,
-            fontSize: 'clamp(28px, 5vw, 66px)',
-            color: '#fff', lineHeight: 0.9, letterSpacing: '-0.01em',
+            fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700,
+            fontSize: 'clamp(9px, 1vw, 11px)', letterSpacing: '0.3em', textTransform: 'uppercase',
+            color: 'rgba(255,255,255,0.3)',
           }}>
-            {mapa.nome}
+            MAPA SELECIONADO
           </div>
+
+          <div style={{ animation: vis ? 'revealTitleIn 0.7s ease-out 0.3s both' : 'none' }}>
+            <div style={{
+              fontFamily: "'Rajdhani', sans-serif", fontWeight: 900,
+              fontSize: 'clamp(30px, 5.5vw, 72px)',
+              color: '#fff', lineHeight: 0.88, letterSpacing: '-0.01em',
+            }}>
+              {mapa.nome}
+            </div>
+          </div>
+
+          {mapa.objetivo && (
+            <div style={{ animation: vis ? 'revealTitleIn 0.7s ease-out 0.42s both' : 'none' }}>
+              <div style={{
+                fontFamily: "'Barlow Condensed', sans-serif", fontSize: 'clamp(8px, 0.8vw, 10px)',
+                fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase',
+                color: 'var(--gold)', marginBottom: 4,
+              }}>
+                OBJETIVO
+              </div>
+              <div style={{
+                fontFamily: "'Rajdhani', sans-serif", fontWeight: 700,
+                fontSize: 'clamp(17px, 2.2vw, 28px)', color: 'var(--gold2)',
+              }}>
+                {mapa.objetivo}
+              </div>
+            </div>
+          )}
+
+          {mapa.descricao && (
+            <div style={{ animation: vis ? 'revealTitleIn 0.7s ease-out 0.54s both' : 'none' }}>
+              <p style={{
+                fontFamily: "'Barlow', sans-serif", fontWeight: 400,
+                fontSize: 'clamp(11px, 1.15vw, 14px)',
+                color: 'rgba(226,221,214,0.65)', lineHeight: 1.55, margin: 0,
+              }}>
+                {mapa.descricao}
+              </p>
+            </div>
+          )}
         </div>
 
-        {/* Objetivo */}
-        {mapa.objetivo && (
-          <div style={{ animation: vis ? 'revealTitleIn 0.7s ease-out 0.45s both' : 'none' }}>
-            <div style={{
-              fontFamily: "'Barlow Condensed', sans-serif", fontSize: 'clamp(8px, 0.85vw, 10px)',
-              fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase',
-              color: 'var(--gold)', marginBottom: 5,
-            }}>
-              OBJETIVO
-            </div>
-            <div style={{
-              fontFamily: "'Rajdhani', sans-serif", fontWeight: 700,
-              fontSize: 'clamp(16px, 2vw, 26px)', color: 'var(--gold2)', letterSpacing: '0.02em',
-            }}>
-              {mapa.objetivo}
-            </div>
-          </div>
-        )}
-
-        {/* Descrição */}
-        {mapa.descricao && (
-          <div style={{ animation: vis ? 'revealTitleIn 0.7s ease-out 0.58s both' : 'none' }}>
-            <p style={{
-              fontFamily: "'Barlow', sans-serif", fontWeight: 400,
-              fontSize: 'clamp(11px, 1.2vw, 15px)',
-              color: 'rgba(226,221,214,0.7)', lineHeight: 1.6, margin: 0,
-            }}>
-              {mapa.descricao}
-            </p>
-          </div>
-        )}
-
-        {/* Overhead — maior, sem maxWidth fixo */}
-        {mapa.layoutUrl && (
-          <div style={{ animation: vis ? 'revealTitleIn 0.7s ease-out 0.7s both' : 'none', flex: 1, display: 'flex', alignItems: 'flex-end' }}>
+        {/* Overhead — ocupa todo espaço restante abaixo do texto */}
+        {mapa.layoutUrl ? (
+          <div style={{
+            flex: 1, minHeight: 0,
+            marginTop: 'clamp(12px,2vh,24px)',
+            animation: vis ? 'revealTitleIn 0.7s ease-out 0.68s both' : 'none',
+            position: 'relative',
+          }}>
             <img
               src={mapa.layoutUrl} alt={`Layout — ${mapa.nome}`}
-              onError={e => { e.target.style.display = 'none' }}
-              style={{ width: '100%', maxHeight: '38vh', objectFit: 'contain', objectPosition: 'bottom left', borderRadius: 10, opacity: 0.9, display: 'block' }}
+              onError={e => { e.target.parentElement.style.display = 'none' }}
+              style={{
+                width: '100%', height: '100%',
+                objectFit: 'contain', objectPosition: 'bottom left',
+                borderRadius: 10, opacity: 0.92, display: 'block',
+              }}
             />
           </div>
+        ) : (
+          <div style={{ flex: 1 }} />
         )}
 
-        <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 9, color: 'rgba(255,255,255,0.18)', letterSpacing: '0.1em' }}>
+        <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 9, color: 'rgba(255,255,255,0.15)', letterSpacing: '0.1em', flexShrink: 0, marginTop: 8 }}>
           Clique para fechar
         </div>
       </div>

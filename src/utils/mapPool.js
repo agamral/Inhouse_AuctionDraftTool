@@ -4,9 +4,16 @@
  * Execute: npm run download-maps
  */
 
-const BASE = import.meta.env.PROD
-  ? 'https://psionic-storm.com/wp-content/themes/psionicstorm/img/battlegrounds'
-  : '/maps'
+// Splash arts locais em alta resolução (substituem o CDN externo para mapas do pool)
+const LOCAL_SPLASH = '/maps/splash'
+// Fallback para mapas sem splash local (CDN externo)
+const CDN_SPLASH = 'https://psionic-storm.com/wp-content/themes/psionicstorm/img/battlegrounds'
+
+const POOL_LOCAL_SPLASH = new Set([
+  'alterac-pass', 'battlefield-of-eternity', 'braxis-holdout', 'cursed-hollow',
+  'dragon-shire', 'garden-of-terror', 'infernal-shrines', 'sky-temple',
+  'tomb-of-the-spider-queen', 'towers-of-doom', 'volskaya-foundry',
+])
 
 // ── Informações detalhadas por mapa ──────────────────────────────────────────
 // Editar aqui para atualizar as informações exibidas no espectador.
@@ -106,7 +113,13 @@ export const MAPAS = [
   { id: 'towers-of-doom',           nome: 'Towers of Doom'            },
   { id: 'volskaya-foundry',         nome: 'Volskaya Foundry'          },
   { id: 'warhead-junction',         nome: 'Warhead Junction'          },
-].map(m => ({ ...m, splashUrl: `${BASE}/${m.id}.jpg`, ...(MAPAS_INFO[m.id] ?? {}) }))
+].map(m => ({
+  ...m,
+  splashUrl: POOL_LOCAL_SPLASH.has(m.id)
+    ? `${LOCAL_SPLASH}/${m.id}.webp`
+    : `${CDN_SPLASH}/${m.id}.jpg`,
+  ...(MAPAS_INFO[m.id] ?? {}),
+}))
 
 // Pool desta temporada — usado como padrão no pick de mapas
 export const POOL_TEMPORADA = [
