@@ -243,10 +243,26 @@ function MapaCard({ mapa, estado, equipe }) {
         </div>
       )}
 
-      {/* Overlay jogado */}
+      {/* Overlay jogado — TeamIcon se disponível, ⚔ genérico caso contrário */}
       {jogado && (
         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(201,168,76,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, color: '#0a0c10', boxShadow: '0 2px 12px rgba(0,0,0,0.5)' }}>⚔</div>
+          {equipe ? (
+            <div style={{ position: 'relative' }}>
+              <TeamIcon
+                time={equipe} size={64} radius={32}
+                style={{ boxShadow: `0 4px 20px rgba(0,0,0,0.7), 0 0 20px ${equipe.cor ?? '#c9a84c'}44`, border: '2px solid rgba(255,255,255,0.15)', opacity: 0.85 }}
+              />
+              <div style={{
+                position: 'absolute', top: -5, right: -5,
+                width: 24, height: 24, borderRadius: '50%',
+                background: 'rgba(201,168,76,0.9)', border: '2px solid rgba(0,0,0,0.6)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 12, color: '#0a0c10',
+              }}>⚔</div>
+            </div>
+          ) : (
+            <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(201,168,76,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, color: '#0a0c10', boxShadow: '0 2px 12px rgba(0,0,0,0.5)' }}>⚔</div>
+          )}
         </div>
       )}
 
