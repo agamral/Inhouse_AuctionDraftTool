@@ -73,14 +73,14 @@ const CSS = `
   /* Oculta navbar e footer para tela cheia do espectador */
   nav, footer, .navbar { display: none !important; }
 
-  /* Conveyor belt — loop contínuo em direção ao nome do time */
-  @keyframes conveyorToA {
-    from { transform: translateX(36px); }
-    to   { transform: translateX(-36px); }
+  /* Conveyor belt seamless — duplica o conteúdo e translada -50% para loop sem salto */
+  @keyframes seamlessLeft {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
   }
-  @keyframes conveyorToB {
-    from { transform: translateX(-36px); }
-    to   { transform: translateX(36px); }
+  @keyframes seamlessRight {
+    from { transform: translateX(-50%); }
+    to   { transform: translateX(0); }
   }
 
   @keyframes flashBan {
@@ -877,27 +877,34 @@ export default function MapPickEspectador() {
         const aAtivo = turno === 'A'
         const bAtivo = turno === 'B'
 
-        // Seta conveyor belt — altura total do header, máscara gradiente nas bordas, velocidade suave
-        const Arrows = ({ dir, cor }) => (
-          <div style={{
-            width: 56, flexShrink: 0,
-            alignSelf: 'stretch',  // ocupa todo o Y do header
-            display: 'flex', alignItems: 'center',
-            overflow: 'hidden',
-            // Máscara gradiente: fade nas duas bordas, evita corte brusco
-            WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 30%, black 70%, transparent 100%)',
-            maskImage:        'linear-gradient(to right, transparent 0%, black 30%, black 70%, transparent 100%)',
-          }}>
-            <span style={{
-              fontFamily: "'Rajdhani', sans-serif", fontWeight: 900,
-              fontSize: 'clamp(14px, 1.8vw, 22px)', color: cor,
-              letterSpacing: 8, display: 'inline-block', whiteSpace: 'nowrap',
-              animation: `${dir === 'left' ? 'conveyorToA' : 'conveyorToB'} 1.6s linear infinite`,
+        // Conveyor belt seamless: dois spans idênticos, translada -50% da largura total = sem salto
+        const Arrows = ({ dir, cor }) => {
+          const chars = dir === 'left' ? '‹  ‹  ‹  ‹  ‹  ' : '›  ›  ›  ›  ›  '
+          const arrowStyle = {
+            fontFamily: "'Rajdhani', sans-serif", fontWeight: 900,
+            fontSize: 'clamp(14px, 1.8vw, 22px)', color: cor,
+            whiteSpace: 'nowrap', userSelect: 'none',
+          }
+          return (
+            <div style={{
+              width: 56, flexShrink: 0,
+              alignSelf: 'stretch',
+              display: 'flex', alignItems: 'center',
+              overflow: 'hidden',
+              WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 28%, black 72%, transparent 100%)',
+              maskImage:        'linear-gradient(to right, transparent 0%, black 28%, black 72%, transparent 100%)',
             }}>
-              {dir === 'left' ? '‹ ‹ ‹ ‹ ‹ ‹ ‹ ‹' : '› › › › › › › ›'}
-            </span>
-          </div>
-        )
+              {/* Conteúdo duplicado — quando o 1º sai, o 2º já está no lugar exato */}
+              <div style={{
+                display: 'flex', flexShrink: 0,
+                animation: `${dir === 'left' ? 'seamlessLeft' : 'seamlessRight'} 2s linear infinite`,
+              }}>
+                <span style={arrowStyle}>{chars}</span>
+                <span style={arrowStyle}>{chars}</span>
+              </div>
+            </div>
+          )
+        }
 
         return (
           <div style={{
