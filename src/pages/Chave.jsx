@@ -9,6 +9,7 @@ import { teamPath, rodadasPath, confrontosPath } from '../utils/campeonatoPaths'
 import {
   BRACKET_UPPER, BRACKET_LOWER, BRACKET_LABELS,
   STATUS_CONFRONTO, TIPO_CONFRONTO, SLOT_LABEL, dataDoDia, dataDoSlot, baseSlotKey,
+  addDias, numSemanasRodada,
 } from '../utils/scheduling'
 import TeamIcon from '../components/TeamIcon'
 import './Chave.css'
@@ -190,11 +191,15 @@ export default function Chave() {
               <div key={rid} className="chave-rodada">
                 <div className="chave-rodada-label">
                   Rodada {rodada?.numero ?? '?'}
-                  {rodada?.semanaJogos && (
-                    <span className="chave-rodada-data">
-                      {dataDoDia('terca', rodada.semanaJogos)} a {dataDoDia('sabado', rodada.semanaJogos)}
-                    </span>
-                  )}
+                  {rodada?.semanaJogos && (() => {
+                    const n = numSemanasRodada(rodada)
+                    const fimRef = n > 1 ? addDias(rodada.semanaJogos, (n - 1) * 7) : rodada.semanaJogos
+                    return (
+                      <span className="chave-rodada-data">
+                        {dataDoDia('terca', rodada.semanaJogos)} a {dataDoDia('sabado', fimRef)}
+                      </span>
+                    )
+                  })()}
                 </div>
                 <div className="chave-rodada-matches">
                   {matches
