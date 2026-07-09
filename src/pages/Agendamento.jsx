@@ -96,7 +96,7 @@ function AgendaPublica({ teams, confrontos, rodadas }) {
                   (SLOTS_PLAYOFF.indexOf(baseSlotKey(a.slot)) - SLOTS_PLAYOFF.indexOf(baseSlotKey(b.slot)))
                 )
                 .map(c => (
-                  <PartidaCard key={c.id} c={c} teams={teams} />
+                  <PartidaCard key={c.id} c={c} teams={teams} rodadas={rodadas} />
                 ))}
             </div>
           </div>
@@ -108,7 +108,7 @@ function AgendaPublica({ teams, confrontos, rodadas }) {
           <div className="ag-rodada-label">Outros</div>
           <div className="ag-partidas-list">
             {semRodada.map(c => (
-              <PartidaCard key={c.id} c={c} teams={teams} />
+              <PartidaCard key={c.id} c={c} teams={teams} rodadas={rodadas} />
             ))}
           </div>
         </div>
@@ -117,16 +117,23 @@ function AgendaPublica({ teams, confrontos, rodadas }) {
   )
 }
 
-function PartidaCard({ c, teams }) {
+function PartidaCard({ c, teams, rodadas }) {
   const tA = teams[c.timeA]
   const tB = teams[c.timeB]
   const isRealizado = c.status === STATUS_CONFRONTO.REALIZADO
   const isEmpPend   = c.status === STATUS_CONFRONTO.EMPATE_PENDENTE
+  const rodada = rodadas?.[c.rodadaId]
+  const dataConfronto = c.slot ? dataDoSlot(c.slot, rodada?.semanaJogos) : null
 
   return (
     <div className={`ag-partida-card${isRealizado ? ' ag-partida-card--realizado' : ''}`}>
       <div className="ag-partida-slot">
         {c.slot ? SLOT_LABEL[baseSlotKey(c.slot)] : '—'}
+        {dataConfronto && (
+          <span style={{ display: 'block', fontSize: 10, fontWeight: 400, color: 'var(--text3)', letterSpacing: '0.03em' }}>
+            {dataConfronto}
+          </span>
+        )}
       </div>
       <div className="ag-partida-times">
         <span style={{ color: tA?.cor ?? 'var(--text)', fontWeight: 700 }}>{tA?.nome ?? 'Time A'}</span>
