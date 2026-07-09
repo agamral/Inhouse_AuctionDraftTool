@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { ref, onValue } from 'firebase/database'
+import { useTranslation } from 'react-i18next'
 import { db } from '../firebase/database'
 import { useCampeonato } from '../contexts/CampeonatoContext'
 import { mapPickPath } from '../utils/campeonatoPaths'
@@ -137,6 +138,7 @@ const CSS = `
 // ── Moeda espectador ──────────────────────────────────────────────────────────
 
 function MoedaSpec({ resultado, animando }) {
+  const { t } = useTranslation()
   return (
     <div style={{
       width: 140, height: 140, borderRadius: '50%',
@@ -156,7 +158,7 @@ function MoedaSpec({ resultado, animando }) {
         color: resultado && !animando ? '#0a0c10' : 'var(--gold)',
         letterSpacing: '0.04em',
       }}>
-        {animando ? '?' : resultado === 'cara' ? 'CARA' : resultado === 'coroa' ? 'COROA' : '?'}
+        {animando ? '?' : resultado === 'cara' ? t('mapPick.cara').toUpperCase() : resultado === 'coroa' ? t('mapPick.coroa').toUpperCase() : '?'}
       </span>
     </div>
   )
@@ -296,6 +298,7 @@ function MapaCard({ mapa, estado, equipe }) {
 // ── Banner de fase ────────────────────────────────────────────────────────────
 
 function FaseBanner({ sessao, nomeA, nomeB, corA, corB }) {
+  const { t } = useTranslation()
   const fase     = getFase(sessao)
   const bans     = sessao?.bans ?? []
   const mapTime  = getMapTime(sessao)
@@ -322,9 +325,9 @@ function FaseBanner({ sessao, nomeA, nomeB, corA, corB }) {
     const escolhCor  = sessao?.escolhedor === 'A' ? corA  : corB
     return (
       <div style={{ ...base, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-        <div style={{ fontSize: 'clamp(11px, 1.2vw, 14px)', letterSpacing: '0.25em', textTransform: 'uppercase', color: 'var(--text3)' }}>CARA OU COROA</div>
+        <div style={{ fontSize: 'clamp(11px, 1.2vw, 14px)', letterSpacing: '0.25em', textTransform: 'uppercase', color: 'var(--text3)' }}>{t('mapPick.coin_section')}</div>
         <div style={{ fontSize: 'clamp(16px, 2vw, 22px)', color: 'var(--text2)' }}>
-          <span style={{ color: escolhCor }}>{escolhNome}</span> escolhe o lado
+          <span style={{ color: escolhCor }}>{escolhNome}</span> {t('mapPick.choose_side_spec')}
         </div>
       </div>
     )
@@ -333,9 +336,9 @@ function FaseBanner({ sessao, nomeA, nomeB, corA, corB }) {
   if (fase === 'escolhendo') {
     return (
       <div style={{ ...base, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-        <div style={{ fontSize: 'clamp(11px, 1.2vw, 14px)', letterSpacing: '0.25em', textTransform: 'uppercase', color: 'var(--text3)' }}>ESCOLHA DE PRIORIDADE</div>
+        <div style={{ fontSize: 'clamp(11px, 1.2vw, 14px)', letterSpacing: '0.25em', textTransform: 'uppercase', color: 'var(--text3)' }}>{t('mapPick.priority_choice')}</div>
         <div style={{ fontSize: 'clamp(16px, 2vw, 22px)', color: 'var(--text2)' }}>
-          <span style={{ color: vencedorCor }}>{vencedorNome}</span> ganhou — escolhendo entre Mapa e First Pick
+          <span style={{ color: vencedorCor }}>{vencedorNome}</span> {t('mapPick.won_choosing')}
         </div>
       </div>
     )
@@ -345,11 +348,11 @@ function FaseBanner({ sessao, nomeA, nomeB, corA, corB }) {
     return (
       <div style={{ ...base, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
         <div style={{ fontSize: 'clamp(11px, 1.2vw, 14px)', letterSpacing: '0.25em', textTransform: 'uppercase', color: 'var(--text3)' }}>
-          BAN {bans.length + 1} DE 4
+          {t('mapPick.bans_progress', { atual: bans.length })}
         </div>
         <div style={{ fontSize: 'clamp(16px, 2vw, 22px)' }}>
           <span style={{ color: turnoCor, animation: 'pulse 1.5s ease-in-out infinite' }}>{turnoNome}</span>
-          <span style={{ color: 'var(--text2)' }}> está banindo</span>
+          <span style={{ color: 'var(--text2)' }}> {t('mapPick.is_banning')}</span>
         </div>
       </div>
     )
@@ -358,10 +361,10 @@ function FaseBanner({ sessao, nomeA, nomeB, corA, corB }) {
   if (fase === 'escolhendo_mapa') {
     return (
       <div style={{ ...base, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-        <div style={{ fontSize: 'clamp(11px, 1.2vw, 14px)', letterSpacing: '0.25em', textTransform: 'uppercase', color: 'var(--text3)' }}>ESCOLHA DO MAPA</div>
+        <div style={{ fontSize: 'clamp(11px, 1.2vw, 14px)', letterSpacing: '0.25em', textTransform: 'uppercase', color: 'var(--text3)' }}>{t('mapPick.map_selection')}</div>
         <div style={{ fontSize: 'clamp(16px, 2vw, 22px)' }}>
           <span style={{ color: mapTimeCor, animation: 'pulse 1.5s ease-in-out infinite' }}>{mapTimeNome}</span>
-          <span style={{ color: 'var(--text2)' }}> está escolhendo o mapa</span>
+          <span style={{ color: 'var(--text2)' }}> {t('mapPick.is_choosing_map')}</span>
         </div>
       </div>
     )
@@ -371,10 +374,10 @@ function FaseBanner({ sessao, nomeA, nomeB, corA, corB }) {
     const mapaAtual = MAPAS.find(m => m.id === sessao?.mapaEscolhido)
     return (
       <div style={{ ...base, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-        <div style={{ fontSize: 'clamp(11px, 1.2vw, 14px)', letterSpacing: '0.25em', textTransform: 'uppercase', color: 'var(--green)' }}>MAPA DEFINIDO</div>
+        <div style={{ fontSize: 'clamp(11px, 1.2vw, 14px)', letterSpacing: '0.25em', textTransform: 'uppercase', color: 'var(--green)' }}>{t('mapPick.map_defined')}</div>
         {mapaAtual && <div style={{ fontSize: 'clamp(18px, 2.2vw, 26px)', color: 'var(--gold2)', letterSpacing: '0.05em' }}>{mapaAtual.nome}</div>}
         <div style={{ fontSize: 'clamp(13px, 1.4vw, 16px)', color: 'var(--text2)' }}>
-          ⚡ First Pick: <span style={{ color: sessao?.firstPickTime === 'A' ? corA : corB, fontWeight: 700 }}>{sessao?.firstPickTime === 'A' ? nomeA : nomeB}</span>
+          {t('mapPick.first_pick_label')} <span style={{ color: sessao?.firstPickTime === 'A' ? corA : corB, fontWeight: 700 }}>{sessao?.firstPickTime === 'A' ? nomeA : nomeB}</span>
         </div>
       </div>
     )
@@ -383,9 +386,9 @@ function FaseBanner({ sessao, nomeA, nomeB, corA, corB }) {
   if (fase === 'proxima_escolhendo') {
     return (
       <div style={{ ...base, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-        <div style={{ fontSize: 'clamp(11px, 1.2vw, 14px)', letterSpacing: '0.25em', textTransform: 'uppercase', color: 'var(--text3)' }}>PRÓXIMA PARTIDA</div>
+        <div style={{ fontSize: 'clamp(11px, 1.2vw, 14px)', letterSpacing: '0.25em', textTransform: 'uppercase', color: 'var(--text3)' }}>{t('mapPick.next_game')}</div>
         <div style={{ fontSize: 'clamp(16px, 2vw, 22px)', color: 'var(--text2)' }}>
-          <span style={{ color: perdedorCor }}>{perdedorNome}</span> escolhe Mapa ou First Pick
+          <span style={{ color: perdedorCor }}>{perdedorNome}</span> {t('mapPick.choosing_priority')}
         </div>
       </div>
     )
@@ -394,10 +397,10 @@ function FaseBanner({ sessao, nomeA, nomeB, corA, corB }) {
   if (fase === 'proxima_escolhendo_mapa') {
     return (
       <div style={{ ...base, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-        <div style={{ fontSize: 'clamp(11px, 1.2vw, 14px)', letterSpacing: '0.25em', textTransform: 'uppercase', color: 'var(--text3)' }}>ESCOLHA DO MAPA</div>
+        <div style={{ fontSize: 'clamp(11px, 1.2vw, 14px)', letterSpacing: '0.25em', textTransform: 'uppercase', color: 'var(--text3)' }}>{t('mapPick.map_selection')}</div>
         <div style={{ fontSize: 'clamp(16px, 2vw, 22px)' }}>
           <span style={{ color: proxMapTimeCor, animation: 'pulse 1.5s ease-in-out infinite' }}>{proxMapTimeNome}</span>
-          <span style={{ color: 'var(--text2)' }}> está escolhendo o mapa</span>
+          <span style={{ color: 'var(--text2)' }}> {t('mapPick.is_choosing_map')}</span>
         </div>
       </div>
     )
@@ -407,10 +410,10 @@ function FaseBanner({ sessao, nomeA, nomeB, corA, corB }) {
     const proxMapa = MAPAS.find(m => m.id === sessao?.proximaMapa)
     return (
       <div style={{ ...base, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-        <div style={{ fontSize: 'clamp(11px, 1.2vw, 14px)', letterSpacing: '0.25em', textTransform: 'uppercase', color: 'var(--green)' }}>PRÓXIMO MAPA</div>
+        <div style={{ fontSize: 'clamp(11px, 1.2vw, 14px)', letterSpacing: '0.25em', textTransform: 'uppercase', color: 'var(--green)' }}>{t('mapPick.next_map')}</div>
         {proxMapa && <div style={{ fontSize: 'clamp(18px, 2.2vw, 26px)', color: 'var(--gold2)', letterSpacing: '0.05em' }}>{proxMapa.nome}</div>}
         <div style={{ fontSize: 'clamp(13px, 1.4vw, 16px)', color: 'var(--text2)' }}>
-          ⚡ First Pick: <span style={{ color: sessao?.proximaFirstPickTime === 'A' ? corA : corB, fontWeight: 700 }}>{sessao?.proximaFirstPickTime === 'A' ? nomeA : nomeB}</span>
+          {t('mapPick.first_pick_label')} <span style={{ color: sessao?.proximaFirstPickTime === 'A' ? corA : corB, fontWeight: 700 }}>{sessao?.proximaFirstPickTime === 'A' ? nomeA : nomeB}</span>
         </div>
       </div>
     )
@@ -422,6 +425,7 @@ function FaseBanner({ sessao, nomeA, nomeB, corA, corB }) {
 // ── Tira de bans ──────────────────────────────────────────────────────────────
 
 function BanTira({ sessao, pool, nomeA, nomeB, corA, corB }) {
+  const { t } = useTranslation()
   const bans    = sessao?.bans ?? []
   const mapTime = getMapTime(sessao)
 
@@ -449,7 +453,7 @@ function BanTira({ sessao, pool, nomeA, nomeB, corA, corB }) {
               {banTeam === 'A' ? nomeA : nomeB}
             </div>
             <div style={{ padding: '5px 10px', fontSize: 11, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, color: banMapa ? 'var(--red)' : ativo ? 'var(--gold)' : 'var(--text3)', minHeight: 26 }}>
-              {banMapa ? `✕ ${banMapa.nome}` : ativo ? '⚡ A banir...' : '—'}
+              {banMapa ? `✕ ${banMapa.nome}` : ativo ? `⚡ ${t('mapPick.banning')}` : '—'}
             </div>
           </div>
         )
@@ -461,6 +465,7 @@ function BanTira({ sessao, pool, nomeA, nomeB, corA, corB }) {
 // ── Tela de vencedor da partida ───────────────────────────────────────────────
 
 function VencedorScreen({ vencedor, onDone }) {
+  const { t } = useTranslation()
   const [phase, setPhase] = useState('in') // 'in' → 'show' → 'out'
 
   useEffect(() => {
@@ -484,7 +489,7 @@ function VencedorScreen({ vencedor, onDone }) {
         fontSize: 'clamp(11px, 1.2vw, 14px)', letterSpacing: '0.35em', textTransform: 'uppercase',
         color: 'rgba(255,255,255,0.35)',
       }}>
-        VENCEDOR DA PARTIDA
+        {t('mapPick.winner_label')}
       </div>
 
       <TeamIcon
@@ -510,6 +515,7 @@ function VencedorScreen({ vencedor, onDone }) {
 // ── Tela de reveal do mapa ────────────────────────────────────────────────────
 
 function MapRevealScreen({ mapa, mapTimeNome, mapTimeCor, mapTimeData, onDismiss }) {
+  const { t } = useTranslation()
   const [vis, setVis] = useState(false)
 
   useEffect(() => {
@@ -566,7 +572,7 @@ function MapRevealScreen({ mapa, mapTimeNome, mapTimeCor, mapTimeData, onDismiss
                 fontSize: 'clamp(9px, 0.85vw, 11px)', letterSpacing: '0.2em', textTransform: 'uppercase',
                 color: 'rgba(255,255,255,0.45)', marginBottom: 4,
               }}>
-                ESCOLHEU O MAPA
+                {t('mapPick.chose_map')}
               </div>
               <div style={{
                 fontFamily: "'Rajdhani', sans-serif", fontWeight: 900,
@@ -596,7 +602,7 @@ function MapRevealScreen({ mapa, mapTimeNome, mapTimeCor, mapTimeData, onDismiss
             fontSize: 'clamp(9px, 1vw, 11px)', letterSpacing: '0.3em', textTransform: 'uppercase',
             color: 'rgba(255,255,255,0.3)',
           }}>
-            MAPA SELECIONADO
+            {t('mapPick.selected_map')}
           </div>
 
           <div style={{ animation: vis ? 'revealTitleIn 0.7s ease-out 0.3s both' : 'none' }}>
@@ -612,7 +618,7 @@ function MapRevealScreen({ mapa, mapTimeNome, mapTimeCor, mapTimeData, onDismiss
           {mapa.objetivo && (
             <div style={{ animation: vis ? 'revealTitleIn 0.7s ease-out 0.42s both' : 'none' }}>
               <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 'clamp(8px, 0.8vw, 10px)', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: 4 }}>
-                OBJETIVO
+                {t('mapPick.objective')}
               </div>
               <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 'clamp(17px, 2.2vw, 28px)', color: 'var(--gold2)' }}>
                 {mapa.objetivo}
@@ -645,7 +651,7 @@ function MapRevealScreen({ mapa, mapTimeNome, mapTimeCor, mapTimeData, onDismiss
         )}
 
         <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 9, color: 'rgba(255,255,255,0.15)', letterSpacing: '0.1em', marginTop: 'auto', paddingTop: 8 }}>
-          Clique para fechar
+          {t('mapPick.click_to_close')}
         </div>
       </div>
     </div>
@@ -669,6 +675,7 @@ function getTurnoAtual(sessao, fase, turnoBan, mapTime) {
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function MapPickEspectador() {
+  const { t } = useTranslation()
   const [params]  = useSearchParams()
   const sessaoId  = params.get('sessao')
   const { idPublico } = useCampeonato()
@@ -780,12 +787,12 @@ export default function MapPickEspectador() {
 
   if (loading) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#050612', color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif", fontSize: 14, letterSpacing: '0.15em' }}>
-      CARREGANDO...
+      {t('mapPick.loading')}
     </div>
   )
   if (!sessao) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#050612', color: 'var(--text3)', fontFamily: "'Barlow Condensed', sans-serif", fontSize: 13 }}>
-      Sessão não encontrada.
+      {t('mapPick.notFound')}
     </div>
   )
 
@@ -831,7 +838,7 @@ export default function MapPickEspectador() {
               alignItems: 'center', justifyContent: 'center', gap: 16,
             }}>
               <div style={{ fontSize: 'clamp(11px, 1.4vw, 16px)', fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, letterSpacing: '0.3em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)' }}>
-                SÉRIE ENCERRADA
+                {t('mapPick.series_ended')}
               </div>
               <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 900, fontSize: 'clamp(28px, 5vw, 64px)', color: '#fff', letterSpacing: '0.06em', textShadow: '0 4px 30px rgba(0,0,0,0.8)', textAlign: 'center' }}>
                 {mapaObj.nome}
@@ -988,20 +995,20 @@ export default function MapPickEspectador() {
             {sessao.resultado && !animCoin && (
               <div style={{ textAlign: 'center', animation: 'fadeIn 0.5s ease-out' }}>
                 <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 900, fontSize: 'clamp(22px, 3vw, 38px)', color: 'var(--gold2)' }}>
-                  {sessao.resultado === 'cara' ? '😎 CARA!' : '👑 COROA!'}
+                  {sessao.resultado === 'cara' ? t('mapPick.cara_result') : t('mapPick.coroa_result')}
                 </div>
                 {sessao.vencedor && (
                   <div style={{ fontSize: 'clamp(14px, 1.6vw, 18px)', color: 'var(--text2)', marginTop: 6 }}>
                     <span style={{ color: sessao.vencedor === 'A' ? corA : corB, fontWeight: 700 }}>
                       {sessao.vencedor === 'A' ? nomeA : nomeB}
-                    </span> ganhou o cara ou coroa!
+                    </span> {t('mapPick.won_coin')}
                   </div>
                 )}
               </div>
             )}
             {!sessao.resultado && !animCoin && (
               <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 'clamp(16px, 2vw, 22px)', color: 'var(--text2)', animation: 'pulse 1.5s ease-in-out infinite' }}>
-                Aguardando escolha...
+                {t('mapPick.waiting_choosing')}
               </div>
             )}
           </div>
@@ -1049,7 +1056,7 @@ export default function MapPickEspectador() {
           borderTop: '1px solid rgba(255,255,255,0.05)',
           background: 'rgba(0,0,0,0.2)',
         }}>
-          <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.25)' }}>JOGADOS:</span>
+          <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.25)' }}>{t('mapPick.played_label')}</span>
           {jogados.map((id, i) => {
             const m = pool.find(x => x.id === id)
             return <span key={i} style={{ fontSize: 11, fontWeight: 700, color: 'rgba(201,168,76,0.7)', background: 'rgba(201,168,76,0.08)', border: '1px solid rgba(201,168,76,0.25)', borderRadius: 4, padding: '2px 8px' }}>⚔ {m?.nome ?? id}</span>
