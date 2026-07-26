@@ -99,6 +99,12 @@ export default function AdminRodadasSection() {
 
   async function atualizarRodada(rodadaId, campos) {
     try {
+      const rodada = rodadas[rodadaId]
+      const novaSemana  = 'semanaJogos'   in campos ? campos.semanaJogos   : rodada?.semanaJogos
+      const novoTermino = 'janelaFechaEm' in campos ? campos.janelaFechaEm : rodada?.janelaFechaEm
+      if (novaSemana && novoTermino) {
+        campos = { ...campos, numSemanas: calcularNumSemanas(novaSemana, novoTermino) }
+      }
       await update(ref(db, `${rodadasPath(campeonatoId)}/${rodadaId}`), campos)
     } catch (e) {
       flash('erro', e.message)
@@ -574,10 +580,9 @@ function RodadaHeader({ rodada, rodadaId, onChange, onAtualizar, onEstender }) {
         <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 15, color: 'var(--gold)' }}>
           Rodada {rodada.numero}
         </span>
-        {rodada.semanaJogos && (
+        {rodada.semanaJogos && semanas.length > 1 && (
           <span style={{ fontSize: 12, color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif" }}>
-            Semana de jogos: {rodada.semanaJogos}
-            {semanas.length > 1 && ` · ${semanas.length} semanas · até ${terminoAtual}`}
+            {semanas.length} semanas · até {terminoAtual}
           </span>
         )}
         <div style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>
@@ -606,6 +611,15 @@ function RodadaHeader({ rodada, rodadaId, onChange, onAtualizar, onEstender }) {
             onChange={e => onAtualizar && onAtualizar(rodadaId, { duasSemanas: e.target.checked })}
           />
           Janela de agendamento abrange 2 semanas
+        </label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif" }}>
+          Semana de jogos:
+          <input
+            type="date"
+            value={rodada.semanaJogos ?? ''}
+            onChange={e => onAtualizar && onAtualizar(rodadaId, { semanaJogos: e.target.value || null })}
+            style={{ ...inputStyle, width: 'auto', padding: '3px 8px', fontSize: 12 }}
+          />
         </label>
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text2)', fontFamily: "'Barlow Condensed', sans-serif" }}>
           Janela fecha em:
