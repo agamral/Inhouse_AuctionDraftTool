@@ -233,7 +233,7 @@ export default function Chave() {
       {/* ── Chave de Vencedores ───────────────────────────────────────────── */}
       {temUpper && (
         <div className="chave-secao">
-          <div className="chave-secao-titulo chave-secao-titulo--upper">Chave de Vencedores</div>
+          <div className="chave-secao-titulo chave-secao-titulo--upper">Chave Superior</div>
           <div className="chave-secao-bracket-wrap">
             <BracketSide
               rounds={upperRounds.map(t => porTipo[t])}
@@ -248,7 +248,7 @@ export default function Chave() {
       {/* ── Chave de Perdedores ───────────────────────────────────────────── */}
       {temLower && (
         <div className="chave-secao">
-          <div className="chave-secao-titulo chave-secao-titulo--lower">Chave de Perdedores</div>
+          <div className="chave-secao-titulo chave-secao-titulo--lower">Chave Inferior</div>
           <div className="chave-secao-bracket-wrap">
             <BracketSide
               rounds={lowerRounds.map(t => porTipo[t])}
