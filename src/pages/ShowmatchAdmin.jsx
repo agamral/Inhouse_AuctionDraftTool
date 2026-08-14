@@ -9,7 +9,7 @@ import { calcularMadnessBansOficial } from '../utils/draftRules'
 import { MAPAS } from '../utils/mapPool'
 import { HEROES } from '../utils/heroPool'
 import { teamPath, confrontosPath } from '../utils/campeonatoPaths'
-import { propagarBracket } from '../utils/scheduling'
+import { propagarBracket, estadoSerie } from '../utils/scheduling'
 
 function gerarSessaoId() {
   return `sm${Date.now().toString(36).slice(-5)}${Math.random().toString(36).slice(2, 6)}`
@@ -254,6 +254,17 @@ export default function ShowmatchAdmin() {
     carregar()
   }, [confrontoId, campeonatoId]) // eslint-disable-line
 
+  // Mantém `conf` fresco depois da carga inicial — madness, formato e times
+  // podem mudar no painel admin enquanto esta página está aberta. Só atualiza
+  // `conf`, preservando tA/tB e sem tocar nos campos de formulário já editados.
+  useEffect(() => {
+    if (!confrontoId || !campeonatoId) return
+    return onValue(ref(db, `${confrontosPath(campeonatoId)}/${confrontoId}`), snap => {
+      const conf = snap.val()
+      if (conf) setConfrontoCtx(prev => (prev ? { ...prev, conf } : prev))
+    })
+  }, [confrontoId, campeonatoId])
+
   function flash(text, tipo = 'ok') {
     setMsg({ text, tipo })
     setTimeout(() => setMsg(null), 3000)
@@ -382,9 +393,10 @@ export default function ShowmatchAdmin() {
   const concluidas   = partidasArr.filter(([, p]) => p.status === 'concluida').length
   const emDraftEntry = partidasArr.find(([, p]) => p.status === 'em_draft')
   const formato      = confrontoCtx?.conf?.formato ?? 'MD2'
-  const maxVit       = formato === 'MD5' ? 3 : 2
-  const maxTotal     = formato === 'MD5' ? 5 : 2
-  const isDone       = winsA >= maxVit || winsB >= maxVit || concluidas >= maxTotal
+  const vantagem     = confrontoCtx?.conf?.vantagem ?? null
+  const serie        = estadoSerie(formato, winsA, winsB, vantagem)
+  const maxTotal     = serie.maxJogos
+  const isDone       = serie.encerrada
   const numAtual     = emDraftEntry ? Number(emDraftEntry[0]) : concluidas + 1
 
   async function marcarVencedorPartida(time) {
@@ -459,12 +471,14 @@ export default function ShowmatchAdmin() {
   async function registrarResultadoFinal() {
     const basePath = confrontosPath(campeonatoId)
     const base     = `${basePath}/${confrontoId}`
-    const isTie    = winsA === winsB
+    const isTie    = serie.empatada
+    // O placar gravado inclui a vantagem da Grande Final (o modal do admin usa
+    // a mesma convenção e subtrai o bônus ao reabrir para edição).
     // resultado sempre necessário — tabela e bot leem c.resultado para pontuar
     const resultado = {
       tipo:  isTie ? 'empate' : 'normal',
-      timeA: winsA,
-      timeB: winsB,
+      timeA: serie.efetivoA,
+      timeB: serie.efetivoB,
     }
     const updates = {
       [`${base}/status`]:    isTie ? 'empate_pendente' : 'realizado',
@@ -999,8 +1013,9 @@ export default function ShowmatchAdmin() {
                             <div style={{ background: 'rgba(201,168,76,0.08)', border: '1px solid rgba(201,168,76,0.3)', borderRadius: 8, padding: '12px 16px' }}>
                               <p style={{ fontSize: 13, color: 'var(--text)', margin: '0 0 10px' }}>
                                 Confirmar resultado:{' '}
-                                <strong>{sessao?.timeA?.nome ?? 'Time A'} {winsA} × {winsB} {sessao?.timeB?.nome ?? 'Time B'}</strong>?
-                                {winsA === winsB && <span style={{ color: 'var(--gold)', marginLeft: 6 }}>(Empate — desempate pendente)</span>}
+                                <strong>{sessao?.timeA?.nome ?? 'Time A'} {serie.efetivoA} × {serie.efetivoB} {sessao?.timeB?.nome ?? 'Time B'}</strong>?
+                                {serie.bonusA > 0 && <span style={{ color: 'var(--gold)', marginLeft: 6 }}>(inclui a vantagem de +1 da Grande Final)</span>}
+                                {serie.empatada && <span style={{ color: 'var(--gold)', marginLeft: 6 }}>(Empate — desempate pendente)</span>}
                               </p>
                               <div style={{ display: 'flex', gap: 8 }}>
                                 <button className="btn primary" style={{ fontSize: 13, padding: '7px 16px' }} onClick={registrarResultadoFinal}>

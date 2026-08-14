@@ -428,6 +428,38 @@ export const FORMATO_SERIE = {
   MD2: 'MD2', MD3: 'MD3', MD5: 'MD5', MD7: 'MD7',
 }
 
+// Máximo de partidas de cada formato.
+export const FORMATO_MAX_JOGOS = { MD2: 2, MD3: 3, MD5: 5, MD7: 7 }
+
+// Vitórias necessárias pra fechar a série. MD2 não tem "primeiro a X" — os dois
+// jogos são sempre disputados e 1-1 é empate — por isso vale o próprio total.
+export const FORMATO_MAX_VITORIAS = { MD2: 2, MD3: 2, MD5: 3, MD7: 4 }
+
+/**
+ * Estado de uma série a partir das vitórias já jogadas.
+ *
+ * `vantagem === 'A_1_0'` (Grande Final) significa que o time A entra com uma
+ * vitória de bônus: ela conta pro placar e pro encerramento, mas não é uma
+ * partida jogada — daí `maxJogos` cair em 1.
+ *
+ * Retorna as vitórias efetivas (já com o bônus), quantas partidas ainda cabem
+ * e se a série acabou.
+ */
+export function estadoSerie(formato, winsA, winsB, vantagem = null) {
+  const bonusA    = vantagem === 'A_1_0' ? 1 : 0
+  const maxJogos  = (FORMATO_MAX_JOGOS[formato]    ?? 1) - bonusA
+  const maxVit    =  FORMATO_MAX_VITORIAS[formato] ?? 1
+  const efetivoA  = winsA + bonusA
+  const efetivoB  = winsB
+  const jogadas   = winsA + winsB
+  return {
+    maxJogos, maxVit, bonusA,
+    efetivoA, efetivoB,
+    encerrada: efetivoA >= maxVit || efetivoB >= maxVit || jogadas >= maxJogos,
+    empatada:  efetivoA === efetivoB,
+  }
+}
+
 // ── Pontuação padrão (sobrescrita pelo config do Firebase) ───────────────────
 
 export const PONTUACAO_PADRAO = {

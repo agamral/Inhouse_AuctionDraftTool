@@ -15,7 +15,7 @@ import {
   encontrarSlotsEmComum, calcularPontos, formatarResultado, confrontosComAlertas,
   baseSlotKey, slotSemana,
   semanasRodada, calcularNumSemanas, dataDoDia,
-  propagarBracket,
+  propagarBracket, estadoSerie,
 } from '../utils/scheduling'
 
 // Labels legíveis pra tipos de confronto no card admin
@@ -178,13 +178,24 @@ export default function AdminRodadasSection() {
       // ── Auto-propagação do bracket ──────────────────────────────────────
       // Se o confronto faz parte do bracket (tem bracketSlot), propaga o
       // vencedor e o perdedor para os próximos slots automaticamente.
+      let propagou = 0
       if (novoStatus === STATUS_CONFRONTO.REALIZADO) {
-        Object.assign(updates, propagarBracket(c, resultado, confrontos, confrontosPath(campeonatoId)))
+        const prop = propagarBracket(c, resultado, confrontos, confrontosPath(campeonatoId))
+        propagou = Object.keys(prop).length
+        Object.assign(updates, prop)
       }
 
       await update(ref(db), updates)
       setModalResultado(null)
-      flash('ok', 'Resultado registrado.')
+
+      // Placar sem vencedor definido num confronto de bracket trava a chave sem
+      // erro visível — avisa em vez de deixar o admin descobrir depois.
+      // A Grande Final não tem destino, então nunca propaga: não é problema.
+      if (c?.bracketSlot && (c.winnerTo || c.loserTo) && propagou === 0) {
+        flash('erro', 'Resultado salvo, mas a chave NÃO avançou: o placar não define um vencedor. Corrija o placar para que os times passem para a próxima fase.')
+      } else {
+        flash('ok', propagou > 0 ? 'Resultado registrado — chave atualizada.' : 'Resultado registrado.')
+      }
     } catch (e) {
       flash('erro', e.message)
     }
@@ -313,7 +324,7 @@ export default function AdminRodadasSection() {
     const novoStatus = c?.slot ? STATUS_CONFRONTO.CONFIRMADO : STATUS_CONFRONTO.AGENDANDO
     const base = `${confrontosPath(campeonatoId)}/${confrontoId}`
     try {
-      await update(ref(db), {
+      const updates = {
         [`${base}/status`]:       novoStatus,
         [`${base}/resultado`]:    null,
         [`${base}/observacoes`]:  null,
@@ -321,7 +332,26 @@ export default function AdminRodadasSection() {
         [`${base}/alertas`]:      {},
         [`${base}/partidas`]:     null,
         [`${base}/atualizadoEm`]: Date.now(),
-      })
+      }
+
+      // Bracket: desfaz a propagação. Limpa só os destinos que ainda contêm o
+      // time que veio deste confronto — se o admin já sobrescreveu manualmente
+      // ou a fase seguinte já foi jogada, não mexe.
+      if (c?.bracketSlot && c?.resultado) {
+        const propagado = propagarBracket(c, c.resultado, confrontos, confrontosPath(campeonatoId))
+        for (const [caminho, teamId] of Object.entries(propagado)) {
+          // caminho = `${basePath}/${destinoId}/${campo}`
+          const partes    = caminho.split('/')
+          const campo     = partes[partes.length - 1]        // 'timeA' | 'timeB'
+          const destinoId = partes[partes.length - 2]
+          const destino   = confrontos[destinoId]
+          if (!destino || destino[campo] !== teamId) continue
+          if (destino.resultado) continue   // fase seguinte já decidida
+          updates[caminho] = null
+        }
+      }
+
+      await update(ref(db), updates)
       setConfirmReset(null)
       flash('ok', `Confronto revertido para ${novoStatus === STATUS_CONFRONTO.CONFIRMADO ? 'agendado (slot mantido)' : 'agendamento'}.`)
     } catch (e) {
@@ -644,7 +674,7 @@ function ConfrontoCard({ confrontoId, confronto: c, campeonatoId, times, disponi
   const temPartidas  = partidasArr.length > 0
   const emDraftPart  = Object.values(partidasObj).find(p => p.status === 'em_draft')
   const emDraft      = !!emDraftPart
-  const maxTotal     = c.formato === 'MD5' ? 5 : c.formato === 'MD2' ? 2 : 1
+  const maxTotal     = estadoSerie(c.formato, winsA, winsB, c.vantagem).maxJogos
   const [openDraft, setOpenDraft] = useState({})
   const heroNome = useCallback(id => HEROES.find(h => h.id === id)?.nome ?? id, [])
   const mapaNome = useCallback(id => id ? (MAPAS.find(m => m.id === id)?.nome ?? id) : null, [])

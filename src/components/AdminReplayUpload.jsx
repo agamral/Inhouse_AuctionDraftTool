@@ -2,10 +2,9 @@ import { useState, useEffect } from 'react'
 import { ref, onValue, set, update } from 'firebase/database'
 import { db } from '../firebase/database'
 import { confrontosPath, playersPath } from '../utils/campeonatoPaths'
+import { FORMATO_MAX_JOGOS } from '../utils/scheduling'
 
 const PARSER_URL = (import.meta.env.VITE_REPLAY_PARSER_URL || '').replace(/\/$/, '')
-
-const FORMAT_MAX_GAMES = { MD2: 2, MD3: 3, MD5: 5, MD7: 7 }
 
 function normalizeTag(tag) {
   return (tag || '').split('#')[0].toLowerCase().trim()
@@ -43,7 +42,9 @@ export default function AdminReplayUpload({ confrontoId, confronto, campeonatoId
   const [savingVod, setSavingVod] = useState({})
 
   const replays   = confronto.replays ?? {}
-  const maxGames  = FORMAT_MAX_GAMES[confronto.formato] ?? 1
+  // Grande Final: a vantagem de +1 do time do Upper não é uma partida jogada,
+  // então não existe replay pra ela.
+  const maxGames  = (FORMATO_MAX_JOGOS[confronto.formato] ?? 1) - (confronto.vantagem === 'A_1_0' ? 1 : 0)
   const gameNums  = Array.from({ length: maxGames }, (_, i) => i + 1)
   const parsedCount = gameNums.filter(n => !!replays[`game${n}`]?.parsed).length
 
