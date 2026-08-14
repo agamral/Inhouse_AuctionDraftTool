@@ -9,6 +9,7 @@ import { calcularMadnessBansOficial } from '../utils/draftRules'
 import { MAPAS } from '../utils/mapPool'
 import { HEROES } from '../utils/heroPool'
 import { teamPath, confrontosPath } from '../utils/campeonatoPaths'
+import { propagarBracket } from '../utils/scheduling'
 
 function gerarSessaoId() {
   return `sm${Date.now().toString(36).slice(-5)}${Math.random().toString(36).slice(2, 6)}`
@@ -456,18 +457,29 @@ export default function ShowmatchAdmin() {
   }
 
   async function registrarResultadoFinal() {
-    const base   = `${confrontosPath(campeonatoId)}/${confrontoId}`
-    const isTie  = winsA === winsB
+    const basePath = confrontosPath(campeonatoId)
+    const base     = `${basePath}/${confrontoId}`
+    const isTie    = winsA === winsB
     // resultado sempre necessário — tabela e bot leem c.resultado para pontuar
     const resultado = {
       tipo:  isTie ? 'empate' : 'normal',
       timeA: winsA,
       timeB: winsB,
     }
-    await update(ref(db), {
+    const updates = {
       [`${base}/status`]:    isTie ? 'empate_pendente' : 'realizado',
       [`${base}/resultado`]: resultado,
-    })
+    }
+
+    // Confronto de bracket: leva vencedor/perdedor pros próximos slots. Precisa
+    // ler todos os confrontos porque winnerTo/loserTo apontam pra bracketSlot,
+    // não pro id do Firebase.
+    if (!isTie && confrontoCtx?.conf?.bracketSlot) {
+      const todos = (await get(ref(db, basePath))).val() ?? {}
+      Object.assign(updates, propagarBracket(todos[confrontoId], resultado, todos, basePath))
+    }
+
+    await update(ref(db), updates)
     setConfirmResultado(false)
     setResultadoFinalOk(true)
     flash(isTie ? 'Empate registrado — desempate pendente.' : 'Resultado registrado!')

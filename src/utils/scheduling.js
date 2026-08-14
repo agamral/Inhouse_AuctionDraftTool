@@ -802,3 +802,64 @@ export const STATUS_COR = {
   [STATUS_CONFRONTO.ADIADO]:          'var(--purple)',
   [STATUS_CONFRONTO.CANCELADO]:       'var(--text3)',
 }
+
+// ── Propagação do bracket ────────────────────────────────────────────────────
+
+/**
+ * Retorna o teamId vencedor a partir de um resultado. null = inconclusivo
+ * (empate, duplo W.O. ou tipo desconhecido).
+ */
+export function getWinnerFromResult(resultado, timeA, timeB) {
+  if (!resultado) return null
+  switch (resultado.tipo) {
+    case TIPO_RESULTADO.WO_A: return timeA
+    case TIPO_RESULTADO.WO_B: return timeB
+    case TIPO_RESULTADO.NORMAL: {
+      const gA = Number(resultado.timeA ?? 0)
+      const gB = Number(resultado.timeB ?? 0)
+      if (gA > gB) return timeA
+      if (gB > gA) return timeB
+      return null  // empate
+    }
+    default: return null
+  }
+}
+
+/**
+ * Monta os updates de propagação do bracket para um confronto que acabou de
+ * ser realizado: leva o vencedor para `winnerTo` e o perdedor para `loserTo`.
+ *
+ * Retorna um objeto `{ [pathAbsoluto]: teamId }` pronto pra ser mesclado num
+ * update() do Firebase. Vazio quando não há o que propagar (confronto fora do
+ * bracket, resultado inconclusivo ou slot de destino inexistente).
+ *
+ * @param {object}  confronto   confronto de origem (precisa de bracketSlot)
+ * @param {object}  resultado   resultado registrado
+ * @param {object}  confrontos  mapa completo { confrontoId: confronto }
+ * @param {string}  basePath    confrontosPath(campeonatoId)
+ */
+export function propagarBracket(confronto, resultado, confrontos, basePath) {
+  const updates = {}
+  if (!confronto?.bracketSlot) return updates
+
+  const winnerId = getWinnerFromResult(resultado, confronto.timeA, confronto.timeB)
+  if (!winnerId) return updates
+  const loserId = winnerId === confronto.timeA ? confronto.timeB : confronto.timeA
+
+  // Mapa bracketSlot → confrontoId no Firebase
+  const slotMap = {}
+  Object.entries(confrontos ?? {}).forEach(([id, c]) => {
+    if (c?.bracketSlot) slotMap[c.bracketSlot] = id
+  })
+
+  if (confronto.winnerTo && slotMap[confronto.winnerTo]) {
+    const campo = confronto.winnerSlot === 'B' ? 'timeB' : 'timeA'
+    updates[`${basePath}/${slotMap[confronto.winnerTo]}/${campo}`] = winnerId
+  }
+  if (loserId && confronto.loserTo && slotMap[confronto.loserTo]) {
+    const campo = confronto.loserSlot === 'B' ? 'timeB' : 'timeA'
+    updates[`${basePath}/${slotMap[confronto.loserTo]}/${campo}`] = loserId
+  }
+
+  return updates
+}

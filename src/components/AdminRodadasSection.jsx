@@ -15,6 +15,7 @@ import {
   encontrarSlotsEmComum, calcularPontos, formatarResultado, confrontosComAlertas,
   baseSlotKey, slotSemana,
   semanasRodada, calcularNumSemanas, dataDoDia,
+  propagarBracket,
 } from '../utils/scheduling'
 
 // Labels legíveis pra tipos de confronto no card admin
@@ -177,24 +178,8 @@ export default function AdminRodadasSection() {
       // ── Auto-propagação do bracket ──────────────────────────────────────
       // Se o confronto faz parte do bracket (tem bracketSlot), propaga o
       // vencedor e o perdedor para os próximos slots automaticamente.
-      if (c?.bracketSlot && novoStatus === STATUS_CONFRONTO.REALIZADO) {
-        const winnerId = getWinnerFromResult(resultado, c.timeA, c.timeB)
-        const loserId  = winnerId === c.timeA ? c.timeB : c.timeA
-
-        // Mapa bracketSlot → confrontoId Firebase
-        const slotMap = {}
-        Object.entries(confrontos).forEach(([id, conf]) => {
-          if (conf.bracketSlot) slotMap[conf.bracketSlot] = id
-        })
-
-        if (winnerId && c.winnerTo && slotMap[c.winnerTo]) {
-          const campo = c.winnerSlot === 'B' ? 'timeB' : 'timeA'
-          updates[`${confrontosPath(campeonatoId)}/${slotMap[c.winnerTo]}/${campo}`] = winnerId
-        }
-        if (loserId && c.loserTo && slotMap[c.loserTo]) {
-          const campo = c.loserSlot === 'B' ? 'timeB' : 'timeA'
-          updates[`${confrontosPath(campeonatoId)}/${slotMap[c.loserTo]}/${campo}`] = loserId
-        }
+      if (novoStatus === STATUS_CONFRONTO.REALIZADO) {
+        Object.assign(updates, propagarBracket(c, resultado, confrontos, confrontosPath(campeonatoId)))
       }
 
       await update(ref(db), updates)
@@ -205,17 +190,16 @@ export default function AdminRodadasSection() {
     }
   }
 
-  // Retorna o teamId vencedor a partir de um resultado. null = inconclusivo.
-  function getWinnerFromResult(resultado, timeA, timeB) {
-    if (!resultado) return null
-    switch (resultado.tipo) {
-      case TIPO_RESULTADO.WO_A:   return timeA
-      case TIPO_RESULTADO.WO_B:   return timeB
-      case TIPO_RESULTADO.NORMAL:
-        if (resultado.timeA > resultado.timeB) return timeA
-        if (resultado.timeB > resultado.timeA) return timeB
-        return null  // empate
-      default: return null
+  // ── Trocar o modo de madness de um confronto já criado ──────────────────────
+
+  async function atualizarMadness(confrontoId, madness) {
+    try {
+      await update(ref(db, `${confrontosPath(campeonatoId)}/${confrontoId}`), {
+        madness, atualizadoEm: Date.now(),
+      })
+      flash('ok', `Madness: ${MADNESS_OPCOES.find(o => o.value === madness)?.label ?? madness}.`)
+    } catch (e) {
+      flash('erro', e.message)
     }
   }
 
@@ -495,6 +479,7 @@ export default function AdminRodadasSection() {
                   onConfirmarReset={() => resetarConfronto(id)}
                   onCancelarReset={() => setConfirmReset(null)}
                   onEditarDraft={(pNum) => setModalEditarDraft({ confrontoId: id, partidaNum: pNum })}
+                  onAtualizarMadness={atualizarMadness}
                   onIniciarDraft={() => navigate(`/showmatch?confronto=${id}&campeonato=${campeonatoId}`)}
                 />
               ))}
@@ -642,7 +627,7 @@ function RodadaHeader({ rodada, rodadaId, onChange, onAtualizar, onEstender }) {
   )
 }
 
-function ConfrontoCard({ confrontoId, confronto: c, campeonatoId, times, disponibilidade, onRegistrarResultado, onForcarSlot, onEditarTimes, onMudarStatus, onResetarAgendamento, onAgendarDesempate, onDeletar, confirmandoDelete, onConfirmarDelete, onCancelarDelete, onIniciarDraft, onResetarConfronto, confirmandoReset, onConfirmarReset, onCancelarReset, onEditarDraft }) {
+function ConfrontoCard({ confrontoId, confronto: c, campeonatoId, times, disponibilidade, onRegistrarResultado, onForcarSlot, onEditarTimes, onMudarStatus, onResetarAgendamento, onAgendarDesempate, onDeletar, confirmandoDelete, onConfirmarDelete, onCancelarDelete, onIniciarDraft, onResetarConfronto, confirmandoReset, onConfirmarReset, onCancelarReset, onEditarDraft, onAtualizarMadness }) {
   const tA = times[c.timeA]
   const tB = times[c.timeB]
   const dispA = disponibilidade[c.timeA]?.slots ?? []
@@ -688,7 +673,26 @@ function ConfrontoCard({ confrontoId, confronto: c, campeonatoId, times, disponi
         <span style={{ fontSize: 10, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text3)', background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 3, padding: '1px 6px' }}>
           {TIPO_LABEL[c.tipo] ?? c.tipo} · {c.formato}
         </span>
-        {c.madness && c.madness !== 'desativado' && (
+        {/* Madness — editável enquanto a série não terminou. Confrontos criados
+            antes deste campo existir vêm sem madness; o select deixa corrigir. */}
+        {onAtualizarMadness && c.status !== STATUS_CONFRONTO.REALIZADO ? (
+          <select
+            value={c.madness ?? 'desativado'}
+            onChange={e => onAtualizarMadness(confrontoId, e.target.value)}
+            title="Modo de bans acumulativos entre partidas"
+            style={{
+              fontSize: 10, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700,
+              letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer',
+              color: c.madness && c.madness !== 'desativado' ? 'var(--gold)' : 'var(--text3)',
+              background: c.madness && c.madness !== 'desativado' ? 'rgba(201,168,76,0.1)' : 'var(--bg2)',
+              border: `1px solid ${c.madness && c.madness !== 'desativado' ? 'rgba(201,168,76,0.3)' : 'var(--border)'}`,
+              borderRadius: 3, padding: '1px 4px', outline: 'none',
+            }}>
+            <option value="desativado">SEM MADNESS</option>
+            <option value="soft">⚡ SOFT</option>
+            <option value="convencional">⚡ MADNESS</option>
+          </select>
+        ) : c.madness && c.madness !== 'desativado' && (
           <span style={{ fontSize: 10, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--gold)', background: 'rgba(201,168,76,0.1)', border: '1px solid rgba(201,168,76,0.3)', borderRadius: 3, padding: '1px 6px' }}>
             ⚡ {c.madness === 'convencional' ? 'MADNESS' : 'SOFT'}
           </span>

@@ -126,6 +126,7 @@ export default function AdminBracketSection() {
           timeB,
           tipo:        slot.tipo,
           formato:     slot.formato,
+          madness:     'soft',
           bracketSlot: slot.id,
           winnerTo:    slot.winnerTo    ?? null,
           winnerSlot:  slot.winnerSlot  ?? null,
