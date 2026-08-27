@@ -97,10 +97,11 @@ export default function Tabela() {
     .filter(c =>
       c.status === STATUS_CONFRONTO.REALIZADO   ||
       c.status === STATUS_CONFRONTO.CONFIRMADO  ||
+      c.status === STATUS_CONFRONTO.EM_JOGO     ||
       c.status === STATUS_CONFRONTO.EMPATE_PENDENTE
     )
     .sort((a, b) => {
-      const ordem = [STATUS_CONFRONTO.CONFIRMADO, STATUS_CONFRONTO.REALIZADO, STATUS_CONFRONTO.EMPATE_PENDENTE]
+      const ordem = [STATUS_CONFRONTO.EM_JOGO, STATUS_CONFRONTO.CONFIRMADO, STATUS_CONFRONTO.REALIZADO, STATUS_CONFRONTO.EMPATE_PENDENTE]
       return ordem.indexOf(a.status) - ordem.indexOf(b.status)
     })
 

@@ -799,7 +799,7 @@ function ConfrontoCard({ confrontoId, confronto: c, campeonatoId, times, disponi
       )}
 
       {/* Status das partidas */}
-      {(temPartidas || c.status === 'em_jogo') && (
+      {(temPartidas || c.status === STATUS_CONFRONTO.EM_JOGO) && (
         <div style={{ marginBottom: 10, padding: '8px 10px', background: 'var(--bg2)', borderRadius: 6, border: '1px solid var(--border)' }}>
           <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 6 }}>
             Partidas: {concluidas}/{maxTotal}
@@ -905,7 +905,7 @@ function ConfrontoCard({ confrontoId, confronto: c, campeonatoId, times, disponi
           </button>
         )}
         {/* Botão de draft — aparece em confirmado (iniciar) ou em_jogo (gerenciar) */}
-        {(c.status === STATUS_CONFRONTO.CONFIRMADO || c.status === 'em_jogo') && (
+        {(c.status === STATUS_CONFRONTO.CONFIRMADO || c.status === STATUS_CONFRONTO.EM_JOGO) && (
           <button className="btn" style={{ fontSize: 11, padding: '4px 10px', borderColor: 'var(--purple)', color: 'var(--purple)', fontWeight: 700 }}
             onClick={onIniciarDraft}>
             {emDraft ? '⚡ Gerenciar Draft Ativo' : `▶ Iniciar Draft${concluidas > 0 ? ` P${concluidas + 1}` : ''}`}

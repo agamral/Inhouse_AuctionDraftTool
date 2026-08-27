@@ -360,7 +360,7 @@ function MatchCard({ match: m, times, destaque = false, small = false, timeSel =
   const dimmed      = timeSel && !highlighted
   // EMPATE_PENDENTE também tem resultado registrado (1-1), trata como realizado para exibição
   const realizado  = m.status === STATUS_CONFRONTO.REALIZADO || m.status === STATUS_CONFRONTO.EMPATE_PENDENTE
-  const confirmado = m.status === STATUS_CONFRONTO.CONFIRMADO
+  const confirmado = m.status === STATUS_CONFRONTO.CONFIRMADO || m.status === STATUS_CONFRONTO.EM_JOGO
   const vencedorId = realizado && m.resultado
     ? (m.resultado.timeA > m.resultado.timeB ? m.timeA
      : m.resultado.timeB > m.resultado.timeA ? m.timeB : null)

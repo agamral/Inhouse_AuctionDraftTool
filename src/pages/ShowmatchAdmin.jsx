@@ -9,7 +9,7 @@ import { calcularMadnessBansOficial } from '../utils/draftRules'
 import { MAPAS } from '../utils/mapPool'
 import { HEROES } from '../utils/heroPool'
 import { teamPath, confrontosPath } from '../utils/campeonatoPaths'
-import { propagarBracket, estadoSerie } from '../utils/scheduling'
+import { propagarBracket, estadoSerie, STATUS_CONFRONTO } from '../utils/scheduling'
 
 function gerarSessaoId() {
   return `sm${Date.now().toString(36).slice(-5)}${Math.random().toString(36).slice(2, 6)}`
@@ -311,7 +311,7 @@ export default function ShowmatchAdmin() {
       const pNum = String(numAtual)
       const base = `${confrontosPath(campeonatoId)}/${confrontoId}`
       await update(ref(db), {
-        [`${base}/status`]:                    'em_jogo',
+        [`${base}/status`]:                    STATUS_CONFRONTO.EM_JOGO,
         [`${base}/partidas/${pNum}/status`]:   'em_draft',
         [`${base}/partidas/${pNum}/heroDraftId`]: sessaoId,
         [`${base}/partidas/${pNum}/criadoEm`]: Date.now(),

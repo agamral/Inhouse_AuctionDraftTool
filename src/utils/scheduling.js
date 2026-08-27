@@ -371,6 +371,7 @@ export const STATUS_CONFRONTO = {
   PENDENTE:        'pendente',        // criado, ninguém marcou disponibilidade
   AGENDANDO:       'agendando',       // pelo menos um time marcou, aguardando acordo
   CONFIRMADO:      'confirmado',      // slot acordado por ambos
+  EM_JOGO:         'em_jogo',         // draft criado, série em andamento
   REALIZADO:       'realizado',       // resultado registrado pelo admin
   WO_PENDENTE:     'wo_pendente',     // sem resolução, admin precisa decidir
   EMPATE_PENDENTE: 'empate_pendente', // série 1-1, aguardando desempate MD3
@@ -817,6 +818,7 @@ export const STATUS_LABEL = {
   [STATUS_CONFRONTO.PENDENTE]:        'Pendente',
   [STATUS_CONFRONTO.AGENDANDO]:       'Agendando',
   [STATUS_CONFRONTO.CONFIRMADO]:      'Confirmado',
+  [STATUS_CONFRONTO.EM_JOGO]:         'Em jogo',
   [STATUS_CONFRONTO.REALIZADO]:       'Realizado',
   [STATUS_CONFRONTO.WO_PENDENTE]:     'W.O. Pendente',
   [STATUS_CONFRONTO.EMPATE_PENDENTE]: 'Empate — Desempate Pendente',
@@ -828,6 +830,7 @@ export const STATUS_COR = {
   [STATUS_CONFRONTO.PENDENTE]:        'var(--text3)',
   [STATUS_CONFRONTO.AGENDANDO]:       'var(--blue)',
   [STATUS_CONFRONTO.CONFIRMADO]:      'var(--green)',
+  [STATUS_CONFRONTO.EM_JOGO]:         'var(--purple)',
   [STATUS_CONFRONTO.REALIZADO]:       'var(--text2)',
   [STATUS_CONFRONTO.WO_PENDENTE]:     'var(--red)',
   [STATUS_CONFRONTO.EMPATE_PENDENTE]: 'var(--gold)',

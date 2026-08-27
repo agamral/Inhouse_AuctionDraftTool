@@ -29,6 +29,7 @@ function AgendaPublica({ teams, confrontos, rodadas }) {
   Object.entries(confrontos).forEach(([id, c]) => {
     if (
       c.status !== STATUS_CONFRONTO.CONFIRMADO &&
+      c.status !== STATUS_CONFRONTO.EM_JOGO &&
       c.status !== STATUS_CONFRONTO.REALIZADO &&
       c.status !== STATUS_CONFRONTO.EMPATE_PENDENTE
     ) return
